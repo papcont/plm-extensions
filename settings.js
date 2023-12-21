@@ -493,7 +493,7 @@ exports.config = {
         'startupReportNames' : ['Audits by Workflow State', 'CR approval status', 'DR: Rework Required', 'EX: Change Requests'],
         'startupReportCount' : 5
     },
-
+//reviews id von 76 zu 307 geaendert
     'reviews' : {
         'fieldIdItem'   : 'ITEM',
         'fieldIdImage'  : 'IMAGE',
@@ -501,7 +501,7 @@ exports.config = {
         'transitionId'  : 'CLOSE_REVIEW',
         'workspaces'    : {
             'reviews' : {
-                'id'        : 76,
+                'id'        : 307,
                 'sections'  : [ { 'name' : 'Review Findings' } ],
                 'states'    : [ 'Planning', 'Preparation', 'In Progress' ]
             },
@@ -526,9 +526,9 @@ exports.config = {
         'wsIdProblemReports'     : 82,
         'wsIdSparePartsRequests' : 208
     },
-
+// variants id von 208 auf 241 geaendert
     'variants' : {
-        'wsIdItemVariants'       : 208,
+        'wsIdItemVariants'       : 241,
         'variantsSectionLabel'   : 'Variant Definition',
         'fieldIdVariantBaseItem' : 'DMS_ID_BASE_ITEM',
         'fieldIdItemVariants'    : 'VARIANTS',
