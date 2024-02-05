@@ -88,7 +88,12 @@ function sendResponse(req, res, response, error) {
                 console.log(response.message);
                 result.message = response.message;
             }
-            if(typeof response.data    !== 'undefined') console.log(response.data);
+            if(typeof response.data !== 'undefined') {
+                console.log(response.data);
+                if(response.data.length > 0) {
+                    if('message' in response.data[0]) result.message = response.data[0].message;
+                }
+            }
         }
 
     }
@@ -2068,7 +2073,7 @@ router.get('/bom-add', function(req, res, next) {
     console.log('  req.query.dmsIdChild  = ' + req.query.dmsIdChild);
     console.log('  req.query.linkParent  = ' + req.query.linkParent);
     console.log('  req.query.linkChild   = ' + req.query.linkChild);
-    console.log('  req.query.qty         = ' + req.query.qty);
+    console.log('  req.query.quantity    = ' + req.query.quantity);
     console.log('  req.query.pinned      = ' + req.query.pinned);
     console.log('  req.query.number      = ' + req.query.number);
     console.log('  req.query.fields      = ' + req.query.fields);
@@ -2231,7 +2236,11 @@ router.get('/where-used', function(req, res, next) {
     axios.get(url, {
         headers : req.session.headers
     }).then(function(response) {
-        let result = [];
+        let result = {
+            'edges'      : [],
+            'nodes'      : [],
+            'totalCount' : 0
+        };
         if(response.data !== '') result = response.data;
         sendResponse(req, res, { 'data' : result, 'status' : response.status }, false);
     }).catch(function(error) {
@@ -2596,7 +2605,8 @@ router.get('/items', function(req, res) {
     axios.get(url, { 
         'headers' : custHeaders
     }).then(function (response) {
-        sendResponse(req, res, response, false);
+        if(response.data === '') response.data = { 'items' : []};
+        sendResponse(req, res, response, false); 
     }).catch(function (error) {
         sendResponse(req, res, error.response, true);
     });
@@ -2624,27 +2634,21 @@ router.get('/search', function(req, res) {
        'filter'        : [],
        'sort'          : []
    };
-
-
-
-   
    
    setBodyFields(params, req.query.fields);
    setBodySort(params, req.query.sort);
    setBodyFilter(params, req.query.filter);
 
-   if(typeof req.query.latest !== 'undefined') {
-    if(req.query.latest) {
-        params.filter.push({ 
-            'fieldID'       : 'LC_RELEASE_LETTER',
-            'fieldTypeID'   : '10',
-            'filterType'    : { 'filterID' : 20 },
-            'filterValue'   : 'true'      
-        }); 
+    if(typeof req.query.latest !== 'undefined') {
+        if(req.query.latest) {
+            params.filter.push({ 
+                'fieldID'       : 'LC_RELEASE_LETTER',
+                'fieldTypeID'   : '10',
+                'filterType'    : { 'filterID' : 20 },
+                'filterValue'   : 'true'      
+            }); 
+        }
     }
-}
-
-   console.log(params);
 
     axios.post(url, params, { 
         headers : req.session.headers
@@ -2755,6 +2759,7 @@ router.get('/search-descriptor', function(req, res, next) {
     console.log('  req.query.bulk       = ' + req.query.bulk); 
     console.log('  req.query.page       = ' + req.query.page); 
     console.log('  req.query.revision   = ' + req.query.revision); 
+    console.log('  req.query.wildcard   = ' + req.query.wildcard); 
     console.log();
 
     let limit       = (typeof req.query.limit    === 'undefined') ?   100    : req.query.limit;
@@ -2762,6 +2767,7 @@ router.get('/search-descriptor', function(req, res, next) {
     let bulk        = (typeof req.query.bulk     === 'undefined') ?  'false' : req.query.bulk;
     let page        = (typeof req.query.page     === 'undefined') ?   '1'    : req.query.page;
     let revision    = (typeof req.query.revision === 'undefined') ?   '1'    : req.query.revision;
+    let wildcard    = (typeof req.query.wildcard === 'undefined') ?   true   : (req.query.wildcard.toLowerCase() === 'true');
 
     let url    = 'https://' + req.session.tenant + '.autodeskplm360.net/api/v3/search-results?limit=' + limit + '&offset=' + offset + '&page=' + page + '&revision=' + revision + '&query=';
     let values = req.query.query.split(' ');
@@ -2776,6 +2782,8 @@ router.get('/search-descriptor', function(req, res, next) {
             }
         }
         url += '(' + query + ')';
+    } else if(!wildcard) {
+        url += 'itemDescriptor%3D%22' + req.query.query + '%22';
     } else {
         url += 'itemDescriptor%3D*' + req.query.query + '*';
     }
@@ -3046,6 +3054,7 @@ router.get('/tableau-data', function(req, res, next) {
     }).then(function(response) {
         let result = [];
         if(response.data !== '') result = response.data.items;
+        if(typeof result === 'undefined') result = [];
         sendResponse(req, res, { 'data' : result, 'status' : response.status }, false);
     }).catch(function(error) {
         sendResponse(req, res, error.response, true);

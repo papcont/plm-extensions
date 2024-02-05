@@ -1,3 +1,40 @@
+#tabs {
+
+}
+.panel {
+    top : 80px;
+}
+
+/*  SEARCH */
+/* ----------------------------------------------------------------------------- */
+#search-header { display : none; }
+.search-actions {
+    display         : flex;
+    gap             : 10px !important;
+    justify-content : center;
+}
+.search-input { 
+    max-width   : 300px;
+    text-align  : center;
+    width       : calc(100% - 180px); 
+}
+.search-result-message {
+    display     : none;
+    padding-top : 100px;
+    text-align  : center;
+}
+.search-result-list {
+    top : 44px !important;
+}
+#search-list .tile-details {
+    width : calc(100% - 180px);
+}
+.search-result-list .tile-actions { margin-top : 6px; }
+#materials-list .tile-details {
+    width : calc(100% - 150px);
+}
+
+
 /*  WORKSPACE VIEWS */
 /* ----------------------------------------------------------------------------- */
 #views-content {
