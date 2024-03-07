@@ -151,6 +151,19 @@ exports.config = {
             { 'label' : 'Review',      'color' : colors.green,  'states' : ['Review']    },
             { 'label' : 'Completed',   'color' : colors.green,  'states' : ['Completed'] }
         ]
+    },{
+        'title' : 'Supplier Collaboration Platform',
+        'wsId'  : 146,
+        'icon'  : 'account_tree',
+        'workflowHistory'   : {
+            'showNextActions'       : true,
+            'finalStates'           : ['Completed']
+        },
+        'progress' : [
+            { 'label' : 'Planning',      'color' : colors.red,     'states' : ['Requested']  },
+            { 'label' : 'In Progress',   'color' : colors.yellow,  'states' : ['In Work', 'Clarification']   },
+            { 'label' : 'Completed',     'color' : colors.green,   'states' : ['Completed'] }
+        ]
     }],
 
     'explorer' : {
@@ -520,6 +533,14 @@ exports.config = {
         'fieldId'                : 'SPARE_WEAR_PART',
         'fieldValues'            : ['spare part', 'yes', 'x', 'y', 'wear part'],
         'spartPartDetails'       : ['MATERIAL', 'ITEM_WEIGHT', 'DIMENSIONS'],
+        'productsFilter'         : '',
+        'productsSortBy'         : 'TITLE',
+        'productsGroupBy'        : 'PRODUCT_LINE',
+        'productsFieldIdImage'   : 'IMAGE',
+        'productsFieldIdTitle'   : 'TITLE',
+        'productsFieldIdSubtitle': 'DESCRIPTION',
+        'productsFieldIdBOM'     : 'ENGINEERING_BOM',
+        'productsListHeader'     : 'Serviceable Products',
         'wsIdProducts'           : 95,
         'wsIdProblemReports'     : 82,
         'wsIdSparePartsRequests' : 208
@@ -538,6 +559,9 @@ exports.config = {
     'viewer' : {
         'fieldIdPartNumber'       : 'NUMBER',
         'partNumberProperties'    : ['Part Number', 'Name', 'label', 'Artikelnummer', 'Bauteilnummer'],
+        'splitPartNumberBy'       : ' v',
+        'splitPartNumberIndexes'  : [0],
+        'splitPartNumberSpacer'   : '',
         'backgroundColor'         : [255, 255, 255],
         'groundReflection'        : false,
         'groundShadow'            : true

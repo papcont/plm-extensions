@@ -113,32 +113,6 @@ function setUIEvents() {
         $('#item').hide();
     });
 
-    // Upload File
-    $('#button-upload').click(function() {
-    
-        let link = $('#item').attr('data-link');
-
-        let urlUpload = '/plm/upload/';
-            urlUpload += link.split('/')[4] + '/';
-            urlUpload += link.split('/')[6];
-    
-        $('#uploadForm').attr('action', urlUpload);    
-        $('#select-file').click();
-        
-    }); 
-    $('#select-file').change(function() {
-        $('#attachments-list').hide();
-        $('#attachments-processing').show();
-        $('#uploadForm').submit();
-    });
-    $('#frame-download').on('load', function() {
-        console.log('hier');
-        console.log($('#item').attr('data-link'));
-        $('#attachments-list').show();
-        $('#attachments-processing').hide();
-        insertAttachments($('#item').attr('data-link'));
-    });
-
 }
 
 
@@ -249,12 +223,14 @@ function getInitialData() {
         $.get('/plm/sections' , { 'wsId' : wsConfig.id }),
         $.get('/plm/fields'   , { 'wsId' : wsConfig.id }),
         $.get('/plm/tableaus' , { 'wsId' : wsConfig.id }),
+        $.get( '/plm/permissions', { 'wsId' : wsConfig.id }),
     ];
 
     Promise.all(promises).then(function(responses) {
 
         wsConfig.sections = responses[0].data;
         wsConfig.fields   = responses[1].data;
+        wsConfig.permissions = responses[3].data;
 
         for(tableau of responses[2].data) {
             if(tableau.title === wsConfig.tableauName) {
@@ -262,6 +238,7 @@ function getInitialData() {
             }
         }
 
+        
         for(field of wsConfig.fields) {
             if(!isBlank(field.type)) {
                 if(field.type.title === 'Image') {
@@ -275,10 +252,17 @@ function getInitialData() {
                 }
             }
         }
-
+        
+        $('#main').removeClass('hidden');
+        
         if(!enableMarkup) $('body').addClass('no-markup');
-
-        insertItemDetailsFields('', 'new', wsConfig.sections, wsConfig.fields, null, true, true, true, wsConfig.excludedSections);
+        
+        for(let permission of wsConfig.permissions){
+            if(permission.name === 'permission.shortname.add_items'){
+                $('body').removeClass('no-new');
+                insertItemDetailsFields('', 'new', wsConfig.sections, wsConfig.fields, null, true, true, true, wsConfig.excludedSections);
+            }
+        }
 
         $('#new-sections').find('.field.required').each(function() {
             $(this).css('display', 'flex');
@@ -697,9 +681,6 @@ function openItem(link) {
                         'fieldId' : fieldId
                     }, function(response) {
 
-
-                        console.log(response);
-
                         $('#' + response.params.fieldId).removeClass('placeholder');
 
                         let canvas = document.getElementById(response.params.fieldId);
@@ -740,10 +721,21 @@ function openItem(link) {
     });
 
     getBookmarkStatus(link);
-    insertAttachments(link);
+    insertAttachments(link, { 
+        'layout'    : 'list',
+        'size'      : 'l', 
+        'upload'    : true
+    });
     insertItemDetailsFields(link, 'details', wsConfig.sections, wsConfig.fields, null, true, false, false, wsConfig.excludedSections);
 
 }
+
+
+// Move file upload button
+function insertAttachmentsDone(id, data, update) {
+    $('#attachments-upload').prependTo('#item-toolbar').css('display', 'flex');
+}
+
 
 
 // Perform Workflow Transitions
@@ -778,6 +770,9 @@ function selectMarkup(elemClicked) {
 function initViewerDone() {
 
     if(enableMarkup) viewerAddMarkupControls(true);
+
+    if($('body').hasClass('no-viewer')) { $('#attachments-list').addClass('l').removeClass('xs');}
+                                   else { $('#attachments-list').addClass('xs').removeClass('l');}
 
 }
 function viewerSaveMarkup() {

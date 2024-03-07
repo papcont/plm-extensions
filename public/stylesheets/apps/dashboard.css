@@ -29,7 +29,13 @@
 .panel.collapsed .panel-content { display : none !important; }
 /* .panel-title > .icon { margin-right : 8px; } */
 .panel-content { position: unset; }
-
+#attachments-upload { display : none; }
+.attachments-list {
+    top     : 76px;
+    right   : var(--padding-item);
+    bottom  : var(--padding-item);
+    left    : var(--padding-item);
+}
 
 #progress .tile-status {
     display : none;
@@ -129,6 +135,8 @@ body.no-viewer .tiles.list.files { gap: var(--spacer-xs); }
 
 body.no-markup #viewer { bottom : 0px !important; }
 body.no-markup #markups { display : none; }
+body.no-new #new {    display: none;}
+body.no-new #list {right : var(--margin-main);}
 
 
 /* NEW */

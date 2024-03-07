@@ -5,6 +5,11 @@ let cacheWorkspaces = [];
 let urnsBOMFields   = [];
 let username        = '';
 let requestsLimit   = 5;
+let settings        = {
+    attachments : {},
+    bom         : {},
+    flatBOM     : {}
+}
 
 
 
@@ -51,6 +56,7 @@ function insertViewer(link, color) {
         if(response.data.length > 0) {
 
             let foundAssembly = false;
+            let viewable = response.data[0];
 
             $('body').removeClass('no-viewer');
 
@@ -617,7 +623,7 @@ function insertField(field, itemData, elemParent, hideComputed, hideReadOnly, ed
                     elemField.addClass('editable');               
 
                     if(field.fieldValidators !== null) {
-                        for(validator of field.fieldValidators) {
+                        for(let validator of field.fieldValidators) {
                             if(validator.validatorName === 'required') {
                                 elemField.addClass('required');
                             } else if(validator.validatorName === 'dropDownSelection') {
@@ -670,7 +676,7 @@ function getImage(elemParent, value) {
 }
 function getOptions(elemParent, link, fieldId, type, value) {
 
-    for(picklist of cachePicklists) {
+    for(let picklist of cachePicklists) {
         if(picklist.link === link) {
             insertOptions(elemParent, picklist.data, fieldId, type, value);
             return;
@@ -678,11 +684,25 @@ function getOptions(elemParent, link, fieldId, type, value) {
     }
 
     $.get( '/plm/picklist', { 'link' : link, 'limit' : 100, 'offset' : 0 }, function(response) {
+
         if(!response.error) {
-            cachePicklists.push({
-                'link' : link,
-                'data' : response.data
-            });
+
+            let isNew = true;
+
+            for(let picklist of cachePicklists) {
+                if(picklist.link === link) {
+                    isNew = false;
+                    continue;
+                }
+            }
+
+            if(isNew) {
+                cachePicklists.push({
+                    'link' : link,
+                    'data' : response.data
+                });
+            }
+
             insertOptions(elemParent, response.data, fieldId, type, value);
         }
     });
@@ -690,8 +710,8 @@ function getOptions(elemParent, link, fieldId, type, value) {
 }
 function insertOptions(elemParent, data, fieldId, type, value) {
 
-    for(option of data.items) {
-        
+    for(let option of data.items) {
+       
         if(type === 'radio') {
 
             let index = $('.radio').length + 1;
@@ -815,45 +835,49 @@ function getEditableFields(fields) {
 
     let result = [];
 
-    for(field of fields) {
+    for(let field of fields) {
 
         if(field.editability === 'ALWAYS') {
+            if(field.type !== null) {
 
-            let elemControl = null;
+                let elemControl = null;
+                let fieldId = ('fieldId' in field) ? field.fieldId : field.__self__.split('/')[8];
 
-            switch(field.type.title) {
+                switch(field.type.title) {
 
-                case 'Check Box': 
-                    elemControl = $('<input>');
-                    elemControl.attr('type', 'checkbox');
+                    case 'Check Box': 
+                        elemControl = $('<input>');
+                        elemControl.attr('type', 'checkbox');
 
-                case 'Float': 
-                case 'Integer': 
-                case 'Single Line Text': 
-                    elemControl = $('<input>');
-                    break;
+                    case 'Float': 
+                    case 'Integer': 
+                    case 'Single Line Text': 
+                        elemControl = $('<input>');
+                        break;
 
-                case 'Radio Button': 
-                case 'Single Selection': 
-                    elemControl = $('<select>');
-                    elemControl.addClass('picklist');
+                    case 'Radio Button': 
+                    case 'Single Selection': 
+                        elemControl = $('<select>');
+                        elemControl.addClass('picklist');
 
-                    let elemOptionBlank = $('<option></option>');
-                        elemOptionBlank.attr('value', null);
-                        elemOptionBlank.appendTo(elemControl);
+                        let elemOptionBlank = $('<option></option>');
+                            elemOptionBlank.attr('value', null);
+                            elemOptionBlank.appendTo(elemControl);
 
-                    getOptions(elemControl, field.picklist, field.__self__.split('/')[8], 'select', '');
+                        getOptions(elemControl, field.picklist, fieldId, 'select', '');
 
-                    break;
+                        break;
+
+                }
+
+                result.push({
+                    'id'      : fieldId,
+                    // 'title'   : sectionField.title,
+                    'type'    : field.type.title,
+                    'control' : elemControl
+                });
 
             }
-
-            result.push({
-                'id'      : field.__self__.split('/')[8],
-                // 'title'   : sectionField.title,
-                'type'    : field.type.title,
-                'control' : elemControl
-            });
         }
 
     }
@@ -983,13 +1007,13 @@ function getFieldValue(elemField) {
     // } else if(elemField.hasClass('picklist')) {
     } else if(hasSelect) {
         elemInput = elemField.find('select');
+        result.type ='picklist';
         if(elemInput.val() === '') {
             result.value = null;
         } else {
             result.value = {
                 'link' : elemInput.val()
             };
-            result.type ='picklist';
             result.display = elemInput.val();
         }
     } else if(elemField.hasClass('multi-picklist')) {
@@ -1040,163 +1064,196 @@ function validateForm(elemForm) {
 }
 
 
+
 // Insert attachments as tiles
-function insertAttachments(link, id, split) {
+function insertAttachments(link, params) {
 
-    if(isBlank(id))       id = 'attachments';
-    if(isBlank(split)) split = false;
+    if(isBlank(link)) return;
 
-    $('#' + id + '-processing').show();
-    $('#' + id + '-no-data').addClass('hidden');
+    //  Set defaults for optional parameters
+    // --------------------------------------
+    let id           = 'attachments';    // id of DOM element where the attachments will be inseerted
+    let header       = true;             // Hide header with setting this to false
+    let headerLabel  = 'Attachments';    // Set the header text
+    let headerToggle = false;            // Enable header toggles
+    let reload       = false;            // Enable reload button for the attachments list
+    let download     = true;             // Enable file download
+    let upload       = false;            // Enable file uploads
+    let uploadLabel  = 'Upload File';    // File upload button label
+    let layout       = 'tiles';          // Content layout (tiles, list or table)
+    let size         = 'm';              // layout size (xxs, xs, s, m, l, xl, xxl)
+    let fileVersion  = true;             // Display version of each attachment
+    let fileSize     = true;             // Display size of each attachment
+    let extensionsIn = '';               // Defines list of file extensions to be included ('.pdf,.doc')
+    let extensionsEx = '';               // Defines list of file extensions to be excluded ('.dwf,.dwfx')
+    let split        = false;
 
-    let attachments = [];
-    let timestamp   = new Date().getTime();
-    let elemList  = $('#' + id + '-list');
-        elemList.attr('data-timestamp', timestamp);
-        elemList.html('');
+    if(isBlank(params)              )       params = {};
+    if(!isBlank(params.id)          )           id = params.id;
+    if(!isBlank(params.header)      )       header = params.header;
+    if(!isBlank(params.headerLabel) )  headerLabel = params.headerLabel;
+    if(!isBlank(params.headerToggle)) headerToggle = params.headerToggle;
+    if(!isBlank(params.reload)      )       reload = params.reload;
+    if(!isBlank(params.download)    )     download = params.download;
+    if(!isBlank(params.upload)      )       upload = params.upload;
+    if(!isBlank(params.layout)      )       layout = params.layout;
+    if(!isBlank(params.size)        )         size = params.size;
+    if(!isBlank(params.fileVersion) )  fileVersion = params.fileVersion;
+    if(!isBlank(params.fileSize)    )     fileSize = params.fileSize;
+    if(!isBlank(params.extensionsIn)) extensionsIn = params.extensionsIn;
+    if(!isBlank(params.extensionsEx)) extensionsEx = params.extensionsEx;
+    if(!isBlank(params.split)       )        split = params.split;
+    
+    if(params.hasOwnProperty('uploadLabel') ) uploadLabel = params.uploadLabel;
 
-    if($('#frame-download').length === 0) {
+    let timestamp = new Date().getTime();
 
-        let elemFrame = $('<frame>');
-            elemFrame.attr('id', 'frame-download');
-            elemFrame.attr('name', 'frame-download');
-            elemFrame.css('display', 'none');
-            elemFrame.appendTo($('body'));
+    let elemParent = $('#' + id)
+        .addClass('attachments')
+        .attr('data-link', link)
+        .attr('data-timestamp', timestamp)
+        .html('');
 
-    }  
+    settings.attachments[id] = {};
+    settings.attachments[id].fileVersion  = fileVersion;
+    settings.attachments[id].fileSize     = fileSize;
+    settings.attachments[id].split        = split;
+    settings.attachments[id].download     = download;
+    settings.attachments[id].extensionsIn = (extensionsIn === '') ? [] : extensionsIn.split(',');
+    settings.attachments[id].extensionsEx = (extensionsEx === '') ? [] : extensionsEx.split(',');
 
-    let params = {
-        'link'      : link,
-        'timestamp' : timestamp
-    }
+    if(header) {
 
-    $.get('/plm/attachments', params, function(response) {
+        let elemHeader = $('<div></div>', {
+            id : id + '-header'
+        }).appendTo(elemParent).addClass('panel-header')
 
-             if(response.data.statusCode === 403) return;
-        else if(response.data.statusCode === 404) return;
+        if(headerToggle) {
 
-        if(response.params.timestamp === $('#' + id + '-list').attr('data-timestamp')) {
-            if(response.params.link === link) {
+            $('<div></div>').appendTo(elemHeader)
+                .addClass('panel-header-toggle')
+                .addClass('icon')
+                .addClass('icon-collapse');
 
-                $('#' + id + '-processing').hide();
+            elemHeader.addClass('with-toggle');
+            elemHeader.click(function() {
+                togglePanelHeader($(this));
+            });
 
-                attachments = response.data;
-
-                if(attachments.length === 0) $('#' + id + '-no-data').removeClass('hidden');
-
-                for(let attachment of attachments) {
-
-                    let date = new Date(attachment.created.timeStamp);
-
-                    let elemAttachment = $('<div></div>');
-                        elemAttachment.addClass('attachment');
-                        elemAttachment.addClass('tile');
-                        elemAttachment.attr('data-file-id', attachment.id);
-                        elemAttachment.attr('data-url', attachment.url);
-                        elemAttachment.attr('data-file-link', attachment.selfLink);
-                        elemAttachment.attr('data-extension', attachment.type.extension);
-                        elemAttachment.appendTo(elemList);
-
-                    let elemAttachmentGraphic = getFileGrahpic(attachment);
-                        elemAttachmentGraphic.appendTo(elemAttachment);
-
-                    let elemAttachmentDetails = $('<div></div>');
-                        elemAttachmentDetails.addClass('attachment-details');
-                        elemAttachmentDetails.appendTo(elemAttachment);
-
-                    let elemAttachmentName = $('<div></div>');
-                        elemAttachmentName.addClass('attachment-name');
-                        elemAttachmentName.appendTo(elemAttachmentDetails);
-
-                    if(!split) {
-
-                        elemAttachmentName.addClass('nowrap');
-                        elemAttachmentName.html(attachment.name);
-
-                    } else {
-
-                        let filename   = attachment.name.split('.');
-                        let filePrefix = '';
-
-                        for(let i = 0; i < filename.length - 1; i++) filePrefix += filename[i];
-
-                        let elemAttachmentPrefix = $('<div></div>');
-                            elemAttachmentPrefix.addClass('attachment-name-prefix');
-                            elemAttachmentPrefix.addClass('nowrap');
-                            elemAttachmentPrefix.html(filePrefix);
-                            elemAttachmentPrefix.appendTo(elemAttachmentName);
-
-                        let elemAttachmentSuffix = $('<div></div>');
-                            elemAttachmentSuffix.addClass('attachment-name-suffix');
-                            // elemAttachmentSuffix.addClass('nowrap');
-                            elemAttachmentSuffix.html('.' + filename[filename.length - 1]);
-                            elemAttachmentSuffix.appendTo(elemAttachmentName);
-
-                    }
-
-                    let elemAttachmentUser = $('<div></div>');
-                        elemAttachmentUser.addClass('attachment-user');
-                        elemAttachmentUser.addClass('nowrap');
-                        elemAttachmentUser.html('Created by ' + attachment.created.user.title);
-                        elemAttachmentUser.appendTo(elemAttachmentDetails);            
-
-                    let elemAttachmentDate = $('<div></div>');
-                        elemAttachmentDate.addClass('attachment-date');
-                        elemAttachmentDate.addClass('nowrap');
-                        elemAttachmentDate.html( date.toLocaleString());
-                        elemAttachmentDate.appendTo(elemAttachmentDetails);
-
-                    elemAttachment.click(function() {
-
-                        let elemClicked    = $(this).closest('.item');
-                        let elemAttachment = $(this).closest('.attachment');
-                        let fileExtension  = elemAttachment.attr('data-extension');
-
-                        let params = {
-                            'wsId'      : elemClicked.attr('data-wsid'),
-                            'dmsId'     : elemClicked.attr('data-dmsid'),
-                            'fileId'    : elemAttachment.attr('data-file-id'),
-                            'fileLink'  : elemAttachment.attr('data-file-link')
-                        }
-
-                        $.getJSON( '/plm/download', params, function(response) {
-
-                            document.getElementById('frame-download').src = response.data.fileUrl;
-
-                            // switch(fileExtension) {
-
-                            //     case '.pdf':
-                                    
-                            //         let elemFramePreview = $('#frame-preview');
-                            //         if(elemFramePreview.length > 0) {
-                            //             elemFramePreview.show();
-                            //             elemFramePreview.attr('data', response.data.fileUrl)
-                            //         } else {
-                            //             document.getElementById('frame-download').src = response.data.fileUrl;
-                            //         }
-
-                            //         break;
-
-                            //     default:
-                            //         document.getElementById('frame-download').src = response.data.fileUrl;
-                            //         break;
-                                    
-                            // }
-
-                        });
-                                
-                    });
-
-                }
-
-                insertAttachmentsDone(id, response.data);
-
-            }
         }
 
-    });
+        $('<div></div>').appendTo(elemHeader)
+            .addClass('panel-title')
+            .attr('id', id + '-title')
+            .html(headerLabel);
 
-    return attachments.length;
+        let elemToolbar = $('<div></div>')
+            .addClass('panel-toolbar')
+            .attr('id', id + '-toolbar');
+
+        if(reload) {
+
+            elemToolbar.appendTo(elemHeader);
+            $('<div></div>').appendTo(elemToolbar)
+                .addClass('button')
+                .addClass('icon')
+                .addClass('icon-refresh')
+                .attr('id', id + '-reload')
+                .attr('title', 'Reload this list')
+                .click(function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    fileUploadDone(id);
+                });
+
+        }
+
+        if(upload) {
+
+            elemToolbar.appendTo(elemHeader);
+
+            let elemUpload = $('<div></div>').appendTo(elemToolbar)
+                .addClass('button')
+                .addClass('icon-upload')
+                .addClass('disabled')
+                .attr('id', id + '-upload')
+                .attr('title', uploadLabel)
+                .html(uploadLabel)
+                .click(function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    clickAttachmentsUpload($(this));
+                });
+
+            if(isBlank(uploadLabel)) {
+                elemUpload.addClass('icon');
+            } else {
+                elemUpload.addClass('with-icon');
+            }
+
+            let elemFrame  = $('#frame-upload');
+            let elemForm   = $('#uploadForm');
+            let elemSelect = $('#select-file');
+            
+            if(elemFrame.length === 0) {
+                $('<iframe>', {
+                    id   : 'frame-upload',
+                    name :  'frame-upload'
+                }).appendTo('body').on('load', function() {
+                    fileUploadDone(id);
+                }).addClass('hidden');
+            }            
+
+            if(elemForm.length === 0) {
+                elemForm = $('<form>', {
+                    id      : 'uploadForm',
+                    method  : 'post',
+                    encType : 'multipart/form-data',
+                    target  : 'frame-upload'
+                }).appendTo('body');
+            }            
+
+            if(elemSelect.length === 0) {
+                elemSelect = $('<input>', {
+                    id  : 'select-file',
+                    type : 'file',
+                    name : 'newFiles'
+                }).appendTo(elemForm)
+                .addClass('hidden')
+                .addClass('button')
+                .addClass('main')
+                .change(function() {
+                    selectFileForUpload(id);
+                });
+            }
+
+        }
+
+    } else { elemParent.addClass('no-header'); }
+    
+    appendProcessing(id, false);
+    appendNoDataFound(id, 'icon-no-data', 'No attachments');
+
+    let elemList  = $('<div></div>').appendTo(elemParent)
+        .attr('id', id + '-list')
+        .addClass('attachments-list')
+        .addClass('no-scrollbar')
+        .addClass(layout);
+
+    if(!isBlank(size)) elemList.addClass(size);
+
+    $('#' + id + '-no-data').hide();
+
+    if(download) {
+        if($('#frame-download').length === 0) {
+            $('<frame>').appendTo($('body'))
+                .attr('id', 'frame-download')
+                .attr('name', 'frame-download')
+                .css('display', 'none');
+        }  
+    }
+
+    insertAttachmentsData(id, timestamp, link, false);  
 
 }
 function getFileGrahpic(attachment) {
@@ -1263,29 +1320,352 @@ function getFileSVG(extension) {
     return svg;
     
 }
-function insertAttachmentsDone(id, data) {}
+function clickAttachment(elemClicked) {
+
+    let elemItem       = elemClicked.closest('.item');
+    let elemAttachment = elemClicked.closest('.attachment');
+    let fileExtension  = elemAttachment.attr('data-extension');
+
+    // let elemPreview = $('<div></div>').appendTo('body')
+    //     .attr('id', 'preview')
+    //     .addClass('screen')
+    //     .addClass('surface-level-2');
+
+    // let elemPreviewHeader = $('<div></div>').appendTo(elemPreview)
+    //     .attr('id', 'preview-header')    
+    //     .addClass('preview-header');
+
+    // $('<div></div>').appendTo(elemPreviewHeader)
+    //     .attr('id', 'preview-title')    
+    //     .addClass('preview-title')
+    //     .html('test');
+
+    // let elemPreviewToolbar = $('<div></div>').appendTo(elemPreviewHeader)
+    //     .attr('id', 'preview-toolbar')
+    //     .addClass('preview-toolbar');
+        
+    //     $('<div></div>').appendTo(elemPreviewToolbar)
+    //     .addClass('button')
+    //     .addClass('icon')
+    //     .addClass('icon-close')
+    //     .click(function() {
+    //         let elemScreen = $(this).closest('.screen');
+    //         elemScreen.hide();
+    //     });
+        
+        
+    // let elemPreviewFrame = $('<div></div>').appendTo(elemPreview)
+    //         .attr('id', 'preview-frame')
+    //         .addClass('preview-frame');
 
 
-// Insert BOM with selected controls
+    let params = {
+        'wsId'      : elemItem.attr('data-wsid'),
+        'dmsId'     : elemItem.attr('data-dmsid'),
+        'fileId'    : elemAttachment.attr('data-file-id'),
+        'fileLink'  : elemAttachment.attr('data-file-link')
+    }
+
+    $.getJSON( '/plm/download', params, function(response) {
+
+        // console.log(response);
+
+        // let fileUrl = response.data.fileUrl;
+// 
+        // fileUrl += '&content_disposition=application/pdf';
+
+        // console.log(fileUrl);
+
+        // $('<object>').appendTo(elemPreviewFrame)
+            // .show()
+            // .attr('type','application/pdf')
+            // .attr('data', fileUrl);
+            // .attr('data', response.data.fileUrl);
+        // $('<iframe></iframe>').appendTo(elemPreviewFrame)
+        //     .show()
+        //     .attr('src', response.data.fileUrl);
+
+
+        document.getElementById('frame-download').src = response.data.fileUrl;
+
+        // switch(fileExtension) {
+
+        //     case '.pdf':
+                
+        //         let elemFramePreview = $('#frame-preview');
+        //         if(elemFramePreview.length > 0) {
+        //             elemFramePreview.show();
+        //             elemFramePreview.attr('data', response.data.fileUrl)
+        //         } else {
+        //             document.getElementById('frame-download').src = response.data.fileUrl;
+        //         }
+
+        //         break;
+
+        //     default:
+        //         document.getElementById('frame-download').src = response.data.fileUrl;
+        //         break;
+                
+        // }
+
+    });
+
+}
+function insertAttachmentsData(id, timestamp, link, update) {
+
+    let payload = {
+        'link'      : link,
+        'timestamp' : timestamp
+    }
+
+    let elemList    = $('#' + id + '-list');      
+    let elemUpload  = $('#' + id + '-upload');
+    let isTable     = elemList.hasClass('table');
+
+    if(!update) elemList.html(''); 
+    if(elemUpload.length > 0) elemUpload.addClass('disabled');
+
+    let requests = [
+        $.get('/plm/attachments', payload),
+        $.get('/plm/permissions', { 'link': link })
+    ];
+
+    $('#' + id + '-list').hide();
+    $('#' + id + '-processing').show();
+
+    Promise.all(requests).then(function(responses) {
+
+             if(responses[0].data.statusCode === 403) return;
+        else if(responses[0].data.statusCode === 404) return;
+
+        if(responses[0].params.timestamp === $('#' + id).attr('data-timestamp')) {
+            if(responses[0].params.link === link) {
+
+                $('#' + id + '-processing').hide();
+
+                let attachments = responses[0].data;
+                let currentIDs  = [];
+
+                elemList.find('.attachment').each(function() {
+
+                    let remove    = true;
+                    let currentId = Number($(this).attr('data-file-id'));
+
+                    $(this).removeClass('highlight');
+
+                    for(let attachment of attachments) {
+                        if(attachment.id === currentId) {
+                            remove = false;
+                            continue;
+                        }
+                    }
+
+                    if(remove) $(this).remove(); else currentIDs.push(currentId);
+
+                });
+
+                for(let attachment of attachments) {
+
+                    if(currentIDs.indexOf(attachment.id) > -1) continue;
+
+                    let extension = attachment.type.extension;
+                    let included  = true;
+
+                    if(settings.attachments[id].extensionsIn.length > 0) {
+                        if(settings.attachments[id].extensionsIn.indexOf(extension) < 0) included = false;
+                    }
+                    if(settings.attachments[id].extensionsEx.length > 0) {
+                        if(settings.attachments[id].extensionsEx.indexOf(extension) !== -1) included = false;
+                    }
+
+                    if(!included) continue;
+
+                    let date = new Date(attachment.created.timeStamp);
+
+                    let elemAttachment = $('<div></div>').appendTo(elemList)
+                        .addClass('attachment')
+                        .addClass('tile')
+                        .attr('data-file-id', attachment.id)
+                        .attr('data-url', attachment.url)
+                        .attr('data-file-link', attachment.selfLink)
+                        .attr('data-extension', attachment.type.extension);
+
+                    if(update) {
+                        elemAttachment.addClass('highlight');
+                        elemAttachment.prependTo(elemList);
+                    } else {
+                        elemAttachment.appendTo(elemList);
+                    }
+
+                    getFileGrahpic(attachment).appendTo(elemAttachment);
+
+                    let elemAttachmentDetails = $('<div></div>').appendTo(elemAttachment)
+                        .addClass('attachment-details');
+
+                    let elemAttachmentName = $('<div></div>').appendTo(elemAttachmentDetails)
+                        .addClass('attachment-name');
+
+                    if(!settings.attachments[id].split) {
+
+                        elemAttachmentName.addClass('nowrap');
+                        elemAttachmentName.html(attachment.name);
+
+                    } else {
+
+                        let filename   = attachment.name.split('.');
+                        let filePrefix = '';
+
+                        for(let i = 0; i < filename.length - 1; i++) filePrefix += filename[i];
+
+                        $('<div></div>').appendTo(elemAttachmentName)
+                            .addClass('attachment-name-prefix')
+                            .addClass('nowrap')
+                            .html(filePrefix);
+
+                        $('<div></div>').appendTo(elemAttachmentName)
+                            .addClass('attachment-name-suffix')
+                            .html('.' + filename[filename.length - 1]);
+
+                    }
+
+                    let elemAttachmentSummary = $('<div></div>').appendTo(elemAttachmentDetails)
+                        .addClass('attachment-summary');
+
+                    if(settings.attachments[id].fileVersion) {
+                        $('<div></div>').appendTo(elemAttachmentSummary)
+                            .addClass('attachment-version')
+                            .addClass('nowrap')
+                            .html('V' + attachment.version);
+                        
+                    }
+
+                    if(settings.attachments[id].fileSize) {
+                        let fileSize = (attachment.size / 1024 / 1024).toFixed(2);
+                        $('<div></div>').appendTo(elemAttachmentSummary)
+                            .addClass('attachment-size')
+                            .addClass('nowrap')
+                            .html(fileSize + ' MB');      
+                    }
+
+                    $('<div></div>').appendTo(elemAttachmentSummary)
+                        .addClass('attachment-user')
+                        .addClass('nowrap')
+                        .html('Created by ' + attachment.created.user.title);
+
+                    $('<div></div>').appendTo(elemAttachmentSummary)
+                        .addClass('attachment-date')
+                        .addClass('nowrap')
+                        .html( date.toLocaleString());
+
+                    if(isTable) {
+                        elemAttachmentName.appendTo(elemAttachment);
+                        elemAttachmentSummary.children().each(function() {
+                            $(this).appendTo(elemAttachment);
+                        });
+                        elemAttachmentDetails.remove();
+                        elemAttachmentSummary.remove();
+                    }
+
+                    if(settings.attachments[id].download) {
+                        if(hasPermission(responses[1].data, 'view_attachments')) {
+                            elemAttachment.click(function() {
+                                clickAttachment($(this));                                
+                            });
+                        }
+                    }
+
+                }
+
+                if(elemList.children('.attachment').length === 0) $('#' + id + '-no-data').css('display', 'flex');
+                                                             else $('#' + id + '-no-data').hide();
+
+                if(hasPermission(responses[1].data, 'add_attachments')) {
+                    if(elemUpload.length > 0) elemUpload.removeClass('disabled');
+                }
+
+                let mode = (elemList.hasClass('table')) ? 'block' : 'flex';
+                elemList.css('display', mode);
+                
+                if(isTable) {
+                    let elemTable = $('<div></div').appendTo(elemList)
+                    .addClass('attachments-table');
+                    $('.attachment').appendTo(elemTable);
+                }
+                
+                insertAttachmentsDone(id, responses[0], update);
+
+            }
+        }
+
+    });
+
+}
+function insertAttachmentsDone(id, data, update) {}
+function clickAttachmentsUpload(elemClicked) {
+
+    if(elemClicked.hasClass('disabled')) return;
+
+    let id          = elemClicked.attr('id').split('-upload')[0];
+    let elemParent  = $('#' + id);
+    let link        = elemParent.attr('data-link');
+
+    let urlUpload = '/plm/upload/';
+        urlUpload += link.split('/')[4] + '/';
+        urlUpload += link.split('/')[6];
+
+    $('#uploadForm').attr('action', urlUpload);   
+    $('#select-file').val('');
+    $('#select-file').click();
+
+}
+function selectFileForUpload(id) {
+
+    if($('#select-file').val() === '') return;
+
+    $('#' + id + '-list').hide();
+    $('#' + id + '-processing').show();
+    $('#' + id + '-no-data').hide();
+    
+    $('#uploadForm').submit();
+
+}
+function fileUploadDone(id) {
+
+    let timestamp   = new Date().getTime();
+    let elemParent  = $('#' + id);
+    let link        = elemParent.attr('data-link');
+
+    elemParent.attr('data-timestamp', timestamp);
+
+    insertAttachmentsData(id, timestamp, link, true);
+
+}
+
+
+
+// Insert BOM tree with selected controls
 function insertBOM(link , params) {
 
     //  Set defaults for optional parameters
     // --------------------------------------
     let id          = 'bom';    // id of DOM element where the BOM will be inseerted
     let title       = 'BOM';    // Title being shown on top of the BOM display
-    let bomViewName = '';       // BOM view of PLM to display (if no value is provided, the first view will be used)
-    let multiSelect = false;    //  Adds buttons to select / deselect all elements as well as checkboxes
-    let reset       = false;    //  Adds button to deselect selected elements
-    let openInPLM   = true;     //  Adds button to open selected element in PLM
-    let goThere     = false;    //  Adds button to open the same view for the selected element
-    let toggles     = true;     //  Enables expand all / collapse all buttons on top of BOM
-    let views       = false;    //  Adds drop down menu to select from the available PLM BOM views
-    let search      = true;     //  Adds quick filtering using search input on top of BOM
-    let position    = true;     //  When set to true, the position / find number will be displayed
-    let quantity    = false;    //  When set to true, the quantity column will be displayed
-    let hideDetails = false;    //  When set to true, detail columns will be skipped, only the descriptor will be shown
-    let headers     = true;     //  When set to false, the table headers will not be shown
-    let getFlatBOM  = false;    //  Retrieve Flat BOM at the same time (i.e. to get total quantities)
+    let bomViewName = '';       // Name of the BOM view in PLM to use (if no value is provided, the first view will be used)
+    let collapsed   = false;    // When enabled, the BOM will be collapsed at startup
+    let multiSelect = false;    // Enables selection of multiple items and adds buttons to select / deselect all elements as well as checkboxes
+    let reset       = false;    // Adds button to deselect selected elements (not required if multiSelect is enabled)
+    let openInPLM   = true;     // Adds button to open selected element in PLM
+    let goThere     = false;    // Adds button to open the same view for the selected element
+    let toggles     = true;     // Enables expand all / collapse all buttons on top of BOM
+    let views       = false;    // Adds drop down menu to select from the available PLM BOM views
+    let search      = true;     // Adds quick filtering using search input on top of BOM
+    let position    = true;     // When set to true, the position / find number will be displayed
+    let quantity    = false;    // When set to true, the quantity column will be displayed
+    let hideDetails = true;     // When set to true, detail columns will be skipped, only the descriptor will be shown
+    let headers     = true;     // When set to false, the table headers will not be shown
+    let counters    = true;     // When set to true, a footer will inidicate total items, selected items and filtered items
+    let getFlatBOM  = false;    // Retrieve Flat BOM at the same time (i.e. to get total quantities)
+    let depth       = 10;       // BOM Levels to expand
     let endItem     = null;
 
 
@@ -1295,6 +1675,7 @@ function insertBOM(link , params) {
     if(!isBlank(params.id)         )            id = params.id;
     if(!isEmpty(params.title)      )         title = params.title;
     if(!isBlank(params.bomViewName))   bomViewName = params.bomViewName;
+    if(!isBlank(params.collapsed)  )     collapsed = params.collapsed;
     if(!isBlank(params.multiSelect))   multiSelect = params.multiSelect;
     if(!isBlank(params.reset)      )         reset = params.reset;
     if(!isBlank(params.openInPLM)  )     openInPLM = params.openInPLM;
@@ -1306,12 +1687,16 @@ function insertBOM(link , params) {
     if(!isBlank(params.quantity)   )      quantity = params.quantity;
     if(!isBlank(params.hideDetails)) { hideDetails = params.hideDetails } else { hideDetails = ((bomViewName === '') && (views === false)); }
     if(!isBlank(params.headers)    )     { headers = params.headers } else { headers = !hideDetails; }
+    if(!isBlank(params.counters)   )      counters = params.counters;
+    if(!isBlank(params.depth)      )         depth = params.depth;
     if(!isBlank(params.getFlatBOM) )    getFlatBOM = params.getFlatBOM;
 
     let elemBOM = $('#' + id);
         elemBOM.attr('data-link', link);
+        elemBOM.attr('data-collapsed', collapsed);
         elemBOM.attr('data-position', position);
         elemBOM.attr('data-quantity', quantity);
+        elemBOM.attr('data-depth', depth);
         elemBOM.attr('data-hide-details', hideDetails);
         elemBOM.attr('data-get-flat-bom', getFlatBOM);
         elemBOM.attr('data-select-mode', (multiSelect) ? 'multi' : 'single');
@@ -1363,7 +1748,6 @@ function insertBOM(link , params) {
             });
     
     }
-
 
     if(reset) {
 
@@ -1457,6 +1841,7 @@ function insertBOM(link , params) {
 
         let elemSearchInput = $('<input></input>');
             elemSearchInput.attr('placeholder', 'Search');
+            elemSearchInput.attr('id', id + '-search-input');
             elemSearchInput.addClass('bom-search-input')
             elemSearchInput.appendTo(elemSearch);
             elemSearchInput.keyup(function() {
@@ -1475,6 +1860,7 @@ function insertBOM(link , params) {
 
     let elemContent = $('<div></div>');
         elemContent.addClass('panel-content');
+        elemContent.addClass('bom-content');
         elemContent.attr('id', id + '-content');
         elemContent.appendTo(elemBOM);
 
@@ -1491,10 +1877,32 @@ function insertBOM(link , params) {
 
     if(!headers) elemBOMTableHead.hide();
 
-    let elemBOMTableBody = $('<tbody></tbody>');
-        elemBOMTableBody.addClass('bom-tbody');
-        elemBOMTableBody.attr('id', id + '-tbody');
-        elemBOMTableBody.appendTo(elemBOMTable);        
+    $('<tbody></tbody>').appendTo(elemBOMTable)
+        .attr('id', id + '-tbody')
+        .addClass('bom-tbody');
+
+    let elemBOMCounters = $('<div></div>').appendTo(elemBOM)
+        .attr('id', id + '-bom-counters')
+        .addClass('bom-counters')
+        .hide();
+
+    $('<div></div>').appendTo(elemBOMCounters)
+        .attr('id', id + '-bom-counter-total')
+        .addClass('bom-counter-total');
+    
+    $('<div></div>').appendTo(elemBOMCounters)
+        .attr('id', id + '-bom-counter-unique')
+        .addClass('bom-counter-unique');
+    
+    $('<div></div>').appendTo(elemBOMCounters)
+        .attr('id', id + '-bom-counter-filtered')
+        .addClass('bom-counter-filtered');
+    
+    $('<div></div>').appendTo(elemBOMCounters)
+        .attr('id', id + '-bom-counter-selected')
+        .addClass('bom-counter-selected');      
+
+    if(!counters) elemBOM.addClass('no-bom-counters');
 
     insertBOMDone(id);
 
@@ -1574,6 +1982,8 @@ function insertBOMDone(id) {}
 function changeBOMView(id) {
 
     let elemBOM             = $('#' + id);
+    let depth               = Number(elemBOM.attr('data-depth'));
+    let collapsed           = (elemBOM.attr('data-collapsed'   ).toLowerCase() === 'true');
     let position            = (elemBOM.attr('data-position'    ).toLowerCase() === 'true');
     let quantity            = (elemBOM.attr('data-quantity'    ).toLowerCase() === 'true');
     let hideDetails         = (elemBOM.attr('data-hide-details').toLowerCase() === 'true');
@@ -1590,7 +2000,7 @@ function changeBOMView(id) {
 
     let params = {
         'link'          : link,
-        'depth'         : 10,
+        'depth'         : depth,
         'revisionBias'  : 'release',
         'viewId'        : bomViewId
     }
@@ -1623,6 +2033,11 @@ function changeBOMView(id) {
         setBOMHeaders(id, quantity, hideDetails, bomView.fields);
         insertNextBOMLevel(responses[0].data, elemBOMTableBody, responses[0].data.root, position, quantity, hideDetails, bomView.fields, fieldURNPartNumber, fieldURNQuantity, fieldURNEndItem, valueEndItem);
         enableBOMToggles(id);
+        updateBOMCounters(id);
+
+        if(collapsed) clickBOMCollapseAll($('#' + id + '-toolbar'));
+
+        if(!elemBOM.hasClass('no-bom-counters')) { $('#' + id + '-bom-counters').show(); }
 
         if(getFlatBOM) changeBOMViewDone(id, bomView.fields, responses[0].data, responses[1].data);
         else           changeBOMViewDone(id, bomView.fields, responses[0].data);
@@ -1717,7 +2132,7 @@ function insertNextBOMLevel(bom, elemTable, parent, position, quantity, hideDeta
             }
 
             let elemCellTitle = $('<span></span>');
-                elemCellTitle.addClass('bom-title');
+                elemCellTitle.addClass('bom-descriptor');
                 elemCellTitle.html(getBOMItemTitle(edge.child, bom.nodes));
                 elemCellTitle.appendTo(elemCell);
 
@@ -1835,6 +2250,50 @@ function enableBOMToggles(id) {
     });
 
 }
+function updateBOMCounters(id) {
+
+    let elemBOM     = $('#' + id + '-tbody');
+    let counters    = [0, 0, 0, 0];
+    let links       = [];
+
+    elemBOM.children('.bom-item').each(function() {
+        
+        let elemItem = $(this);
+        let itemLink = elemItem.attr('data-link');
+
+        counters[0]++;
+
+        if(links.indexOf(itemLink) < 0) {
+            counters[1]++;
+            links.push(itemLink);
+        }
+
+        if(elemItem.hasClass('result')) counters[2]++;
+        if(elemItem.hasClass('selected')) counters[3]++;
+    });
+
+    $('#' + id + '-bom-counter-total'   ).html(counters[0] + ' rows');
+    $('#' + id + '-bom-counter-unique'  ).html(counters[1] + ' unique items');
+
+    let elemCounterFiltered = $('#' + id + '-bom-counter-filtered');
+    let elemCounterSelected = $('#' + id + '-bom-counter-selected');
+
+    if(counters[2] === 0) {
+        elemCounterFiltered.removeClass('not-empty').html(''); 
+    } else {
+        elemCounterFiltered.addClass('not-empty')
+        if(counters[2] === 1) elemCounterFiltered.html(counters[2] + ' item matches');
+        else elemCounterFiltered.html(counters[2] + ' items match');
+    }
+    if(counters[3] === 0) {
+        elemCounterSelected.removeClass('not-empty').html(''); 
+    } else {
+        elemCounterSelected.addClass('not-empty');
+        if(counters[3] === 1)elemCounterSelected.html(counters[3] + ' item selected');
+        else elemCounterSelected.html(counters[3] + ' items selected');
+    }
+
+}
 function toggleBOMItemActions(elemClicked) {
 
     let elemBOM             = elemClicked.closest('.bom');
@@ -1852,6 +2311,7 @@ function clickBOMSelectAll(elemClicked) {
     elemBOM.find('.bom-item').addClass('selected');
 
     toggleBOMItemActions(elemClicked);
+    updateBOMCounters(elemBOM.attr('id'));
 
 }
 function clickBOMDeselectAll(elemClicked) {
@@ -1861,6 +2321,7 @@ function clickBOMDeselectAll(elemClicked) {
     elemBOM.find('.bom-item').removeClass('selected');
 
     toggleBOMItemActions(elemClicked);
+    updateBOMCounters(elemBOM.attr('id'));
 
 }
 function clickBOMExpandAll(elemClicked) {
@@ -1893,7 +2354,6 @@ function clickBOMCollapseAll(elemClicked) {
 }
 function searchInBOM(id, elemInput) {
 
-    // let id          = elemInput.attr('data-id');
     let elemTable   = $('#' + id + '-tbody');
     let filterValue = elemInput.val().toLowerCase();
 
@@ -1907,7 +2367,7 @@ function searchInBOM(id, elemInput) {
 
     } else {
 
-        $('i.collapsed').removeClass('collapsed').addClass('expanded');
+        $('.bom-nav').removeClass('collapsed').addClass('expanded');
         elemTable.children().each(function() {
             $(this).hide();
         });
@@ -1930,6 +2390,8 @@ function searchInBOM(id, elemInput) {
 
     }
 
+    updateBOMCounters(id);
+
 }
 function unhideBOMParents(level, elem) {
 
@@ -1947,10 +2409,19 @@ function unhideBOMParents(level, elem) {
 }
 function clickBOMReset(elemClicked) {
 
+    let id = elemClicked.closest('.bom').attr('id');
+    let elemSearchInput = $('#' + id + '-search-input');
+    
     let elemContent = elemClicked.closest('.bom').find('.bom-tbody');
         elemContent.find('tr.selected').removeClass('selected');
 
+    if(elemSearchInput.length > 0) {
+        elemSearchInput.val('');
+        searchInBOM(id, elemSearchInput);
+    }
+
     toggleBOMItemActions(elemClicked);
+    updateBOMCounters(id);
     clickBOMResetDone(elemClicked);
 
 }
@@ -1997,7 +2468,6 @@ function clickBOMGoThere(elemClicked) {
 }
 function clickBOMItem(e, elemClicked) {
     
-
     let elemBOM    = elemClicked.closest('.bom');
     let selectMode = elemBOM.attr('data-select-mode');
 
@@ -2005,10 +2475,33 @@ function clickBOMItem(e, elemClicked) {
 
     elemClicked.toggleClass('selected');
 
-    clickBOMItemDone(elemClicked);
+    clickBOMItemDone(e, elemClicked);
+    updateBOMCounters(elemBOM.attr('id'));
     
 }
-function clickBOMItemDone(elemClicked) {}
+function clickBOMItemDone(e, elemClicked) {}
+function getBOMItemChhildren(elemClicked) {
+
+
+    let level     = Number(elemClicked.attr('data-level'));
+    let levelNext = level - 1;
+    let elemNext  = elemClicked;
+    let children  = [];
+
+    do {
+
+        elemNext  = elemNext.next();
+        levelNext = Number(elemNext.attr('data-level'));
+
+        if(levelNext > level) {
+            children.push(elemNext);
+        }
+
+    } while(levelNext > level);
+
+    return children;
+
+}
 function getBOMItemPath(elemItem) {
 
     let result = {
@@ -2032,7 +2525,7 @@ function getBOMItemPath(elemItem) {
 }
 
 
-
+// Insert Flat BOM with selected controls
 function insertFlatBOM(link , params) {
 
     //  Set defaults for optional parameters
@@ -2046,11 +2539,13 @@ function insertFlatBOM(link , params) {
     let views       = false;        //  Adds drop down menu to select from the available PLM BOM views
     let search      = true;         //  Adds quick filtering using search input on top of BOM
     let position    = true;         //  When set to true, the position / find number will be displayed
+    let descriptor  = true;         //  When set to true, the descriptor will be displayed before the table columns
     let quantity    = false;        //  When set to true, the quantity column will be displayed
     let hideDetails = false;        //  When set to true, detail columns will be skipped, only the descriptor will be shown
     let headers     = true;         //  When set to false, the table headers will not be shown
     let showMore    = false;        //  When set to true, adds controls to access the item details pages for each BOM entry
     let editable    = false;        //  When set to true, enables modifications in editable fields
+    let filterEmpty = false;        //  When set to true, adds filter for rows with empty input cells 
     let classNames  = [];           //  Array of class names that will be assigned to each BOM row (enables specific styling and event listeners)
 
 
@@ -2066,17 +2561,19 @@ function insertFlatBOM(link , params) {
     if(!isBlank(params.views)      )         views = params.views;
     if(!isBlank(params.search)     )        search = params.search;
     if(!isBlank(params.position)   )      position = params.position;
+    if(!isBlank(params.descriptor) )    descriptor = params.descriptor;
     if(!isBlank(params.quantity)   )      quantity = params.quantity;
     if(!isBlank(params.headers)    )       headers = params.headers;
     if(!isBlank(params.showMore)   )      showMore = params.showMore;
     if(!isBlank(params.editable)   )      editable = params.editable;
+    if(!isBlank(params.filterEmpty))   filterEmpty = params.filterEmpty;
     if(!isBlank(params.hideDetails)) { hideDetails = params.hideDetails } else { hideDetails = ((bomViewName === '') && (views === false)); }
     if(!isBlank(params.classNames) )    classNames = params.classNames;
-
 
     let elemBOM = $('#' + id);
         elemBOM.attr('data-link', link);
         elemBOM.attr('data-position', position);
+        elemBOM.attr('data-descriptor', descriptor);
         elemBOM.attr('data-quantity', quantity);
         elemBOM.attr('data-editable', editable);
         elemBOM.attr('data-show-more', showMore);
@@ -2108,7 +2605,8 @@ function insertFlatBOM(link , params) {
         .addClass('with-icon') 
         .addClass('icon-filter') 
         .addClass('flat-bom-counter') 
-        // .hide()
+        .html('0 rows selected')
+        .hide()
         .click(function() {
             $(this).toggleClass('selected');
             filterFlatBOMByCounter($(this));
@@ -2186,6 +2684,20 @@ function insertFlatBOM(link , params) {
                 clickFlatBOMSave($(this));
             });
 
+        if(filterEmpty) {
+            
+            $('<div></div>').appendTo(elemToolbar)
+                .addClass('button')
+                .addClass('icon')
+                .addClass('icon-filter-empty')
+                .addClass('flat-bom-filter-empty')
+                .attr('title', 'Focus on rows having inputs without values')
+                .click(function() {
+                    clickFlatBOMFilterEmpty($(this));
+                });
+
+        }
+
     }
 
     let elemSelect = $('<select></select>').appendTo(elemToolbar)
@@ -2252,12 +2764,14 @@ function insertFlatBOM(link , params) {
     let fields          = null
     let editableFields  = null;
     let requests        = [];
+    let addToCache      = true;
 
-    for(workspace of cacheWorkspaces) {
+    for(let workspace of cacheWorkspaces) {
         if(workspace.id === link.split('/')[4]) {
             bomViews        = workspace.bomViews;
             fields          = workspace.fields;
             editableFields  = workspace.editableFields;
+            addToCache      = false;
         }
     }
 
@@ -2271,33 +2785,43 @@ function insertFlatBOM(link , params) {
                 bomViews = response.data;
             } else if(response.url.indexOf('/fields') === 0) {
                 fields = response.data;
-                editableFields = getEditableFields(fields);
+               // editableFields = getEditableFields(fields);
             }
         }
 
-        let addToCache = true;
-
-        if(responses.length > 0) {
-            for(workspace of cacheWorkspaces) {
-                if(workspace.id === link.split('/')[4]) {
-                    workspace.bomViews           = bomViews;
-                    if(!hideDetails) {
-                        workspace.fields         = fields;
-                        workspace.editableFields = editableFields;
-                    }
-                    addToCache                  = false;
-                }
-            }
-        }
+        // if(responses.length > 0) {
+        //     for(let workspace of cacheWorkspaces) {
+        //         if(workspace.id === link.split('/')[4]) {
+        //             workspace.bomViews           = bomViews;
+        //             if(!hideDetails) {
+        //                 workspace.fields         = fields;
+        //                 workspace.editableFields = editableFields;
+        //             }
+        //             addToCache                  = false;
+        //         }
+        //     }
+        // }
 
         if(addToCache) {
             cacheWorkspaces.push({
                 'id'                : link.split('/')[4],
                 'sections'          : null,
                 'fields'            : fields,
-                'editableFields'    : editableFields,
+                // 'editableFields'    : editableFields,
+                'editableFields'    : [],
                 'bomViews'          : bomViews
             });
+        } else if(responses.length > 0) {
+            for(let workspace of cacheWorkspaces) {
+                if(workspace.id === link.split('/')[4]) {
+                    workspace.bomViews           = bomViews;
+                    if(!hideDetails) {
+                        workspace.fields         = fields;
+                        // workspace.editableFields = editableFields;
+                    }
+                    addToCache                  = false;
+                }
+            }
         }
 
         for(let bomView of bomViews) {
@@ -2347,7 +2871,7 @@ function saveFlatBOMChanges(elemButton, sections) {
     if(listChanges.length === 0) {
 
         elemButton.hide();
-        $('#overlay').hide();
+        saveFlatBOMChangesDone();
 
     } else {
 
@@ -2368,10 +2892,14 @@ function saveFlatBOMChanges(elemButton, sections) {
                 console.log(elemItem.children('.changed'));
 
                 elemItem.children('.changed').each(function() {
-                    let elemField = getFieldValue($(this));
-                    console.log(elemField);
-                    addFieldToPayload(params.sections, sections, null, elemField.fieldId, elemField.value, false);
+                    // let elemField = getFieldValue($(this));
+                    // console.log(elemField);
+                    // addFieldToPayload(params.sections, sections, null, elemField.fieldId, elemField.value, false);
+                    // addFieldToPayload(params.sections, sections, null, elemField.fieldId, elemField.value, false);
+                    addFieldToPayload(params.sections, sections, $(this), null, null, false);
                 });
+
+                console.log(params);
 
                 requests.push($.get('/plm/edit', params));
                 elements.push(elemItem);
@@ -2394,10 +2922,50 @@ function saveFlatBOMChanges(elemButton, sections) {
 
 
 }
+function saveFlatBOMChangesDone() {
+    $('#overlay').hide();
+}
+function clickFlatBOMFilterEmpty(elemClicked) {
+
+    elemClicked.toggleClass('selected');
+
+    let elemFlatBOM = elemClicked.closest('.flat-bom');
+    let id          = elemFlatBOM.attr('id');
+    let elemTBody   = $('#' + id + '-tbody');
+
+    if(elemClicked.hasClass('selected')) {
+
+        elemTBody.children().show();
+
+        elemTBody.children().each(function() {
+
+            let elemRow = $(this);
+            let hide    = true;
+
+            elemRow.find('input').each(function() {
+                if($(this).val() === '') hide = false;
+            });
+            elemRow.find('select').each(function() {
+                if($(this).val() === '') hide = false;
+            });
+
+            if(hide) elemRow.hide();
+            
+        });
+
+    } else {
+        elemTBody.children().show();
+    }
+
+    clickFlatBOMFilterEmptyDone(elemClicked);
+
+}
+function clickFlatBOMFilterEmptyDone(elemClicked) {}
 function changeFlatBOMView(id) {
 
     let elemBOM             = $('#' + id);
     let position            = (elemBOM.attr('data-position'    ).toLowerCase() === 'true');
+    let descriptor          = (elemBOM.attr('data-descriptor'  ).toLowerCase() === 'true');
     let quantity            = (elemBOM.attr('data-quantity'    ).toLowerCase() === 'true');
     let editable            = (elemBOM.attr('data-editable'    ).toLowerCase() === 'true');
     let showMore            = (elemBOM.attr('data-show-more'   ).toLowerCase() === 'true');
@@ -2424,26 +2992,66 @@ function changeFlatBOMView(id) {
     let fieldURNPartNumber = '';
     let bomView;
 
-    for(workspace of cacheWorkspaces) {
+    for(let workspace of cacheWorkspaces) {
         if(workspace.id === link.split('/')[4]) {
             editableFields = workspace.editableFields;
-            for(view of workspace.bomViews) {
-                if(view.id === Number(bomViewId)) bomView = view;
+            if(!isBlank(workspace.bomViews)) {
+                for(let view of workspace.bomViews) {
+                    if(view.id === Number(bomViewId)) bomView = view;
+                }
             }
         }
     }
 
     sortArray(bomView.fields, 'displayOrder', 'integer');
 
-    for(field of bomView.fields) {
+    let requests = [$.get('/plm/bom-flat', params)];
+
+    for(let field of bomView.fields) {
         if(field.fieldId === config.viewer.fieldIdPartNumber) fieldURNPartNumber = field.__self__.urn;
+        if(editable) {
+            if(field.visibility !== 'NEVER') {
+                if(field.editability !== 'NEVER') {
+                    if(field.type.title === 'Single Selection') {
+                        field.picklist = field.lookups;
+                        let add = true
+                        for(let picklist of cachePicklists) {
+                            if(picklist.link === field.lookups) {
+                                add = false;
+                                continue;
+                            }
+                        }
+                        if(add) requests.push($.get( '/plm/picklist', { 'link' : field.lookups, 'limit' : 100, 'offset' : 0 }));
+                    }
+                }
+            }
+        }
     }
 
-    $.get('/plm/bom-flat', params, function(response) {
+    Promise.all(requests).then(function(responses) {
 
-        setFlatBOMHeaders(id, position, quantity, editable, showMore, hideDetails, bomView.fields)
+        setFlatBOMHeaders(id, position, descriptor, quantity, editable, showMore, hideDetails, bomView.fields)
 
-        let count = 1;
+        let count    = 1;
+        let response = responses[0];
+
+        for(let i = 1; i < responses.length; i++) {
+            let isNew = true;
+            for(let picklist of cachePicklists) {
+                if(picklist.link === responses[i].params.link) {
+                    isNew = false;
+                    continue;
+                }
+            }
+            if(isNew) {
+                cachePicklists.push({
+                    'link' : responses[i].params.link,
+                    'data' : responses[i].data
+                })
+            }
+        }
+
+        let editableFields = [];
 
         for(item of response.data) {
 
@@ -2465,7 +3073,7 @@ function changeFlatBOMView(id) {
                     e.stopPropagation();
                     clickFlatBOMItem(e, $(this));
                     toggleFlatBOMItemActions($(this));
-                    updateFlatBOMCounter($(this).closest('.flat-bom'));
+                    // updateFlatBOMCounter($(this).closest('.flat-bom'));
                 });
 
             for(className of classNames) elemRow.addClass(className);
@@ -2474,18 +3082,21 @@ function changeFlatBOMView(id) {
 
                 $('<td></td>').appendTo(elemRow)
                     .html('<div class="icon icon-check-box xxs"></div>')
-                    .addClass('flat-bom-check');
+                    .addClass('flat-bom-check')
+                    .click(function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        clickFlatBOMCheckbox(e, $(this));
+                        updateFlatBOMCounter($(this).closest('.flat-bom'));
+                    });
+
+                editableFields = getEditableFields(bomView.fields);
 
             }
 
-            if(position)  $('<td></td>').appendTo(elemRow).addClass('flat-bom-number').html(count++);
-                
-            let elemRowTitle = $('<td></td>');
-                elemRowTitle.html(title)
-                elemRowTitle.addClass('flat-bom-title');
-                elemRowTitle.appendTo(elemRow);   
-
-            if(quantity) $('<td></td>').appendTo(elemRow).addClass('flat-bom-qty').html(qty);
+            if(position  ) $('<td></td>').appendTo(elemRow).addClass('flat-bom-number').html(count++);
+            if(descriptor) $('<td></td>').appendTo(elemRow).addClass('flat-bom-descriptor').html(title);                
+            if(quantity  ) $('<td></td>').appendTo(elemRow).addClass('flat-bom-qty').html(qty);
 
             if(!hideDetails) {
 
@@ -2495,11 +3106,10 @@ function changeFlatBOMView(id) {
                     let isEditable  = false;
                     let elemRowCell = $('<td></td>');
 
-
                     elemRowCell.appendTo(elemRow); 
                     elemRowCell.addClass('flat-bom-column-' + field.fieldId.toLowerCase());
 
-                    for(editableField of editableFields) {
+                    for(let editableField of editableFields) {
 
                         if(field.fieldId === editableField.id) {
 
@@ -2514,7 +3124,7 @@ function changeFlatBOMView(id) {
                                     elemControl.change(function() {
                                         changedFlatBOMValue($(this));
                                     });
-        
+
                                 switch (editableField.type) {
         
                                     case 'Single Selection':
@@ -2617,7 +3227,7 @@ function searchInFlatBOM(id, elemInput) {
     }
 
 }
-function setFlatBOMHeaders(id, position, quantity, editable, showMore, hideDetails, fields) {
+function setFlatBOMHeaders(id, position, descriptor, quantity, editable, showMore, hideDetails, fields) {
 
     let elemBOMTableHead = $('#'+  id + '-thead');
         elemBOMTableHead.html('');
@@ -2638,20 +3248,24 @@ function setFlatBOMHeaders(id, position, quantity, editable, showMore, hideDetai
 
     }
 
-    if(position) $('<th></th>').appendTo(elemBOMTableHeadRow).addClass('flat-bom-number').html('Nr');
-
-    let elemBOMTableHeadItem = $('<th></th>');
-        elemBOMTableHeadItem.html('Item');
-        elemBOMTableHeadItem.appendTo(elemBOMTableHeadRow);
-
-    if(quantity) $('<th></th>').appendTo(elemBOMTableHeadRow).addClass('flat-bom-qty').html('Qty');
+    if(position  ) $('<th></th>').appendTo(elemBOMTableHeadRow).addClass('flat-bom-number').html('Nr');
+    if(descriptor) $('<th></th>').appendTo(elemBOMTableHeadRow).addClass('flat-bom-descriptor').html('Item');
+    if(quantity  ) $('<th></th>').appendTo(elemBOMTableHeadRow).addClass('flat-bom-qty').html('Qty');
 
     if(!hideDetails) {
 
         for(field of fields) {
             let elemBOMTableHeadCell = $('<th></th>');
                 elemBOMTableHeadCell.html(field.displayName);
-                elemBOMTableHeadCell.appendTo(elemBOMTableHeadRow);       
+                elemBOMTableHeadCell.addClass('flat-bom-column-' + field.fieldId.toLowerCase());
+                elemBOMTableHeadCell.appendTo(elemBOMTableHeadRow);   
+                
+            if('displayLength' in field) {
+                // elemBOMTableHeadCell.css('max-width', field.displayLength + 'ch');
+                // elemBOMTableHeadCell.css('min-width', field.displayLength + 'ch');
+                // elemBOMTableHeadCell.css(    'width', field.displayLength + 'ch');
+            }
+
         }
 
     }
@@ -2676,12 +3290,23 @@ function clickSelectAllFlatBOM(elemClicked) {
     if(elemCheckbox.hasClass('icon-check-box')) elemTable.find('.flat-bom-item').removeClass('selected');
     else elemTable.find('.flat-bom-item').addClass('selected');
 
+    clickSelectAllFlatBOMDone(elemClicked);
+
 }
+function clickSelectAllFlatBOMDone(elemClicked) {}
 function clickFlatBOMItem(e, elemClicked) {
 
-    elemClicked.toggleClass('selected');
+    elemClicked.toggleClass('selected').siblings().removeClass('selected');
 
 }
+function clickFlatBOMCheckbox(e, elemClicked) {
+
+    elemClicked.closest('.flat-bom-item').toggleClass('selected');
+    toggleFlatBOMItemActions(elemClicked);
+    clickFlatBOMCheckboxDone(e, elemClicked);
+
+}
+function clickFlatBOMCheckboxDone(e, elemClicked) {}
 function clickFlatBOMShowMore(elemClicked) {
 
     let elemItem        = elemClicked.closest('.bom-item');
@@ -2755,10 +3380,12 @@ function clickFlatBOMDeselectAll(elemClicked) {
 function clickFlatBOMDeselectAllDone(elemClicked) {}
 function updateFlatBOMCounter(elemBOM) {
 
+    console.log('updateFlatBOMCounter');
+
     let count       = elemBOM.find('.flat-bom-item.selected').length;
     let elemCounter = elemBOM.find('.flat-bom-counter');
 
-    elemCounter.html(count + ' Zeilen gewählt');
+    elemCounter.html(count + ' rows selected');
 
     if(count > 0) {
         elemCounter.show(); 

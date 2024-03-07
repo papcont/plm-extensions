@@ -211,6 +211,7 @@
 .icon-expand::before            { content : '\e5cc'; }
 .icon-factory::before           { content : '\ebbc'; }
 .icon-filter::before            { content : '\e152'; }
+.icon-filter-empty::before      { content : '\e7b3'; }
 .icon-finish::before            { content : '\eaf8'; }
 .icon-fold::before              { content : '\e5d6'; }
 .icon-go-there::before          { content : '\e5da'; }
@@ -232,6 +233,7 @@
 .icon-new-window::before        { content : '\f710'; }
 .icon-no-data::before           { content : '\f0ba'; }
 .icon-open::before              { content : '\e89e'; }
+.icon-package::before           { content : '\f569'; }
 .icon-panel::before             { content : '\f114'; }
 .icon-pdf::before               { content : '\e415'; }
 .icon-problem::before           { content : '\e122'; }
@@ -261,6 +263,7 @@
 .icon-tiles-list::before        { content : '\e875'; }
 .icon-toggle-off::before        { content : '\e9f5'; }
 .icon-toggle-on::before         { content : '\e9f6'; }
+.icon-toggle-layout::before     { content : '\e42a'; }
 .icon-type::before              { content : '\e574'; }
 .icon-undelete::before          { content : '\e938'; }
 .icon-unfold::before            { content : '\e5d7'; }

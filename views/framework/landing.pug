@@ -7,15 +7,15 @@ block head
 
 block body
 
-    body.surface-level-2
-        .split.left-350.surface-level-2
-            .split-left.padding-100
+    body
+        .split.left-350
+            .split-left.padding-100.surface-level-2
                 h1#title Custom PLM 
                     br
                     |User Experiences
-                p Unleash the power of Fusion 360 Manage by utilizing its REST API to provide custom built frontends based on Autodesk Platform Services. All solutions manage data in PLM only. All business rules of PLM as well as access permissions still apply.
+                p Unleash the power of Fusion Manage by utilizing its REST API to provide custom built frontends based on Autodesk Platform Services. All solutions manage data in PLM only. All business rules of PLM as well as access permissions still apply.
                 div.left-toolbar
-                    .button#version Version of January 2024
+                    .button#version Version of February 2024
                     .button Connected to 
                         span#tenant
                 p This  version has been optimized for the tenant template released in 2023 using a single Items workspace. While the solutions can be used with any tenant thanks to their configuration capabilities, using this new tenant reduces configuration efforts. In addition, most of the solutions can be tested with the given demo datasets immediately.
@@ -26,10 +26,26 @@ block body
                         option(value='dark-theme') Dark Theme
                         option(value='black-theme') Black Theme
                 p#disclaimer These solutions are provided by Autodesk Technical Sales without warranty and support. There should be no assumption that updates, patches, bug fixes and / or new features will be delivered to you. There will also be no support available either through Autodesk Support channels or by the Autodesk Pre-sales Technical Team. Please feel free to take the source code and ideas from this tool to develop your own production ready tool and products. Change and reuse the source code as you like.
-            .split-right.tiles.xxl.padding-80.no-scrollbar
+            .split-right.tiles.xxl.padding-80.surface-level-2.no-scrollbar
                 .log#framework-changes 
                     h1 Framework Changes
                     table 
+                        tr 
+                            td 29. February 2024
+                            td BOM Displays 
+                            td New options have been added to collapse the BOM at startup and to prevent expansion of defined items (parameter endItem)
+                        tr 
+                            td 
+                            td BOM Displays
+                            td If users do not have access to sub items, the parent item BOM will display a lock icon with tooltip
+                        tr 
+                            td 
+                            td Attachments
+                            td The attachments panels have been reworked and provide new configurable features like version information, various layouts and sizes. See the developer documentation for details.
+                        tr 
+                            td 15. February 2024
+                            td BOM Displays 
+                            td New options have been added to the BOM display (counters) and the Flat BOM display (filterEmpty)
                         tr 
                             td 10. January 2024
                             td Theme Support
@@ -465,7 +481,7 @@ block body
                         h1 Features
                         p Users can track progression of processes, update existing processes and create new processes with ease using this dashboard. The dashboard provides access to a single workspace only to reduce complexity.
                         ul  
-                            li Create new processes by providing basic data only 
+                            li Create new processes by providing basic data only (only if create permission is granted)
                             li Review history of selected processes 
                             li Update status of a given process 
                             li Download and upload process attachments
@@ -573,6 +589,14 @@ block body
                     .log 
                         h1 Process Dashboard Change Log 
                         table 
+                            tr 
+                                td 6. March 2024
+                                td Extension
+                                td The dashboard now validates the user's access permissions and only shows the create panel if the 'Add Items' permission is granted to the user in PLM
+                            tr 
+                                td 
+                                td Extension
+                                td Added a new configuration profile in settings.js to support the 'Supplier Deliverables' workspace of the 2023 default tenants
                             tr 
                                 td 16. November 2023
                                 td Extension
@@ -1138,26 +1162,98 @@ block body
                             span.indent-2 'fieldId' : 'SPARE_WEAR_PART',
                             span.indent-2 'fieldValues' : ['spare part', 'yes', 'x', 'y', 'wear part'],
                             span.indent-2 'spartPartDetails' : ['MATERIAL', 'ITEM_WEIGHT', 'DIMENSIONS'],
+                            span.indent-2 'productsFilter' : '',
+                            span.indent-2 'productsSortBy' : 'TITLE',
+                            span.indent-2 'productsGroupBy' : 'PRODUCT_LINE',
+                            span.indent-2 'productsFieldIdImage' : 'IMAGE',
+                            span.indent-2 'productsFieldIdTitle' : 'TITLE',
+                            span.indent-2 'productsFieldIdSubtitle' : 'DESCRIPTION',
+                            span.indent-2 'productsFieldIdBOM' : 'ENGINEERING_BOM',
+                            span.indent-2 'productsListHeader' : 'Serviceable Products',
                             span.indent-2 'wsIdProducts' : 95,
                             span.indent-2 'wsIdProblemReports' : 82,
                             span.indent-2 'wsIdSparePartsRequests' : 241
                             span.indent }
                             span }                         
-                        ul
-                            li bomViewName: Provide name of the BOM view that has been created in the previous steps (change should not be required)
-                            li enableCustomRequests: When set to true, users can add non-spare-parts to service requests as well
-                            li fieldId: ID of field being used to identify spare parts
-                            li fieldValues: List of values (for the previous field) which are used to identify spare parts 
-                            li sparePartDetails: Each spare part tile can show 3 additional fields. If other fields than the default fields are relevent, change this list. However, make sure that there are exactly 3 entries and these fields also must be contained in the given BOM view.
-                            li wsIdProducts : Provide the workspace ID of 
-                                strong Products 
-                                | to let users browse for the product of interest when no dmsId is provided in the URL (95 matches the default tenant configuration)
-                            li wsIdProblemReports : Provide the workspace ID of 
-                                strong Problem Reports 
-                                | to enable creation of new processes from within the application (82 matches the default tenant configuration)
-                            li wsIdSparePartsRequests : Provide ID of the new workspace 
-                                strong Spare Parts Requests 
-                                | to enable creation of new requests from within the application
+                        
+                        p 
+                            table 
+                                tr
+                                    th Setting 
+                                    th Default Value 
+                                    th Description  
+                                tr 
+                                    td bomViewName
+                                    td Service
+                                    td Provide name of the BOM view that has been created in the previous steps (a change should not be required)
+                                tr 
+                                    td enableCustomRequests
+                                    td true
+                                    td When set to true, users can add non-spare-parts to service requests as well
+                                tr 
+                                    td fieldId
+                                    td SPARE_WEAR_PART
+                                    td ID of field being used to identify spare parts (the next setting defines the possible values of this field)
+                                tr 
+                                    td fieldValues
+                                    td ['spare part', 'yes', 'x', 'y', 'wear part']
+                                    td List of values (for the previous field) which are used to identify spare parts 
+                                tr 
+                                    td sparePartDetails
+                                    td ['MATERIAL', 'ITEM_WEIGHT', 'DIMENSIONS']
+                                    td Each spare part tile can show 3 additional fields. If other fields than the default fields are relevent, change this list. However, make sure that there are exactly 3 entries and these fields also must be contained in the given BOM view.
+                                tr 
+                                    td productsFilter
+                                    td (empty)
+                                    td Provide a query string to filter the list of products being shown in the landing page. Only products matching this search criteria will be display.
+                                        br
+                                        |For example, you could add a checkbox field 'SERVICES_PORTAL' and provide the following filter to only show products where this given checkbox is enabled: ITEM_DETAILS:SERVICES_PORTAL=TRUE
+                                tr 
+                                    td productsSortBy
+                                    td TITLE
+                                    td Set the field being used to sort the products in the landing page
+                                tr 
+                                    td productsGroupBy
+                                    td PRODUCT_LINE
+                                    td This optional setting enables to group the prdoducts in the landing page based on the given field's values
+                                tr 
+                                    td productsFieldIdImage
+                                    td IMAGE
+                                    td Field being used to render the image for the product tiles in the landing page
+                                tr 
+                                    td productsFieldIdTitle
+                                    td TITLE
+                                    td Field being used as primary name for the product tiles in the landing page
+                                tr 
+                                    td productsFieldIdSubtitle
+                                    td DESCRIPTION
+                                    td Field being used as subtitle for the product tiles in the landing page
+                                tr 
+                                    td productsFieldIdBOM
+                                    td ENGINEERING_BOM
+                                    td Field of Products workspace that links the given EBOM that will be used to retrive product information once a user clicks on a product tile
+                                tr 
+                                    td productsListHeader
+                                    td Serviceable Products
+                                    td Defines the header being shown on top of the products list in the landing page
+                                tr 
+                                    td wsIdProducts
+                                    td 95
+                                    td Provide the workspace ID of 
+                                        strong Products 
+                                        | to let users browse for the product of interest when no dmsId is provided in the URL (95 matches the default tenant configuration)
+                                tr 
+                                    td wsIdProblemReports
+                                    td 82
+                                    td Provide the workspace ID of 
+                                        strong Problem Reports 
+                                        | to enable creation of new processes from within the application (82 matches the default tenant configuration)
+                                tr 
+                                    td wsIdSparePartsRequests
+                                    td ?
+                                    td Provide ID of the new workspace 
+                                        strong Spare Parts Requests 
+                                        | to enable creation of new requests from within the application
                         h1 Access the Services Portal
                         p You can access the Services Portal portal with the /service endpoint:
                         a(href='service' target='_blank')
@@ -1169,6 +1265,38 @@ block body
                     .log 
                         h1 Services Portal Change Log 
                         table 
+                            tr 
+                                td 29. February 2024
+                                td Enhancement
+                                td The BOM display will be collapsed at startup automatically
+                            tr 
+                                td 
+                                td Enhancement
+                                td Spare parts in the BOM tree will no longer be highlighted by bold / orange font, but with a dedicated icon and matching tooltip
+                            tr 
+                                td 
+                                td Enhancement
+                                td If BOM items are not accessible due to access permission restrictions, this will be indicated by red lock icons in the BOM tree
+                            tr 
+                                td 9. February 2024
+                                td Enhancement
+                                td A new toolbar on top of the Spare Parts list enables searches, filtering and deselection
+                            tr 
+                                td 
+                                td Enhancement
+                                td Viewer behavior upon BOM item selection and Spare Part Zoom has been adjusted for better usability
+                            tr 
+                                td 
+                                td Enhancement
+                                td A new button in the viewer toolbar enables toggling ghosting on and off
+                            tr 
+                                td 
+                                td Enhancement
+                                td Additional options now can be configured in settings.js (i.e. enabling a filter for the products in the landing)
+                            tr 
+                                td 
+                                td Quality
+                                td Global toolbar icon sequence has been adjusted
                             tr 
                                 td 26. January 2024
                                 td Enhancement
@@ -1475,6 +1603,8 @@ block body
                             li Revision
                         h1 Configuration Changes for MBOM Workspace
                         p The following steps must be performed in the workspace to manage the MBOMs - which could be the same one as for the previous steps or a second one in case of a 2 workspaces setup.
+                        h2 Adjust Item Details
+                        p Make sure that the NUMBER field of your MBOM workspace is editable (always or at item creation).
                         h2 Extend Item Details
                         p If you use the same workspace for both the EBOM and MBOM, simply add the following fields to this EBOM &amp; MBOM workspace. You may add these fields to the matrix created before:
                         ol 
