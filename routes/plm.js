@@ -758,8 +758,6 @@ router.get('/image', function(req, res) {
     let url =  (typeof req.query.link !== 'undefined') ? req.query.link : '/api/v2/workspaces/' + req.query.wsId + '/items/' + req.query.dmsId + '/field-values/' + req.query.fieldId + '/image/' + req.query.imageId;
         url = 'https://' + req.session.tenant + '.autodeskplm360.net' + url;
 
-    console.log(url);
-
     axios.get(url, { 
         responseType     : 'arraybuffer',
         responseEncoding : 'binary',
@@ -1747,14 +1745,20 @@ router.get('/get-viewables', function(req, res, next) {
     console.log(' ');
     console.log('  /get-viewables');
     console.log(' --------------------------------------------');  
-    console.log('  req.query.wsId       = ' + req.query.wsId);
-    console.log('  req.query.dmsId      = ' + req.query.dmsId);
-    console.log('  req.query.link       = ' + req.query.link);
-    console.log('  req.query.extensions = ' + req.query.extensions);
+    console.log('  req.query.wsId           = ' + req.query.wsId);
+    console.log('  req.query.dmsId          = ' + req.query.dmsId);
+    console.log('  req.query.link           = ' + req.query.link);
+    console.log('  req.query.fileId         = ' + req.query.fileId);
+    console.log('  req.query.filename       = ' + req.query.filename);
+    console.log('  req.query.extensionsIn   = ' + req.query.extensionsIn);
+    console.log('  req.query.extensionsEx   = ' + req.query.extensionsEx);
     
-    let link        = (typeof req.query.link === 'undefined') ? '/api/v3/workspaces/' + req.query.wsId + '/items/' + req.query.dmsId : req.query.link;
-    let url         = 'https://' + req.session.tenant + '.autodeskplm360.net' + link + '/attachments?asc=name';
-    let extensions  = (typeof req.query.extensions === 'undefined') ? ['dwf', 'dwfx', 'ipt', 'stp', 'step', 'sldprt', 'nwd'] : req.query.extensions;
+    let link         = (typeof req.query.link === 'undefined') ? '/api/v3/workspaces/' + req.query.wsId + '/items/' + req.query.dmsId : req.query.link;
+    let url          = 'https://' + req.session.tenant + '.autodeskplm360.net' + link + '/attachments?asc=name';
+    let fileId       = (typeof req.query.fileId       === 'undefined') ? '' : req.query.fileId;
+    let filename     = (typeof req.query.filename     === 'undefined') ? '' : req.query.filename;
+    let extensionsIn = (typeof req.query.extensionsIn === 'undefined') ? ['dwf', 'dwfx', 'ipt', 'stp', 'step', 'sldprt', 'nwd'] : req.query.extensionsIn;
+    let extensionsEx = (typeof req.query.extensionsEx === 'undefined') ? [] : req.query.extensionsEx;
 
     let headers = getCustomHeaders(req);
         headers.Accept = 'application/vnd.autodesk.plm.attachments.bulk+json';
@@ -1773,14 +1777,22 @@ router.get('/get-viewables', function(req, res, next) {
 
                 if(attachment.type.extension !== null) {
 
-                    let extensionMatch = false;
-                    let extensionLCase = attachment.type.extension.toLowerCase();
+                    let include     = false;
+                    let extension   = attachment.type.extension.toLowerCase().split('.').pop();
 
-                    for(let extension of extensions) {
-                        if(extensionLCase.endsWith(extension)) extensionMatch = true;
+                    console.log(attachment.resourceName);
+
+                    if(fileId === '' || fileId === attachment.id) {
+                        if(filename === '' || filename === attachment.resourceName) {
+                            if(extensionsIn.length === 0 || extensionsIn.includes(extension)) {
+                                if(extensionsEx.length === 0 || !extensionsEx.includes(extension)) {
+                                    include = true;
+                                }
+                            }
+                        }
                     }
 
-                    if(extensionMatch) {
+                    if(include) {
                         viewables.push({
                             'id'            : attachment.id,
                             'description'   : attachment.description,
@@ -2840,8 +2852,6 @@ router.get('/search-bulk', function(req, res, next) {
 
     if(bulk) headers.Accept = 'application/vnd.autodesk.plm.items.bulk+json';
 
-    console.log(url);
-
     axios.get(url, {
         headers : headers
     }).then(function(response) {
@@ -3268,6 +3278,27 @@ router.get('/get-workspace-id', function(req, res, next) {
 
         sendResponse(req, res, result, false);
 
+    }).catch(function(error) {
+        sendResponse(req, res, error.response, true);
+    });
+
+});
+
+
+/* ----- GET ASSIGNED GROUPS ----- */
+router.get('/groups-assigned', function(req, res, next) {
+    
+    console.log(' ');
+    console.log('  /groups-assigned');
+    console.log(' --------------------------------------------');  
+    console.log();
+
+    let url = 'https://' + req.session.tenant + '.autodeskplm360.net/api/v3/users/@me'
+
+    axios.get(url, {
+        headers : req.session.headers
+    }).then(function(response) {
+        sendResponse(req, res, { 'data' : response.data.groups, 'status' : response.status }, false);
     }).catch(function(error) {
         sendResponse(req, res, error.response, true);
     });

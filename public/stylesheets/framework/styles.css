@@ -125,11 +125,11 @@
     overflow-y      : auto;
 }
 .tiles.list {
-    flex-direction : column;
+    /* flex-direction : column; */
+    flex-flow : wrap;
 }
 .tile { 
     border      : 1px solid transparent;
-    /* border : none; */
     cursor      : pointer; 
     overflow    : hidden;
 }
@@ -140,10 +140,15 @@
 .tiles.xl         { gap : var(--spacer-l); }
 .tiles.l          { gap : var(--spacer-l); }
 .tiles.m          { gap : var(--spacer-l); }
-.tiles.list.l     { gap : var(--spacer-s); }
+.tiles.s          { gap : var(--spacer-s); }
+.tiles.xs         { gap : var(--spacer-xs); }
+.tiles.xxs        { gap : var(--spacer-xxs); }
+.tiles.list.xxl   { gap : var(--spacer-s); }
+.tiles.list.xl    { gap : var(--spacer-s); }
+.tiles.list.l     { gap : var(--spacer-xs); }
 .tiles.list.m     { gap : var(--spacer-xs); }
 .tiles.list.s     { gap : var(--spacer-xs); }
-.tiles.list.xs    { gap : var(--spacer-xs); }
+.tiles.list.xs    { gap : var(--spacer-xxxs); }
 .tiles.list.xxs   { gap : var(--spacer-xxxs); }
 .tiles.list.xxxs  { gap : var(--spacer-xxxs); }
 .tiles.list.files { gap : var(--spacer-xs); } /* DESIGN REVIEWS, CLASS BROWSER */
@@ -155,12 +160,16 @@
 .tiles.l   > .tile { height : 300px; width : 171px; }
 .tiles.m   > .tile { height : 300px; width : 114px; }
 .tiles.s   > .tile { height : 200px; width :  86px; }
+.tiles.xs  > .tile { height : 200px; width :  86px; }
+.tiles.xxs  > .tile { height : 200px; width :  86px; }
 
 .tiles.xxl .tile-image { height :    216px; width : 384px; }
 .tiles.xl  .tile-image { height : 128.25px; width : 228px; } 
 .tiles.l   .tile-image { height :  96.19px; width : 171px; }
 .tiles.m   .tile-image { height :  64.12px; width : 114px; }
 .tiles.s   .tile-image { height :  48.38px; width :  86px; }
+.tiles.xs  .tile-image { height :  48.38px; width :  86px; }
+.tiles.xxs .tile-image { height :  48.38px; width :  86px; }
 
 .tiles.wide.xxl > .tile { height : 200px; width : 800px; }
 .tiles.wide.xl  > .tile { height : 200px; width : 500px; }
@@ -169,6 +178,8 @@
 .tiles.wide.s   > .tile { height :  64px; width : 350px; }
 .tiles.wide.xs  > .tile { height :  48px; width : 300px; }
 
+.tiles.list.xxl   > .tile { height : 96px; width : calc(100% - 2px); }
+.tiles.list.xl    > .tile { height : 96px; width : calc(100% - 2px); }
 .tiles.list.l     > .tile { height : 96px; width : calc(100% - 2px); }
 .tiles.list.m     > .tile { height : 64px; width : calc(100% - 2px); }
 .tiles.list.s     > .tile { height : 64px; width : calc(100% - 2px); }
@@ -227,7 +238,11 @@
 .tiles.l   .tile-toggle { line-height : 128px; }
 .tiles.m   .tile-toggle { line-height :  96px; }
 .tiles.s   .tile-toggle { line-height :  64px; }
+.tiles.xs  .tile-toggle { line-height :  64px; }
+.tiles.xxs .tile-toggle { line-height :  64px; }
 
+.tiles.list.xxl  .tile-toggle { line-height : 96px; }
+.tiles.list.xl   .tile-toggle { line-height : 96px; }
 .tiles.list.l    .tile-toggle { line-height : 96px; }
 .tiles.list.m    .tile-toggle { line-height : 64px; }
 .tiles.list.s    .tile-toggle { line-height : 64px; }
@@ -235,13 +250,18 @@
 .tiles.list.xxs  .tile-toggle { line-height : 36px; }
 .tiles.list.xxxs .tile-toggle { line-height : 26px; }
 
+.tiles.list.xxl .tile-details { gap : var(--spacer-xxxs); }
+.tiles.list.xl  .tile-details { gap : var(--spacer-xxxs); }
+.tiles.list.l   .tile-details { gap : var(--spacer-xxxs); }
+.tiles.list.m   .tile-details { gap : var(--spacer-xxxs); }
+.tiles.list.s   .tile-details { gap : var(--spacer-xxxs); }
+.tiles.list.xs  .tile-details { gap : var(--spacer-xxxs); }
+.tiles.list.xxs .tile-details { gap : var(--spacer-xxxs); }
 
 
 .tile-image {
     text-align: center;
 }
-
-
 .tile-details {
     display: flex;
     flex-direction: column;
@@ -252,7 +272,6 @@
 }
 .tiles.list .tile-details {
     font-size : 12px;
-    gap : 3px;
     line-height : 14px;
     overflow : hidden;
     white-space : nowrap;
@@ -759,7 +778,7 @@ and (max-device-width : 1900px)  {
 }
 .panel-content-toolbar {
     display  : flex;
-    gap      : var(--spacer-s);
+    gap      : var(--spacer-xs);
     position : absolute;
     bottom   : 4px;
     right    : 4px;
@@ -866,20 +885,21 @@ and (max-device-width : 1900px)  {
 /*  NO DATA */
 /* ----------------------------------------------------------------------------- */
 .no-data {
-    background: transparent !important;
-    color : var(--color-blue-500);
-    cursor: unset !important;
-    display : flex;
-    flex-direction: column;
-    height : unset !important;
-    text-align : center;
+    background      : transparent !important;
+    cursor          : unset !important;
+    display         : flex;
+    flex-direction  : column;
+    height          : unset !important;
+    margin-top      : 40px;
+    text-align      : center;
 }
 .no-data:hover {
     background : transparent !important;
 }
 .no-data-icon {
-    font-size : 68px;
-    padding : 10px 10px 0px;
+    color       : var(--color-blue-500);
+    font-size   : 48px;
+    padding     : 10px 10px 0px;
 }
 .no-data-text {
     padding : 0px 10px 10px 10px;
@@ -975,8 +995,8 @@ and (max-device-width : 1900px)  {
     white-space     : nowrap;
 }
 .button.disabled {
-    border-color : var(--color-surface-level-3) !important;
-    color        : var(--color-surface-level-3) !important;
+    border-color : var(--color-surface-level-4) !important;
+    color        : var(--color-surface-level-4) !important;
     cursor       : not-allowed;
 }
 .button.default.disabled {
@@ -1015,6 +1035,13 @@ and (max-device-width : 1900px)  {
 .black-theme .surface-level-5 .button { background : var(--color-surface-level-1); border-color : var(--color-surface-level-1); }
  .dark-theme .surface-level-5 .button:hover { background : var(--color-surface-level-2); border-color : var(--color-surface-level-2); }
 .black-theme .surface-level-5 .button:hover { background : var(--color-surface-level-2); border-color : var(--color-surface-level-2); }
+
+
+ .dark-theme .button.disabled,
+.black-theme .button.disabled {
+    background  : var(--color-surface-level-3) !important;
+    color       : var(--color-surface-level-1) !important;
+}
 
 .button.icon {
     font-family : 'Material Symbols Sharp';
@@ -1089,6 +1116,31 @@ and (max-device-width : 1900px)  {
 .panel-nav.selected {
     color        : var(--color-blue-500);
     border-color : var(--color-blue-500);
+}
+
+
+
+/*  STARTUP */
+/* ----------------------------------------------------------------------------- */
+#startup {
+    position    : absolute;
+    top         : 0px;
+    right       : 0px;
+    bottom      : 0px;
+    left        : 0px;
+    z-index     : 10;
+}
+#startup-logo {
+    background-image    : url(../../images/autodesk-logo-black.png);
+    background-size     : 390px;
+    height              : 258px;
+    width               : 390px;
+    position            : absolute;
+    top                 : calc(50% - 160px);
+    left                : calc(50% - 195px);
+}
+.dark-theme #startup-logo {
+    background-image    : url(../../images/autodesk-logo-white.png);
 }
 
 

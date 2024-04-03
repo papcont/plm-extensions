@@ -3,8 +3,10 @@ extends ../framework/layout
 block head
     
     link(rel='stylesheet', href='/stylesheets/apps/mbom.css')
+    link(rel='stylesheet', href='/stylesheets/custom/mbom.css')
     script(src='/javascripts/libs/jquery-ui-1.12.1/jquery-ui.min.js')
     script(src='/javascripts/apps/mbom.js')
+    script(src='/javascripts/custom/mbom.js')
     script.
         config = !{JSON.stringify(config)};
 
@@ -32,7 +34,7 @@ block body
                     #mode-add(data-id='add') Add Items 
                     //- #mode-instructions(data-id='instructions') Instructions ** custom
 
-                .panel-content.tab-group-main.viewer#viewer
+                .panel-content.tab-group-main.viewer#viewer.surface-level-1
                 
                 .panel-content.tab-group-main#ebom
                     #ebom-tree

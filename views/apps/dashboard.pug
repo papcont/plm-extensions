@@ -3,8 +3,10 @@ extends ../framework/layout
 block head
 
     link(rel='stylesheet', href='/stylesheets/apps/dashboard.css')
+    link(rel='stylesheet', href='/stylesheets/custom/dashboard.css')
     script(src='https://cdn.jsdelivr.net/npm/chart.js')
     script(src='/javascripts/apps/dashboard.js')
+    script(src='/javascripts/custom/dashboard.js')
     script.
         config = !{JSON.stringify(config)};
 
@@ -19,7 +21,13 @@ block body
                 #header-search-icon.icon.xs search
                 input#header-search
                 #header-avatar
-            
+
+        #profiles.screen 
+            .screen-content
+                .screen-title Select Profile
+                .screen-message Please select a configuration profile from the list below to open the matching dashboard
+                .screen-list
+
         #main.screen.hidden
 
             #new.panel.surface-level-2
@@ -92,9 +100,6 @@ block body
 
             #item-content 
                 #workflow-history.surface-level-1 
-                    #workflow-header.panel-header 
-                        .panel-title Activity
-                    #workflow-history-events.panel-content.no-scrollbar
                 #details.surface-level-1 
                     .panel-header 
                         .panel-title Details 

@@ -97,7 +97,7 @@ exports.config = {
     'dashboard' : [{
         'title'             : 'Problem Reporting Dashboard',
         'wsId'              : 82,
-        'icon'              : 'account_tree', // Use https://fonts.google.com/icons to search for icons
+        'icon'              : 'icon-problem', // See predefined icons in /public/stylesheets/framework/fonts.css
         'fieldIdSubtitle'   : 'DESCRIPTION',
         'fieldIdItem'       : 'AFFECTED_ITEM',
         'imageFieldsPrefix' : 'IMAGE_',
@@ -115,7 +115,7 @@ exports.config = {
     },{
         'title'             : 'Non Conformances Tracking Dashboard',
         'wsId'              : 98,
-        'icon'              : 'workspace_premium',
+        'icon'              : 'icon-rules',
         'fieldIdSubtitle'   : 'DESCRIPTION',
         'fieldIdItem'       : 'NONCONFORMING_ITEM',
         'imageFieldsPrefix' : 'IMAGE_',
@@ -133,7 +133,7 @@ exports.config = {
     },{
         'title' : 'Change Requests Management',
         'wsId'  : 83,
-        'icon'  : 'rebase_edit',
+        'icon'  : 'icon-workflow',
         'progress' : [
             { 'label' : 'Planning',    'color' : '#000000',     'states' : ['Create']  },
             { 'label' : 'Review',      'color' : colors.red,    'states' : ['Review & Impact Analysis', 'Peform Tasks', 'Change Control Board Review']  },
@@ -141,9 +141,9 @@ exports.config = {
             { 'label' : 'Completed',   'color' : colors.green,  'states' : ['Completed'] }
         ]
     },{
-        'title' : 'Project Actitivity Management',
+        'title' : 'Project Activities Management',
         'wsId'  : 90,
-        'icon'  : 'account_tree',
+        'icon'  : 'icon-layers',
         'progress' : [
             { 'label' : 'Planning',    'color' : colors.red,    'states' : ['Planning']  },
             { 'label' : 'Assigned',    'color' : colors.red,    'states' : ['Assigned']  },
@@ -154,7 +154,7 @@ exports.config = {
     },{
         'title' : 'Supplier Collaboration Platform',
         'wsId'  : 146,
-        'icon'  : 'account_tree',
+        'icon'  : 'icon-workflow',
         'workflowHistory'   : {
             'showNextActions'       : true,
             'finalStates'           : ['Completed']
@@ -530,6 +530,7 @@ exports.config = {
     'service' : {
         'bomViewName'            : 'Service',
         'enableCustomRequests'   : true,
+        'endItemFilter'          : { 'fieldId' : 'SBOM_END_ITEM', 'value' : true },
         'fieldId'                : 'SPARE_WEAR_PART',
         'fieldValues'            : ['spare part', 'yes', 'x', 'y', 'wear part'],
         'spartPartDetails'       : ['MATERIAL', 'ITEM_WEIGHT', 'DIMENSIONS'],
@@ -543,7 +544,32 @@ exports.config = {
         'productsListHeader'     : 'Serviceable Products',
         'wsIdProducts'           : 95,
         'wsIdProblemReports'     : 82,
-        'wsIdSparePartsRequests' : 208
+        'wsIdSparePartsRequests' : 208,
+        'features' : {
+            // 'homeButton'            : true,
+            // 'toggleItemAttachments' : true,
+            // 'toggleItemDetails'     : true,
+            // 'manageProblemReports'  : true,
+            // 'showStock'             : true,
+            // 'requestWorkflowActions': true,
+            // 'viewer' : {
+            //     'cube'          : false,
+            //     'orbit'         : false,
+            //     'firstPerson'   : false,
+            //     'camera'        : false,
+            //     'measure'       : true,
+            //     'section'       : true,
+            //     'explodedView'  : true,
+            //     'modelBrowser'  : false,
+            //     'properties'    : false,
+            //     'settings'      : false,
+            //     'fullscreen'    : true,
+            //     'markup'        : false,
+            //     'ghosting'      : true,
+            //     'reset'         : true,
+            //     'views'         : true
+            // }
+        }
     },
 // variants id von 208 auf 241 geaendert
     'variants' : {

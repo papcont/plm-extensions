@@ -294,7 +294,7 @@ function showWorkspacesList() {
     $.get('/plm/workspaces', function(response){
         sortArray(response.data.items, 'title', 'string', 'ascending');
         for(workspace of response.data.items) {
-            let elemTile = genTile(workspace.link, workspace.urn, null, 'folder', workspace.title, workspace.category.name);
+            let elemTile = genTile(workspace.link, workspace.urn, null, 'icon-folder', workspace.title, workspace.category.name);
                 elemTile.appendTo(elemParent);
                 elemTile.click(function() {
                     let link     = $(this).attr('data-link');
@@ -414,13 +414,13 @@ function appendHeaderCell(elemHeaderRow, indexItem, link, descriptor) {
     let elemHeaderCellToggleIcon = $('<div></div>');
         elemHeaderCellToggleIcon.attr('title', 'Select this record');
         elemHeaderCellToggleIcon.addClass('icon');
-        elemHeaderCellToggleIcon.addClass('icon-box-checked');
+        elemHeaderCellToggleIcon.addClass('icon-check-box-checked');
         elemHeaderCellToggleIcon.appendTo(elemHeaderCelSelector);
 
     let elemHeaderCellToggleIconAlt = $('<div></div>');
         elemHeaderCellToggleIconAlt.attr('title', 'Deselect this record');
         elemHeaderCellToggleIconAlt.addClass('icon');
-        elemHeaderCellToggleIconAlt.addClass('icon-box-unchecked');
+        elemHeaderCellToggleIconAlt.addClass('icon-check-box');
         elemHeaderCellToggleIconAlt.appendTo(elemHeaderCelSelector);
 
     let elemHeaderCellToolbar = $('<div></div>');
@@ -940,8 +940,8 @@ function setItemDetails(link) {
     $('body').removeClass('with-edit');
     $('body').addClass('with-details');
 
-    insertGrid(link, 'grid');
-    insertViewer(link, viewerBGColors[theme].level2);        
+    insertGrid(link, { 'id' : 'grid-list', 'header' : false });
+    insertViewer(link);        
     insertItemDetails(link);
     insertAttachments(link, { 
         'header'    : false, 

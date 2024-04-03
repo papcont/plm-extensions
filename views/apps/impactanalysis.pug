@@ -3,7 +3,9 @@ extends ../framework/layout
 block head
     
     link(rel='stylesheet', href='/stylesheets/apps/impactanalysis.css')
+    link(rel='stylesheet', href='/stylesheets/custom/impactanalysis.css')
     script(src='/javascripts/apps/impactanalysis.js') 
+    script(src='/javascripts/custom/impactanalysis.js') 
     script.
         config = !{JSON.stringify(config)};
 
@@ -45,7 +47,7 @@ block body
                 .surface-level-2#item-change
                     
             
-                #viewer.viewer
+                #viewer.viewer.surface-level-1
                 
                 .tabs.surface-level-1#tabs(data-tab-group="tab-group-main")
                     div(title='Review change log of selected affected item') 

@@ -223,11 +223,6 @@
     display     : flex;
     gap         : var(--spacer-xs);  
     overflow-y  : auto;
-    position    : absolute;
-    top         : 52px;
-    right       : 0px;
-    bottom      : 0px;
-    left        : 0px;
 }
 .no-header > .attachments-list {
     top : 0px;
@@ -536,16 +531,28 @@
 .bom-item:hover .bom-actions > div {
     display : flex;
 }
+.bom-column-icon {
+    padding     : 2px 0px 0px !important;
+    text-align  : center;
+    width       : 26px;   
+}
+.bom-column-icon > span {
+    font-size   : 20px;
+    font-weight : 300;
+}
+.bom-restricted {
+    color       : var(--color-status-red);
+}
 .bom-column-quantity {
     text-align : right;
 }
 .bom-quantity {
     font-weight : bold;
     text-align  : right;
-    width       : 60px;
+    width       : 50px;
 }
 .bom-content {
-    bottom : 38px;
+    bottom : 42px;
 }
 
 .bom-counters {
@@ -747,6 +754,13 @@ tr.node.bom-level-10 .bom-first-col  { padding-left : 186px; }
 .flat-bom.compact table select {
     padding : 3px 2px;
     width   : 100%;
+}
+
+
+/*  CHANGE PROCESSES */
+/* ----------------------------------------------------------------------------- */
+.processes-action-create {
+    display : none;
 }
 
 

@@ -17,15 +17,15 @@ let wsConfig        = {
     'imageFieldsPrefix'     : 'MARKUP_'
 }
 let wsConfigBrowser = {
-    'id' : '95',
+    'id'       : '95',
     'viewName' : 'Product Browser',
-    'tableau'               : ''
+    'tableau'  : ''
 }
 
 
 $(document).ready(function() {
 
-    for(profile of config.dashboard) {
+    for(let profile of config.dashboard) {
 
         if(wsId === profile.wsId.toString()) {
 
@@ -44,24 +44,68 @@ $(document).ready(function() {
 
     }
 
-    $('#header-title').html(title);
+    if(isBlank(wsConfig.id)) {
 
-    document.title = title;
+        $('body').addClass('no-profile');
+        sortArray(config.dashboard, 'title');
 
-    appendProcessing('workflow-history', false);
-    appendProcessing('details', false);
-    appendProcessing('attachments', false);
+        for(let profile of config.dashboard) {
 
-    appendNoDataFound('list');
+            let icon = (isBlank(profile.icon)) ? 'icon-workflow' : profile.icon;
+        
+            let elemProfile = $('<div></div>').appendTo($('.screen-list'))
+                .addClass('screen-list-tile')
+                .addClass('surface-level-4')
+                .attr('data-id', profile.wsId)
+                .click(function() {
 
-    appendOverlay(false);
+                    let location = document.location.href.split('?');
+                    let params   = (location.length === 1) ? [] : location[1].split('&');
+                    let url      = location [0] + '?'
 
-    setUIEvents();
-    setStatusColumns();
-    setCalendars();
-    setChart();
+                    url += 'wsId='+$(this).attr('data-id');
 
-    getInitialData();
+                    for(let param of params) {
+                        if(param.toLowerCase().indexOf('wsid') < 0) url += '&' + param;
+                    }
+                    
+                    document.location.href = url;
+
+                });
+
+            $('<div></div>').appendTo(elemProfile)
+                .addClass('screen-list-tile-icon')
+                .addClass('icon')
+                .addClass(icon);
+                
+            $('<div></div>').appendTo(elemProfile)
+                .addClass('screen-list-tile-title')
+                .html(profile.title);
+
+        }
+
+    } else {
+
+        $('#header-title').html(title);
+
+        document.title = title;
+
+        appendProcessing('workflow-history', false);
+        appendProcessing('details', false);
+        appendProcessing('attachments', false);
+
+        appendNoDataFound('list');
+
+        appendOverlay(false);
+
+        setUIEvents();
+        setStatusColumns();
+        setCalendars();
+        setChart();
+
+        getInitialData();
+
+    }
 
 });
 
@@ -220,16 +264,16 @@ function setSelectedView() {
 function getInitialData() {
 
     let promises = [
-        $.get('/plm/sections' , { 'wsId' : wsConfig.id }),
-        $.get('/plm/fields'   , { 'wsId' : wsConfig.id }),
-        $.get('/plm/tableaus' , { 'wsId' : wsConfig.id }),
-        $.get( '/plm/permissions', { 'wsId' : wsConfig.id }),
+        $.get('/plm/sections'   , { 'wsId' : wsConfig.id }),
+        $.get('/plm/fields'     , { 'wsId' : wsConfig.id }),
+        $.get('/plm/tableaus'   , { 'wsId' : wsConfig.id }),
+        $.get('/plm/permissions', { 'wsId' : wsConfig.id }),
     ];
 
     Promise.all(promises).then(function(responses) {
 
-        wsConfig.sections = responses[0].data;
-        wsConfig.fields   = responses[1].data;
+        wsConfig.sections    = responses[0].data;
+        wsConfig.fields      = responses[1].data;
         wsConfig.permissions = responses[3].data;
 
         for(tableau of responses[2].data) {
@@ -237,7 +281,6 @@ function getInitialData() {
                 wsConfig.tableauLink = tableau.link;
             }
         }
-
         
         for(field of wsConfig.fields) {
             if(!isBlank(field.type)) {
@@ -637,7 +680,15 @@ function openItem(link) {
     $('body').addClass('no-viewer');
 
     viewerUnloadAllModels();
-    insertWorkflowActions(link, null, true);
+    insertWorkflowActions(link);
+
+    insertWorkflowHistory(link, {
+        'headerLabel'           : 'Activity',
+        'reload'                : false,
+        'showNextTransitions'   : wsConfig.workflowHistory.showNextActions,
+        'transitionsEx'         : wsConfig.workflowHistory.excludedTransitions,
+        'finalStates'           : wsConfig.workflowHistory.finalStates
+    });
 
     $.get('/plm/details', { 'link' : link }, function(response) {
 
@@ -647,10 +698,8 @@ function openItem(link) {
         let status      = response.data.currentState.title;
         let linkItem    = getSectionFieldValue(response.data.sections, wsConfig.fieldIdItem, '', 'link');
         let elemStatus  = $('#item-status');
-        let statusId    = response.data.currentState.link.split('/').pop();
 
-        insertWorkflowHistory(link, null, status, statusId, wsConfig.workflowHistory.excludedTransitions, wsConfig.workflowHistory.finalStates, wsConfig.workflowHistory.showNextActions);
-        insertViewer(linkItem, viewerBGColors[theme].level1);
+        insertViewer(linkItem);
         
         for(state of wsConfig.progress) {
             if(state.states.indexOf(status) > -1) {

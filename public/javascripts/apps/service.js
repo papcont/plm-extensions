@@ -23,6 +23,37 @@ let paramsAttachments = {
     'header'        : true, 
     'size'          : 'xs'
 }
+let paramsProcesses = { 
+    'headerLabel'       : '', 
+    'createWSID'        : '82' ,
+    'createSectionsEx'  : ['Review', 'Technical Analysis'],
+    'workspacesEx'      : ['83','84']
+}
+let features = {
+    'homeButton'            : true,
+    'toggleItemAttachments' : true,
+    'toggleItemDetails'     : true,
+    'manageProblemReports'  : true,
+    'showStock'             : true,
+    'requestWorkflowActions': true,
+    'viewer' : {
+        'cube'          : false,
+        'orbit'         : false,
+        'firstPerson'   : false,
+        'camera'        : false,
+        'measure'       : true,
+        'section'       : true,
+        'explodedView'  : true,
+        'modelBrowser'  : false,
+        'properties'    : false,
+        'settings'      : false,
+        'fullscreen'    : true,
+        'markup'        : false,
+        'ghosting'      : true,
+        'reset'         : true,
+        'views'         : true
+    }
+}
 
 
 $(document).ready(function() {
@@ -30,206 +61,181 @@ $(document).ready(function() {
     wsProblemReports.id      = config.service.wsIdProblemReports;
     wsSparePartsRequests.id  = config.service.wsIdSparePartsRequests;
 
-    if(typeof options !== undefined) {
-        // if(options === 'iot') enableIOT();
-    }
-
-    appendProcessing('bom', false);
-    appendProcessing('details', false);
-    appendProcessing('attachments', true);
-    appendProcessing('items', false);
-    appendProcessing('processes', false);
-    appendViewerProcessing();
+    appendProcessing('items');
     appendOverlay();
-    
-    setUIEvents();
-    
-    insertWorkspaceViews('requests', wsSparePartsRequests.id, 'Your Requests', false, false, 3, false, false, false);
-    
-    if(!isBlank(config.service.wsIdProducts)) insertWorkspaceItems(config.service.wsIdProducts, {
-        'id'                 : 'products', 
-        'title'              : config.service.productsListHeader, 
-        'classNames'         : ['wide', 's'], 
-        'icon'               : 'deployed_code', 
-        'fieldIdImage'       : config.service.productsFieldIdImage, 
-        'fieldIdTitle'       : config.service.productsFieldIdTitle, 
-        'fieldIdSubtitle'    : config.service.productsFieldIdSubtitle, 
-        'fieldIdsAttributes' : [ config.service.productsFieldIdBOM ],
-        'filter'             : config.service.productsFilter,
-        'sortBy'             : config.service.productsSortBy, 
-        'groupBy'            : config.service.productsGroupBy
-    }); 
 
-    if(!isBlank(dmsId)) {
-        $('body').removeClass('screen-landing').addClass('screen-main');
-        openItem(link);
-    }
+    getApplicationFeatures('service', function() {
+
+        if(!features.homeButton) {
+            $('#home').remove();
+            $('#landing').remove();
+        }
+        if(!features.toggleItemAttachments) {
+            $('#attachments').remove();
+            $('#toggle-attachments').remove();
+        }
+        if(!features.toggleItemDetails) {
+            $('#details').remove();
+            $('#toggle-details').remove();
+        }
+        if(!features.manageProblemReports) {
+            $('#processes').remove();
+            $('#tab-processes').remove();
+        }
+        if(!features.showStock) {
+            $('#color-stock').remove();
+        }
+        if(!features.requestWorkflowActions) $('#workflow-actions').remove();
+
+        $('#header').show();
+        $('#startup').remove();
+        setUIEvents();
+
+        if(features.homeButton) {
+
+            insertWorkspaceViews(wsSparePartsRequests.id, {
+                'id'                : 'requests',
+                'headerLabel'       : 'Your Requests', 
+                'layout'            : 'table',
+                'includeRecents'    : true,
+                'startupView'       : ''
+            });
+            
+            if(!isBlank(config.service.wsIdProducts)) insertWorkspaceItems(config.service.wsIdProducts, {
+                'id'                 : 'products', 
+                'headerLabel'        : config.service.productsListHeader, 
+                'icon'               : 'icon-package', 
+                'filter'             : config.service.productsFilter,
+                'sortBy'             : config.service.productsSortBy, 
+                'groupBy'            : config.service.productsGroupBy,
+                'fieldIdImage'       : config.service.productsFieldIdImage, 
+                'fieldIdTitle'       : config.service.productsFieldIdTitle, 
+                'fieldIdSubtitle'    : config.service.productsFieldIdSubtitle, 
+                'fieldIdsAttributes' : [ config.service.productsFieldIdBOM ]
+            }); 
+
+        }
+
+        if(!isBlank(dmsId)) {
+            $('body').addClass('screen-main').removeClass('screen-landing').removeClass('screen-request');
+            openItem(link);
+        } else $('#landing').show();
+
+    });
     
 });
 
 
 function setUIEvents() {
 
+
+    // Close current product display and return to landing page
+    if(features.homeButton) {
+        $('#home').click(function() {
+            $('body').addClass('screen-landing').removeClass('screen-main').removeClass('screen-request');
+            document.title = documentTitle;
+            window.history.replaceState(null, null, '/service?theme=' + theme);
+        });
+    }
+
+
     // Toggles in header toolbar
     $('#toggle-bom').click(function() {
         $('body').toggleClass('no-bom');
-        setTimeout(function() { viewer.resize(); }, 250);
+        viewerResize();
     })
+    if(features.toggleItemAttachments) {
+        $('#toggle-attachments').click(function() {
+            $('body').toggleClass('no-attachments');
+            viewerResize();
+        })
+    }
+    if(features.toggleItemDetails) {
+        $('#toggle-details').click(function() {
+            $('body').toggleClass('with-details');
+            viewerResize();
+        })
+    }
     $('#toggle-panel').click(function() {
         $('body').toggleClass('no-panel');
-        setTimeout(function() { viewer.resize(); }, 250);
-    })
-    $('#toggle-details').click(function() {
-        $('body').toggleClass('with-details');
-        setTimeout(function() { viewer.resize(); }, 250);
-    })
-    $('#toggle-attachments').click(function() {
-        $('body').toggleClass('no-attachments');
-        viewer.resize();setTimeout(function() { viewer.resize(); }, 250);
-    })
-
-
-    // Close current product display
-    $('#done').click(function() {
-        $('body').removeClass('screen-main');
-        $('body').addClass('screen-landing');
-        document.title = documentTitle;
-    });
+        viewerResize();
+    })    
 
 
     // Spare Parts List Toolbar
-    $('#filter-spare-parts').click(function() {
+    $('#filter-list').click(function() {
         let partNumbers = [];
-        $('.spare-part').hide();
-        $('.spare-part.selected').each(function() {
-            $(this).show();
+        $('#items-list').children(":visible").each(function() {
             partNumbers.push($(this).attr('data-part-number'));
         });
-        viewerSelectModels(partNumbers, true, false);
+        viewerSelectModels(partNumbers);
     });
-    $('#deselect-spare-parts').click(function() {
-        $('.spare-part.selected').removeClass('selected');
-        $('.spare-part').show();
-        $('#spare-parts-search-input').val('');
-        viewerResetColors();
-        updateCounter();
+    $('#color-stock').click(function() {
+        highlightSparePartStocks();
+
     });
     $('#spare-parts-search-input').keyup(function() {
-        searchInTiles('items-list', $(this));
+        searchInTiles('items', $(this));
     });
 
 
-    // Submit Request Dialog functions
-    $('#request-submit').click(function() {
-        submitRequest();
+
+    // Cart interactions
+    $('#cart-title').click(function() {
+        $('#cart').toggleClass('collapsed');
+        adjustCartHeight();
     });
-    $('#request-cancel').click(function() {
-        $('#request').hide();
-        $('#overlay').hide();
+    $('#filter-cart').click(function() {
+        let partNumbers = [];
+        $('#cart-list').children().each(function() {
+            partNumbers.push($(this).attr('data-part-number'));
+        });
+        viewerSelectModels(partNumbers);
+    });
+    $('#clear-cart').click(function() {
+        $('#cart-list').children().each(function() {
+            $(this).prependTo($('#items-list'));
+        });
+        adjustCartHeight();
     });
     $('#submit-request').click(function() {
-        $('#request').show();
+        $('#request-creation').show();
         $('#overlay').show();
         setRequestList();
     });
 
 
-    // Process Creation
-    $('#create-process').click(function() {
-        
-        $('#processes-sections').html('').show();
-
-        $(this).siblings().show();
-        $(this).hide();
-
-        $('#processes-list').hide();
-
-        insertItemDetailsFields('', 'processes', wsProblemReports.sections, wsProblemReports.fields, null, true, true, true);
-
+    // Submit Request Dialog functions
+    $('#request-creation-submit').click(function() {
+        submitRequest();
     });
-    $('#cancel-process').click(function() {
-
-        $('#create-process').show();
-        $('.process-dialog').hide();
-        $('#processes-list').show();
-        $('#processes-sections').hide();
-
-    });
-    $('#save-process').click(function() {
-
-        if(!validateForm($('#processes-sections'))) return;
-
-        viewerCaptureScreenshot(null, function() {
-
-            $('#processes-toolbar').hide();
-            $('#processes-sections').hide();
-            $('#processes-list').html('');
-            $('#processes-list').show('');
-            $('#processes-processing').show();
-    
-            let link = $('#processes-list').attr('data-source');
-    
-            submitCreateForm(wsProblemReports.id, $('#processes-sections'), 'viewer-markup-image', function(response ) {
-
-                let newLink = response.data.split('.autodeskplm360.net')[1];
-                $.get('/plm/add-managed-items', { 'link' : newLink, 'items' : [ link ] }, function(response) {
-                // $.get('/plm/add-relationship', { 'link' : newLink, 'relatedId' : link.split('/')[6] }, function(response) {
-                    setProcesses($('#processes-list').attr('data-source'));
-                    $('.process-dialog').hide();
-                    $('#create-process').show();
-                    $('#processes-list').show();
-                });
-
-            });
-
-        });
-
+    $('#request-creation-cancel').click(function() {
+        $('#request-creation').hide();
+        $('#overlay').hide();
+        clearRequestList();
     });
 
 
-    // BOM Tree Actions
-    // $('#bom-search-input').keyup(function() {
-    //     filterBOMTree();
-    // });
+    // Single Request Display Actions
+    $('#close-item').click(function() {
+        $('body').addClass('screen-landing')
+            .removeClass('screen-main')
+            .removeClass('screen-request'); 
+    });
+
+}
 
 
-    // Tab Control
-    // $('#tabs').children().click(function() {
-    //     let id = $(this).attr('data-id');
-    //     $('.tab').hide();
-    //     $('#' + id).show();
-    //     $(this).addClass('selected');
-    //     $(this).siblings().removeClass('selected');
-    //     maintenanceMode = $('#tab-charts').hasClass('selected');
-    //     if(!maintenanceMode) {
-    //         if($('#bom-table').children('.selected').length === 0) {
-    //             if(viewerDone) {
-    //                 viewerResetColors();
-    //                 viewer.showAll();
-    //             }
-    //         }
-    //     } else {
-    //         if(viewerDone) {
-    //             viewer.hideAll();
-    //             viewerUnhideModels(listWearParts);
-    //         }
-    //     }
-    // });
-    // $('#tabs').children().first().click();
+// Insert Contact Details per user account data
+function insertAvatarDone(data) {
 
-
-    // Maintenance Controls
-    // $('#remote-control').click(function() {
-    //     window.open(urlRC);
-    // })
-    // $('#qr-code').click(function() {
-    //     $('#qr').show();
-    //     $('#overlay').show();
-    // })
-    // $('.dialog-close').click(function() {
-    //     $('#overlay').hide();
-    //     $(this).closest('.dialog').hide();
-    // });
+    $('#request-name').val((isBlank(data.displayName)) ? '' : data.displayName);
+    $('#request-company').val((isBlank(data.organization)) ? '' : data.organization);
+    $('#request-e-mail').val((isBlank(data.email)) ? '' : data.email);
+    $('#request-address').val((isBlank(data.address1)) ? '' : data.address1);
+    $('#request-city').val((isBlank(data.city)) ? '' : data.city);
+    $('#request-postal').val((isBlank(data.postal)) ? '' : data.postal);
+    $('#request-country').val((isBlank(data.country)) ? '' : data.country);
 
 }
 
@@ -244,8 +250,11 @@ function clickWorkspaceItem(e, elemClicked) {
         return;
     }
 
-    $('body').removeClass('screen-landing');
-    $('body').addClass('screen-main');
+    $('body').addClass('screen-main').removeClass('screen-landing').removeClass('screen-request');
+
+    let split = link.split('/');
+
+    window.history.replaceState(null, null, '/service?wsid=' + split[4] + '&dmsid=' + split[6] + '&theme=' + theme);
 
     openItem(link);
 
@@ -265,6 +274,7 @@ function openItem(link) {
     insertBOM(link, { 
         'bomViewName'   : config.service.bomViewName, 
         'collapsed'     : true,
+        'deselect'      : true, 
         'reset'         : true, 
         'openInPLM'     : false, 
         'goThere'       : true, 
@@ -272,12 +282,13 @@ function openItem(link) {
         'quantity'      : true,
         'counters'      : true,
         'getFlatBOM'    : true, 
-        'endItem'       : { 'fieldId' : 'SBOM_END_ITEM', 'value' : true }
+        'showRestricted': false,
+        'endItem'       : config.service.endItemFilter
     });
-    insertViewer(link, viewerBGColors[theme].level1);
-    insertItemDetails(link);
-    insertAttachments(link, paramsAttachments);
-    setProcesses(link);
+    insertViewer(link);
+    if(features.toggleItemDetails)     insertItemDetails(link);
+    if(features.toggleItemAttachments) insertAttachments(link, paramsAttachments);
+    if(features.manageProblemReports)  insertChangeProcesses(link, paramsProcesses);
 
 }
 
@@ -285,7 +296,76 @@ function openItem(link) {
 // Click on existing Spare Parts Request
 function clickWorkspaceViewItem(elemClicked) {
 
-    openItemByLink(elemClicked.attr('data-link'));
+    resetItemScreen();
+    openSelectedRequest(elemClicked.attr('data-link'));
+
+}
+function resetItemScreen() {
+    $('.item-descriptor').html('');
+    $('.item-status').html('');
+    $('.item-summary').find('span').html('');
+}
+function openSelectedRequest(link) {
+
+    $('body').addClass('screen-request')
+        .removeClass('screen-landing')
+        .removeClass('screen-main');
+
+    $.get('/plm/details', { 'link' : link }, function(response) {
+
+        $('.item-descriptor').html(response.data.title);
+        $('.item-status').html(response.data.currentState.title);
+
+    });
+
+    $.get('/plm/change-summary', { 'link' : link }, function(response) {
+
+        let dateCreated  = new Date(response.data.createdOn);
+        let dateModified = '';
+        let userModified = '';
+
+        if(!isBlank(response.data.lastModifiedOn)) dateModified = new Date(response.data.lastModifiedOn).toLocaleDateString();
+        if(!isBlank(response.data.lastModifiedBy)) userModified = response.data.lastModifiedBy.displayName;
+
+        $('.item-created-by').html(response.data.createdBy.displayName);
+        $('.item-created-on').html(dateCreated.toLocaleDateString());
+        $('.item-modified-by').html(userModified);
+        $('.item-modified-on').html(dateModified);
+
+    });
+
+    getBookmarkStatus(link);
+    if(features.requestWorkflowActions) insertWorkflowActions(link);
+
+    insertWorkflowHistory(link, {
+        'id'     : 'request-workflow-history',
+        'reload' : false
+    });
+    insertDetails(link, {
+        'id'             : 'request-details',
+        'compactDisplay' : true,
+        'suppressLinks'  : true
+    });
+    insertGrid(link, {
+        'id'            : 'request-grid',
+        'headerLabel'   : 'Part List',
+        'columnsEx'     : ['UNIT_COST', 'TOTAL_COST'],
+        'reload'        : false
+    });
+    insertAttachments(link, {
+        'id'        : 'request-attachments',
+        'layout'    : 'tiles',
+        'size'      : 'm',
+        'upload'    : true
+    });
+
+
+}
+function insertAttachmentsDone(id) {
+
+    if(id === 'request-attachments') {
+        $('#request-attachments-upload').prependTo($('#item-toolbar'));
+    }
 
 }
 
@@ -305,7 +385,7 @@ function getInitialData(wsId) {
 
         let errors = false;
 
-        for(response of responses) {
+        for(let response of responses) {
             if(response.error) {
                 let message = (isBlank(response.data.message)) ? 'Error in accessing ' + response.params.url : response.data.message;
                 showErrorMessage('Error occured', message);
@@ -325,7 +405,6 @@ function getInitialData(wsId) {
     });
 
 }     
-
 
 
 // Parse BOM for Spare Parts
@@ -353,15 +432,49 @@ function changeBOMViewDone(id, fields, viewBOM, viewFlatBOM) {
     insertNonSparePartMessage();
     getBOMSpareParts(bom, flatBOM, 'urn:adsk.plm:tenant.workspace.item:' + tenant.toUpperCase() + '.' + link.split('/')[4] + '.' + link.split('/')[6], 1.0);
 
-    for(sparePart of listSpareParts) {
-        $('.bom-item').each(function() {
+    $('.bom-item').each(function() {
+        let elemCell = $('<td></td>').addClass('bom-column-icon').addClass('bom-column-spare-parts').appendTo(this);
+        for(let sparePart of listSpareParts) {
             if($(this).attr('data-link') === sparePart) {
                 $(this).addClass('is-spare-part');
+                $('<span></span>').appendTo(elemCell)
+                    .addClass('icon')
+                    .addClass('icon-package')
+                    .addClass('filled')
+                    .attr('title', 'Is Spare Part');
             }
-        });
-    }
+        }
+    });
+
+    if(features.showStock) setSparePartStockStatus();
 
     $('#items-processing').hide();
+
+}
+function setSparePartStockStatus() {
+
+    $('#items-list').children().each(function() {
+
+        let elemSparePart = $(this);
+        let elemStock     = elemSparePart.find('.spare-part-stock');
+        let stockLabel    = 'In stock';
+        let stockClass    = 'normal';
+        let stockRandom   = Math.floor(Math.random() * 3) + 1;
+    
+             if(stockRandom === 2) { stockLabel = 'Low stock';    stockClass = 'low';  }
+        else if(stockRandom === 3) { stockLabel = 'Out of stock'; stockClass = 'none'; }
+
+        elemSparePart.addClass('spare-part-stock-' + stockClass);
+        elemStock.attr('title', stockLabel);
+
+        $('<div></div>').appendTo(elemStock)
+            .addClass('spare-part-stock-icon');
+
+        $('<div></div>').appendTo(elemStock)
+            .addClass('spare-part-stock-label')
+            .html(stockLabel);
+
+    })
 
 }
 function insertNonSparePartMessage() {
@@ -377,7 +490,7 @@ function insertNonSparePartMessage() {
     
     $('<div></div>').appendTo(elemMessage)
         .addClass('custom-message-text')
-        .html("This item is not available as standard spare part. While availability is not guaranteed, you may submit a request for this item anyway. We will validate the given item's availability per each request.<br>Do you want to include this item in your request?");
+        .html("The selected item is not available as spare part. While availability is not guaranteed, you may submit a request for this item anyway. We will validate the given item's availability per each request.<br>Do you want to include this item in your request?");
     
     $('<div></div>').appendTo(elemMessage)
         .addClass('custom-message-button')
@@ -385,6 +498,7 @@ function insertNonSparePartMessage() {
         .addClass('default')
         .html('Confirm')
         .click(function(){
+
             $('#custom-message').hide();
             let link = $('#custom-message').attr('data-link');
             let itemData = {};
@@ -395,14 +509,37 @@ function insertNonSparePartMessage() {
                     itemData.partNumber = $(this).attr('data-part-number');
                     itemData.title = $(this).attr('data-title');
                     $(this).addClass('is-spare-part').addClass('spare-part-custom');
+                    let elemCell = $(this).find('.bom-column-icon');
+                    $('<span></span>').appendTo(elemCell)
+                        .addClass('icon')
+                        .addClass('icon-package')
+                        .addClass('filled')
+                        .attr('Custom spare part request');
+
                 }
             });
 
-            let elemSparePart = genTileSparePart(link, itemData.urn, itemData.partNumber, itemData.title, 1.0, 'No Spare Part', 'custom');
+            let elemSparePart = genTileSparePart(link, itemData.urn, itemData.partNumber, itemData.title, 1.0);
                 elemSparePart.insertAfter($('#custom-message'));
-                elemSparePart.addClass('selected');
+                elemSparePart.addClass('spare-part-custom');
 
-            updateCounter();
+            if(features.showStock) {
+
+                let elemStock     = elemSparePart.find('.spare-part-stock');
+                let stockLabel    = 'No spare part';
+                let stockClass    = 'custom';
+        
+                elemSparePart.addClass('spare-part-stock-' + stockClass);
+                elemStock.attr('title', stockLabel);
+        
+                $('<div></div>').appendTo(elemStock)
+                    .addClass('spare-part-stock-icon');
+        
+                $('<div></div>').appendTo(elemStock)
+                    .addClass('spare-part-stock-label')
+                    .html(stockLabel);
+
+            }
 
         });
 
@@ -462,7 +599,7 @@ function getBOMSpareParts(bom, flatBOM, parent, qtyTotal) {
 
     let result = false;
 
-    for(edge of bom.edges) {
+    for(let edge of bom.edges) {
 
         if(edge.parent === parent) {
 
@@ -481,8 +618,8 @@ function getBOMSpareParts(bom, flatBOM, parent, qtyTotal) {
                 if(isSparePart.toLowerCase() === 'wear part') {
                     listWearParts.push({
                         'link'          : link,
-                        'partNumber'    : partNumber,
-                        'linkImage'     : getFirstImageFieldValue(response.data.sections)
+                        'partNumber'    : partNumber
+                        // 'linkImage'     : getFirstImageFieldValue(response.data.sections)
                     });
                 }
 
@@ -493,17 +630,10 @@ function getBOMSpareParts(bom, flatBOM, parent, qtyTotal) {
 
                     listSpareParts.push(link);
 
-                    let stockLabel  = 'In stock';
-                    let stockClass  = 'normal';
-                    let stockRandom = Math.floor(Math.random() * 3) + 1;
-                
-                         if(stockRandom === 2) { stockLabel = 'Low stock'; stockClass = 'low'; }
-                    else if(stockRandom === 3) { stockLabel = 'Out of stock'; stockClass = 'none'; }
-
-                    let title = getBOMCellValue(edge.child, urns.title, bom.nodes);
-                    let elemSparePart = genTileSparePart(link, edge.child, partNumber, title, qty, stockLabel, stockClass);
-
-                        elemSparePart.appendTo($('#items-list'));
+                    let title         = getBOMCellValue(edge.child, urns.title, bom.nodes);
+                    let elemSparePart = genTileSparePart(link, edge.child, partNumber, title, qty);
+                        
+                    elemSparePart.appendTo($('#items-list'));
 
                 } else {
 
@@ -530,24 +660,21 @@ function getBOMSpareParts(bom, flatBOM, parent, qtyTotal) {
     return result;
 
 }
-function genTileSparePart(link, urn, partNumber, title, qty, stockLabel, stockClass) {
+function genTileSparePart(link, urn, partNumber, title, qty) {
 
-    let elemSparePart = $('<div></div>');
-        elemSparePart.addClass('tile');
-        elemSparePart.addClass('spare-part');
-        elemSparePart.addClass('spare-part-stock-' + stockClass);
-        elemSparePart.attr('data-link', link);
-        elemSparePart.attr('data-part-number', partNumber);
-        elemSparePart.attr('data-qty', qty);
-        elemSparePart.click(function(e) {
-            clickSparePart(e, $(this));
+    let elemSparePart = $('<div></div>')
+        .addClass('tile')
+        .addClass('spare-part')
+        .attr('data-link', link)
+        .attr('data-part-number', partNumber)
+        .attr('data-qty', qty)
+        .click(function(e) {
+            clickSparePart($(this));
         });
         
-        
-    let elemSparePartImage = $('<div></div>');
-        elemSparePartImage.addClass('spare-part-image');
-        elemSparePartImage.addClass('tile-image');
-        elemSparePartImage.appendTo(elemSparePart);
+    let elemSparePartImage = $('<div></div>').appendTo(elemSparePart)
+        .addClass('spare-part-image')
+        .addClass('tile-image');
 
     let valueImage = getFlatBOMCellValue(flatBOM, link, urns.thumbnail);
     let linkImage = (valueImage === '') ? '' : valueImage;
@@ -566,34 +693,33 @@ function genTileSparePart(link, urn, partNumber, title, qty, stockLabel, stockCl
         });
     }
     
-    let elemSparePartDetails = $('<div></div>');
-        elemSparePartDetails.addClass('spare-part-details');
-        elemSparePartDetails.addClass('tile-details');
-        elemSparePartDetails.appendTo(elemSparePart);
+    let elemSparePartDetails = $('<div></div>').appendTo(elemSparePart)
+        .addClass('spare-part-details')
+        .addClass('tile-details');
 
-    let elemSparePartNumber = $('<div></div>');
-        elemSparePartNumber.addClass('spare-part-number');
-        elemSparePartNumber.addClass('tile-title');
-        elemSparePartNumber.html(partNumber);
-        elemSparePartNumber.appendTo(elemSparePartDetails);
+    let elemSparePartID = $('<div></div>').appendTo(elemSparePartDetails)
+        .addClass('spare-part-identifier');
 
+    $('<div></div>').appendTo(elemSparePartID)
+        .addClass('spare-part-quantity')
+        .html(qty);
 
-    let elemSparePartQuantity = $('<span></span>');
-        elemSparePartQuantity.addClass('spare-part-quantity');
-        elemSparePartQuantity.html(qty);
-        elemSparePartQuantity.prependTo(elemSparePartNumber);
-
+    $('<div></div>').appendTo(elemSparePartID)
+        .addClass('spare-part-number')
+        .addClass('tile-title')
+        .html(partNumber);    
     
-    let elemSparePartTitle = $('<div></div>');
-        elemSparePartTitle.addClass('spare-part-title');
-        elemSparePartTitle.html(title);
-        elemSparePartTitle.appendTo(elemSparePartDetails);
+    $('<div></div>').appendTo(elemSparePartDetails)
+        .addClass('spare-part-title')
+        .html(title);  
 
-    let elemSparePartMaterial = $('<div></div>');
-        elemSparePartMaterial.addClass('spare-part-material');
-        elemSparePartMaterial.html(getBOMCellValue(urn, urns.material, bom.nodes));
-        elemSparePartMaterial.appendTo(elemSparePartDetails);
-
+    $('<div></div>').appendTo(elemSparePartDetails)
+        .addClass('spare-part-material')
+        .addClass('with-icon')
+        .addClass('icon-product')
+        .addClass('filled')
+        .html(getBOMCellValue(urn, urns.material, bom.nodes));
+        
     let partSpec        = '';
     let partWeight      = getBOMCellValue(urn, urns.weight, bom.nodes);
     let partDimensions  = getBOMCellValue(urn, urns.dimensions, bom.nodes);
@@ -603,29 +729,63 @@ function genTileSparePart(link, urn, partNumber, title, qty, stockLabel, stockCl
         if(partWeight !== '') partSpec = partWeight + ' / ' + partDimensions;
     } else partSpec = partDimensions
 
-    let elemSparePartSpec = $('<div></div>');
-        elemSparePartSpec.addClass('spare-part-dimensions');
-        elemSparePartSpec.html(partSpec);
-        elemSparePartSpec.appendTo(elemSparePartDetails);
-
-    let elemSparePartSide = $('<div></div>');
-        elemSparePartSide.addClass('spare-part-side');
-        elemSparePartSide.appendTo(elemSparePart);
-        
-    $('<div></div>').appendTo(elemSparePartSide)
-        .addClass('button')
+    $('<div></div>').appendTo(elemSparePartDetails)
+        .addClass('spare-part-dimensions')
         .addClass('with-icon')
-        .addClass('icon-zoom-in')
-        .addClass('spare-part-show')
-        .html('Zoom In')
+        .addClass('icon-width')
+        .html(partSpec);
+
+    let elemSparePartSide = $('<div></div>').appendTo(elemSparePart)
+        .addClass('spare-part-side');
+
+    let elemCartQuantity = $('<div></div>').appendTo(elemSparePartSide)
+        .addClass('cart-quantity')
         .click(function(e) {
-            clickSparePartZoomIn(e, $(this));
+            e.preventDefault();
+            e.stopPropagation();
         });
 
-    let elemSparePartStock = $('<div></div>');
-        elemSparePartStock.addClass('spare-part-stock');
-        elemSparePartStock.html(stockLabel);
-        elemSparePartStock.appendTo(elemSparePartSide);
+    $('<div></div>').appendTo(elemCartQuantity)
+        .addClass('cart-quantity-label')
+        .html('Qty');
+
+    $('<input></input>').appendTo(elemCartQuantity)
+        .addClass('cart-quantity-input')
+        .val('1');
+
+
+    let elemCartAdd = $('<div></div>').appendTo(elemSparePartSide)
+        .addClass('button')
+        .addClass('cart-add')
+        .click(function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            moveSparePart($(this));
+        });  
+
+    $('<div></div>').appendTo(elemCartAdd)
+        .addClass('icon')
+        .addClass('icon-cart-add');
+
+    $('<div></div>').appendTo(elemCartAdd)
+        .html('Add to cart');
+
+
+
+    $('<div></div>').appendTo(elemSparePartSide)
+        .addClass('button')
+        .addClass('icon')
+        .addClass('icon-cart-remove')
+        .addClass('cart-remove')
+        .click(function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            moveSparePart($(this));
+        });  
+
+        if(features.showStock) {
+            $('<div></div>').appendTo(elemSparePartSide).addClass('spare-part-stock');
+        }
 
     return elemSparePart;
 
@@ -637,19 +797,19 @@ function clickBOMItem(e, elemClicked) {
 
     if(elemClicked.hasClass('selected')) {
         elemClicked.removeClass('selected');
-        insertItemDetails('/api/v3/workspaces/' + wsId + '/items/' + dmsId);
-        insertAttachments('/api/v3/workspaces/' + wsId + '/items/' + dmsId, paramsAttachments);
-        setProcesses('/api/v3/workspaces/' + wsId + '/items/' + dmsId);
+        if(features.toggleItemDetails)     insertItemDetails('/api/v3/workspaces/' + wsId + '/items/' + dmsId);
+        if(features.toggleItemAttachments) insertAttachments('/api/v3/workspaces/' + wsId + '/items/' + dmsId, paramsAttachments);
+        if(features.manageProblemReports)  insertChangeProcesses('/api/v3/workspaces/' + wsId + '/items/' + dmsId, paramsProcesses);
         resetSparePartsList();
         updateViewer();
     } else {
         $('tr.selected').removeClass('selected');
         elemClicked.addClass('selected');
-        insertItemDetails(elemClicked.attr('data-link'));
-        insertAttachments(elemClicked.attr('data-link'), paramsAttachments);
-        setProcesses(elemClicked.attr('data-link'));
+        if(features.toggleItemDetails)     insertItemDetails(elemClicked.attr('data-link'));
+        if(features.toggleItemAttachments) insertAttachments(elemClicked.attr('data-link'), paramsAttachments);
+        if(features.manageProblemReports)  insertChangeProcesses(elemClicked.attr('data-link'), paramsProcesses);
         setSparePartsList(elemClicked);
-        updateViewer();
+        updateViewer(elemClicked.attr('data-part-number'));
     }
 
     updateBOMCounters(elemClicked.closest('.bom').attr('id'));
@@ -663,16 +823,96 @@ function clickBOMItem(e, elemClicked) {
     // }
 
 }
-function clickBOMResetDone() {
+function clickBOMDeselectAllDone() {
     
     let link = $('#bom').attr('data-link');
-    
-    $('.spare-part').removeClass('zoom');
 
-    insertItemDetails(link);
-    insertAttachments(link, paramsAttachments);
+    if(features.toggleItemDetails) insertItemDetails(link);
+    if(features.toggleItemAttachments) insertAttachments(link, paramsAttachments);
     resetSparePartsList();
     updateViewer();
+
+}
+
+
+// Cart Management
+function moveSparePart(elemClicked) {
+
+    let elemSparePart = elemClicked.closest('.spare-part');
+    let idList        = elemSparePart.parent().attr('id');
+
+    if(idList === 'items-list') {
+
+        elemSparePart.appendTo($('#cart-list'));
+        adjustCartHeight();
+        elemSparePart.find('.cart-quantity-input').select();
+
+    } else {
+
+        let elemCustomMessage = $('#custom-message');
+        if(elemCustomMessage.length === 0) elemSparePart.prependTo($('#items-list'));
+        else elemSparePart.insertAfter(elemCustomMessage);
+        adjustCartHeight();
+
+    }
+    
+}
+function adjustCartHeight() {
+
+    let elemCart            = $('#cart');
+    let countPartsInCart    = $('#cart-list').children().length;
+    let topTabs             = 0;
+    let heightCart          = 38;
+    let heightCartList      = 0;
+    let maxHeight           = ($('#main').height() - 50) * 0.5;
+    let heightTiles         = 68;
+    let isVisible           = elemCart.is(':visible');
+
+    if(countPartsInCart === 0) {
+
+        if(isVisible) elemCart.hide();
+
+    } else if(elemCart.hasClass('collapsed')) {
+
+        if(!isVisible) setTimeout(function() { elemCart.fadeIn(); }, 300);
+
+        topTabs = 110;
+
+    } else {
+
+        if(!isVisible) setTimeout(function() { elemCart.fadeIn(); }, 300);
+        heightCart = 68 + (countPartsInCart * heightTiles);
+
+        if(heightCart > maxHeight) {
+            heightCart      = maxHeight;
+            heightCartList  = heightCart - 70;
+        } else {
+            heightCartList  = countPartsInCart * heightTiles;
+        }
+
+        topTabs = heightCart + 70;
+
+    }
+
+    elemCart.css('height', heightCart + 'px');
+    $('#cart-list').css('height', heightCartList + 'px');
+    $('#tabs').css('top', topTabs + 'px');
+    $('.tab-group-main').css('top', (56 + topTabs) + 'px');
+
+    updateCartCounter();
+
+}
+function updateCartCounter() {
+
+    let count = $('#cart-list').children().length; 
+
+    $('#cart-counter').html(count);
+
+    if(count === 0) {
+        $('#cart-counter').hide();
+    } else {
+        $('#cart-counter').show();
+    }
 
 }
 
@@ -687,6 +927,7 @@ function setSparePartsList(elemItem) {
     let level       = 0;
     let elemNext    = $('tr').closest().first();
     let isSparePart = elemItem.hasClass('is-spare-part');
+    let isNode      = elemItem.hasClass('node');
 
     if(typeof elemItem !== 'undefined') {
         elemNext  = elemItem;
@@ -695,8 +936,8 @@ function setSparePartsList(elemItem) {
 
     let levelNext = level - 1;
     
-    $('.spare-part').each(function() {
-        if(!$(this).hasClass('selected')) $(this).hide();
+    $('#items-list').children().each(function() {
+        $(this).hide();
     });
 
     do {
@@ -712,7 +953,7 @@ function setSparePartsList(elemItem) {
 
                 list.push(link);
 
-                $('.spare-part').each(function() {
+                $('#items-list').children().each(function() {
                     if($(this).attr('data-link') === link) $(this).show();
                 });
 
@@ -725,11 +966,11 @@ function setSparePartsList(elemItem) {
     } while(levelNext > level);
 
     let elemCustomMessage = $('#custom-message');
-
+    
     if(elemCustomMessage.length > 0) {   
         if(isSparePart) {
             elemCustomMessage.hide();
-        } else {
+        } else if(!isNode) {
             elemCustomMessage.attr('data-link', elemItem.attr('data-link')).show();
         } 
     }
@@ -746,48 +987,43 @@ function resetSparePartsList() {
 }
 
 
+// Apply stock information using colors
+function highlightSparePartStocks() {
+
+    highlightSparePartStock('spare-part-stock-normal', config.vectors.green,  true );
+    highlightSparePartStock('spare-part-stock-low'   , config.vectors.yellow, false);
+    highlightSparePartStock('spare-part-stock-none'  , config.vectors.red,    false);
+    highlightSparePartStock('spare-part-stock-custom', config.vectors.blue,   false);
+
+}
+function highlightSparePartStock(className, vector, reset) {
+
+    let partNumbers = [];
+
+    $('#items-list').children(":visible").each(function() {
+        let elemSparePart = $(this);
+        if(elemSparePart.hasClass(className)) {
+            partNumbers.push(elemSparePart.attr('data-part-number'));
+        }
+    });
+
+    viewerSetColors(partNumbers, { 
+        'color'         : vector ,
+        'resetColors'   : reset,
+        'isolate'       : reset,
+        'unhide'        : true
+    });
+
+}
+
 // Spare Part interactions
-function clickSparePart(e, elemClicked) {
+function clickSparePart(elemClicked) {
 
-    elemClicked.toggleClass('selected');
+    let link = elemClicked.attr('data-link');
 
-    let partNumber = elemClicked.attr('data-part-number');
-    let color      = (elemClicked.hasClass('selected')) ? config.vectors.blue : null;
-
-    viewerSetColor(partNumber, color, false, false);
-    updateCounter();
-
-}
-function updateCounter() {
-
-    let count = $('.spare-part.selected').length; 
-
-    $('#counter').html(count);
-
-    if(count === 0) {
-        $('#counter').hide();
-        $('#filter-spare-parts').hide();
-        $('#deselect-spare-parts').hide();
-        $('#submit-request').removeClass('default');
-    } else {
-        $('#counter').show();
-        $('#filter-spare-parts').show();
-        $('#deselect-spare-parts').show();
-        $('#submit-request').addClass('default');
-    }
-
-}
-function clickSparePartZoomIn(e, elemClicked) {
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    let elemSparePart = elemClicked.closest('.spare-part');
-        elemSparePart.siblings().removeClass('zoom');
-        elemSparePart.toggleClass('zoom')
-
-    if(elemSparePart.hasClass('zoom')) updateViewer(elemSparePart.attr('data-part-number'));
-    else updateViewer();
+    if(features.toggleItemDetails) insertItemDetails(link);
+    if(features.toggleItemAttachments) insertAttachments(link, paramsAttachments);
+    viewerSelectModel(elemClicked.attr('data-part-number'), { 'highlight' : false , 'isolate' : true } );
 
 }
 
@@ -795,19 +1031,15 @@ function clickSparePartZoomIn(e, elemClicked) {
 // Viewer init and interactions
 function initViewerDone() {
 
-    viewerAddGhostingToggle();
-    viewerAddResetButton();
-    viewerAddMarkupControls();   
-    viewerAddViewsToolbar();
-
     $('#viewer-markup-image').attr('data-field-id', 'IMAGE_1');
 
 }
 function viewerClickReset() {
     viewer.showAll();
     viewer.setViewFromFile();
-    clickBOMDeselectAll($('#bom-action-reset'));
-    clickBOMResetDone();
+    viewerResetSelection();
+    // clickBOMDeselectAll($('#bom-action-reset'));
+    // clickBOMResetDone();
 }
 function onViewerSelectionChanged(event) {
 
@@ -815,47 +1047,27 @@ function onViewerSelectionChanged(event) {
 
     if (event.dbIdArray.length === 1) {
 
-        viewer.getProperties(event.dbIdArray[0], function(data) {
+        let proceed = true;
+        let parents = getComponentParents(event.dbIdArray[0]);
 
-            let partNumber = data.name.split(':')[0];
-            let propertyMatch = false;
+        for(let parent of parents) {
+            if(proceed) {
+                let partNumber = parent.partNumber;
 
-            for(partNumberProperty of config.viewer.partNumberProperties) {
-                for(property of data.properties) {
-                    if(property.displayName === partNumberProperty) {
-                        partNumber = property.displayValue;
-                        console.log(partNumber);
-                        if(partNumber.indexOf(':') > -1) { partNumber = partNumber.split(':')[0]; }
-                        propertyMatch = true;
-                        break;
-                    }
+                if(!isBlank(partNumber)) {
+                    $('.bom-item').each(function() {
+                        if(proceed) {
+                            if($(this).attr('data-part-number') === partNumber) {
+                                proceed = false;
+                                $(this).removeClass('selected');
+                                $(this).click();
+                                bomDisplayItem($(this));
+                            }
+                        }
+                    });
                 }
-                if(propertyMatch) break;
             }
-
-            $('.bom-item').each(function() {
-
-                if($(this).attr('data-part-number') === partNumber) {
-                
-                    let link = $(this).attr('data-link');
-
-                    if($('#details').attr('data-link') !== link){
-                        insertAttachments(link, paramsAttachments);
-                        insertItemDetails(link);
-                        setProcesses(link);
-                    }
-                
-                }
-
-            });
-
-            $('.spare-part').each(function() {
-                $(this).hide();
-                if($(this).hasClass('selected')) $(this).show();
-                if($(this).attr('data-part-number') === partNumber) $(this).show();
-            });
-
-        });
+        }
 
     } else {
 
@@ -864,9 +1076,57 @@ function onViewerSelectionChanged(event) {
     }
 
 }
-function updateViewer(partNumber) {
+function getFirstBOMParent() {
 
-    console.log(partNumber);
+    console.log('getFirstBOMParent START');
+
+
+    
+
+    let paths = viewerGetSelectedComponentPaths();
+    let result = null;
+
+    console.log(paths);
+
+    for(let path of paths) {
+
+        if(isBlank(result)) {
+
+        console.log(path);
+
+        let parents = path.split('|');
+
+        for(let parent of parents) {
+
+            if(isBlank(result)) {
+
+            console.log(parent);
+            
+            let partNumber = parent.split(';')[0];
+
+
+            console.log(partNumber);
+
+            $('.bom-item').each(function() {
+                if($(this).attr('data-part-number') === partNumber) {
+                    console.log('found it');
+
+                    result = $(this);
+                }
+            });
+
+        }
+
+
+        }
+    }
+
+    }
+
+    return result;
+
+}
+function updateViewer(partNumber) {
 
     if(typeof partNumber === 'undefined') partNumber = '';
 
@@ -874,13 +1134,11 @@ function updateViewer(partNumber) {
 
     let selectedBOMNode = $('.bom-item.selected').first();
 
-    console.log(partNumber);
-
     if(partNumber !== '') {
-        viewerSelectModel(partNumber, true, false);
+        viewerSelectModel(partNumber, { 'highlight' : false , 'isolate' : true } );
     } else if(selectedBOMNode.length === 1) {
         partNumber = selectedBOMNode.attr('data-part-number');
-        viewerSelectModel(partNumber, true, false);
+        viewerSelectModel(partNumber, { 'highlight' : false ,'isolate' : true } );
     } else {
         viewerResetSelection(true, false);
     }
@@ -890,90 +1148,38 @@ function updateViewer(partNumber) {
 }
 
 
-// Display selected item's Change Processes
-function setProcesses(link) {
 
-    $('#processes-toolbar').show();
-    $('#processes-processing').show();
-
-    let elemParent = $('#processes-list');
-        elemParent.attr('data-source', link);
-        elemParent.html('');
-
-    insertChangeProcesses(link, 'processes');
-
-    // $.get('/plm/relationships', { 'link' : link }, function(response) {
-    //     if(response.params.link === $('#processes-list').attr('data-source')) {
-    //         insertRelationships($('#processes-list'), response.data);
-    //         $('#processes-processing').hide();
-    //     }
-    // });
-
-}
-
-
-// Set list of selected spare parts for order submittal
+// Update request creation dialog upon opening and cosing
 function setRequestList() {
 
-    let elemParent = $('#request-list');
-        elemParent.html('');
-
-    $('.spare-part.selected').each(function() {
-
-        let number  = $(this).find('.spare-part-number').html();
-        let title   = $(this).find('.spare-part-title').html();
-        let stock   = $(this).find('.spare-part-stock').html();
-        
-        let elemItem = $('<div></div>');
-            elemItem.attr('data-link', $(this).attr('data-link'));
-            elemItem.addClass('request-line');
-            elemItem.appendTo(elemParent);
-
-        let elemItemName = $('<div></div>');
-            elemItemName.addClass('request-item');
-            elemItemName.html(number + ' - ' + title);
-            elemItemName.appendTo(elemItem);
-
-        let elemItemQuantity = $('<div></div>');
-            elemItemQuantity.addClass('request-quantity');
-            elemItemQuantity.appendTo(elemItem);
-
-        $('<input></input>').appendTo(elemItemQuantity)
-            .addClass('request-input')    
-            .val('1');
-
-        $('<div></div>').appendTo(elemItem)
-            .addClass('request-stock')
-            .html(stock);
-
-        let elemItemDelete = $('<div></div>');
-            elemItemDelete.addClass('request-delete');
-            elemItemDelete.addClass('button');
-            elemItemDelete.addClass('red');
-            elemItemDelete.addClass('icon');
-            elemItemDelete.addClass('icon-delete');
-            elemItemDelete.appendTo(elemItem);
-            elemItemDelete.click(function() {
-                let lineItem = $(this).closest('.request-line');
-                let link = lineItem.attr('data-link');
-                $('.spare-part').each(function() {
-                    if($(this).attr('data-link') === link) {
-                        $(this).removeClass('selected');
-                    }
-                });
-                lineItem.remove();
-            });
-
+    $('#cart').addClass('collapsed');
+    
+    $('#cart-list').children().each(function() {
+        $(this).appendTo($('#request-list'));
     });
 
+    adjustCartHeight();
+}
+function clearRequestList() {
+    
+    $('#cart').removeClass('collapsed');
+
+    $('#request-list').children().each(function() {
+        $(this).appendTo($('#cart-list'));
+    });
+
+    adjustCartHeight();
 }
 
 
 // Create Spare Parts Request in PLM
 function submitRequest() {
 
-    $('#request').hide();
+    if($('#request-creation-submit').hasClass('disabled')) return;
+
+    $('#request-creation').hide();
     $('#overlay').show();
+    $('#overlay-processing').show();
 
     let params = {
         'wsId'     : wsSparePartsRequests.id,
@@ -983,14 +1189,19 @@ function submitRequest() {
                 'fieldId'   : 'LINKED_ITEM',
                 'value'     : { 'link' : '/api/v3/workspaces/' + wsId + '/items/' + dmsId },
                 'type'      : 'picklist'
-            },{
-                'fieldId'   : 'COMMENTS',
-                'value'     : $('#comments').val(),
-                'type'      : 'string'
-            }]
-                
+            }]   
         }]
     } 
+
+    addFieldToPayload(params.sections, wsSparePartsRequests.sections, null, 'REQUESTOR_NAME', $('#request-name').val());
+    addFieldToPayload(params.sections, wsSparePartsRequests.sections, null, 'REQUESTOR_COMPANY', $('#request-company').val());
+    addFieldToPayload(params.sections, wsSparePartsRequests.sections, null, 'REQUESTOR_EMAIL', $('#request-e-mail').val());
+    addFieldToPayload(params.sections, wsSparePartsRequests.sections, null, 'REQUESTOR_ADDRESS', $('#request-address').val());
+    addFieldToPayload(params.sections, wsSparePartsRequests.sections, null, 'REQUESTOR_POSTAL_CODE', $('#request-postal').val());
+    addFieldToPayload(params.sections, wsSparePartsRequests.sections, null, 'REQUESTOR_CITY', $('#request-city').val());
+    addFieldToPayload(params.sections, wsSparePartsRequests.sections, null, 'REQUESTOR_COUNTRY_CODE', $('#request-country').val());
+    addFieldToPayload(params.sections, wsSparePartsRequests.sections, null, 'REQUEST_SHIPPING_ADDRESS', $('#request-shipping-address').val());
+    addFieldToPayload(params.sections, wsSparePartsRequests.sections, null, 'COMMENTS', $('#reqeust-comments').val());
 
     $.post({
         url         : '/plm/create', 
@@ -1000,11 +1211,11 @@ function submitRequest() {
 
         if(!response.error) {
 
-            $('.request-item').each(function() {
+            $('#request-list').children().each(function() {
 
-                let link         = $(this).parent().attr('data-link');
-                let quantity     = $(this).next().children().first().val();
-                let availability = $(this).siblings('.request-stock').html();
+                let link         = $(this).attr('data-link');
+                let quantity     = $(this).find('.cart-quantity-input').val();
+                let availability = $(this).find('.spare-part-stock-label').html();
 
                 let params = {
                     'wsId' : wsSparePartsRequests.id,
@@ -1020,6 +1231,8 @@ function submitRequest() {
 
             });
 
+            $('#request-list').children().each(function() { $(this).prependTo($('#items-list')); });
+
             showSuccessMessage('Request has been created successfuly.');
 
         }
@@ -1027,251 +1240,6 @@ function submitRequest() {
         $('#overlay').hide();
         $('.spare-part.selected').each(function() { $(this).click(); });
 
-    });
-
-}
-
-
-
-
-// IoT Extensions
-let urlRC = document.location.href.split('/service')[0] + '/apps/printer';
-let chartEntries = 30;
-let chartJobs, chartSupplies, chartTemperature;
-
-
-async function init() {
-
-    if(maintenanceMode === false) return;
-
-    do {
-        await sleep(1000);
-        updateCharts();
-    } while(true)
-
-}  
-
-function enableIOT() {
-
-    maintenanceMode = true;
-
-    $('#tab-charts').removeClass('hidden');
-
-    initCharts();   
-    setQRCodes(); 
-
-}
-
-function sleep(ms) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms);
-    });
-}
-function initCharts() {
-    
-    chartJobs = new Chart($('#chart-jobs'), {
-        type: 'bar',
-        data: {
-            labels : [],
-            datasets: [
-                { label : 'large' ,  data: [],  backgroundColor : '#ee4444' },
-                { label : 'medium',  data: [],  backgroundColor : '#ffa600' },
-                { label : 'small' ,  data: [],  backgroundColor : '#87bc40' }
-            ]
-        },
-        options: {
-            legend : {
-                display : false
-            },
-            layout : {
-                padding : {
-                    bottom : 40
-                }
-            },
-            maintainAspectRatio: false,
-            scales: {
-                yAxes: [{
-                    stacked : true,
-                    ticks: {
-                        beginAtZero: true
-                    }
-                }],
-                xAxes: [{
-                    stacked : true,
-                    display : false
-                }]
-            }
-        }
-    });
-
-    chartSupplies = new Chart($('#chart-supplies'), {
-        type: "line",
-        data: {
-            datasets: [{
-                backgroundColor : '#e8f6fe',
-                borderColor : '#0696d7',
-                data: [],
-                pointStyle : 'rect'
-            }]
-        },
-        options: {
-            legend : {
-                display : false
-            },
-            layout : {
-                padding : {
-                    bottom : 40
-                }
-            },
-            maintainAspectRatio: false,
-            scales: {
-                yAxes: [{
-                    ticks: {
-                        beginAtZero: true,
-                        max : 100,
-                        steps : 10
-                    }
-                }],
-                xAxes: [{
-                    display : false,
-                    type: 'time'
-                }]
-            }
-        }
-    });
-
-    chartTemperature = new Chart($('#chart-temperature'), {
-        type: "line",
-        data: {
-            datasets: [{
-                data: [],
-                backgroundColor : [ '#f5f7fa' ]
-            }]
-        },
-        options: {
-            legend : {
-                display : false
-            },
-            maintainAspectRatio: false,
-            scales: {
-                yAxes: [{
-                    ticks: {
-                        beginAtZero: true
-                    }
-                }],
-                xAxes: [{
-                    display : false,
-                    type: 'time'
-                }]
-            }
-        }
-    });
-
-    init();
-
-}
-function updateCharts() {
-
-    let now = new Date();
-    
-    $.get('/extensions/get-printer-status', {}, function(response) {
-
-        chartJobs.data.labels.push('');
-        chartJobs.data.datasets[0].data.push(response.jobsl);
-        chartJobs.data.datasets[1].data.push(response.jobsm);
-        chartJobs.data.datasets[2].data.push(response.jobss);
-
-        if(chartJobs.data.datasets[0].data.length > chartEntries) {
-            chartJobs.data.labels.splice(0,1);
-            chartJobs.data.datasets[0].data.splice(0,1);
-            chartJobs.data.datasets[1].data.splice(0,1);
-            chartJobs.data.datasets[2].data.splice(0,1);
-        }
-    
-        chartJobs.update();
-
-        chartSupplies.data.datasets[0].data.push({
-            x : now.getTime(),
-            y : response.supplies
-        });
-
-        if(chartSupplies.data.datasets[0].data.length > chartEntries) {
-            chartSupplies.data.datasets[0].data.splice(0,1);
-        }
-    
-        chartSupplies.update();
-
-        chartTemperature.data.datasets[0].data.push({
-            x : now.getTime(),
-            y : response.temperature
-        });
-
-        if(chartTemperature.data.datasets[0].data.length > chartEntries) {
-            chartTemperature.data.datasets[0].data.splice(0,1);
-        }
-    
-        chartTemperature.update();
-
-        setWearPartStatus('wp1', response.wp1);
-        setWearPartStatus('wp2', response.wp2);
-        setWearPartStatus('wp3', response.wp3);
-
-        setWearPartColors(response);
-
-    })
-
-}
-function setWearPartStatus(id, value ) {
-
-    let color = '#87bc40';
-
-    if(value < 15) color = '#ee4444';
-    else if(value <= 25) color = '#ffa600';
-
-    $('#' + id).css('background', 'linear-gradient(to right, ' + color + ' 0%, ' + color + ' ' + value + '%, var(--color-gray-100) ' + value + '%, var(--color-gray-100) 100%)');
-
-}
-function setWearPartColors(response) {
-
-    if(maintenanceMode) {
-
-        let listRed    = [];
-        let listYellow = [];
-        let listGreen  = [];
-
-        setWearPartColor(response.wp1, '001-ASY-0035', listRed, listYellow, listGreen);
-        setWearPartColor(response.wp2, '001-MCH-0004', listRed, listYellow, listGreen);
-        setWearPartColor(response.wp3, '001-MCH-0005', listRed, listYellow, listGreen);
-
-        viewerSetColors(listRed    , new THREE.Vector4(1,   0, 0, 0.5), false);
-        viewerSetColors(listYellow , new THREE.Vector4(1, 0.5, 0, 0.5), false);
-        viewerSetColors(listGreen  , new THREE.Vector4(0,   1, 0, 0.5), false);
-        
-    }
-
-
-}
-function setWearPartColor(value, partNumber, listRed, listYellow, listGreen) {
-
-    let isSelected = false;
-
-    $('#bom-table').children('.selected').each(function() {
-        if($(this).attr('data-part-number') === partNumber) {
-            isSelected = true;
-        }
-    });
-
-    if(!isSelected) {
-        if(value < 15) listRed.push(partNumber);
-        else if(value <= 25) listYellow.push(partNumber);
-        else listGreen.push(partNumber);
-    }
-
-}
-function setQRCodes() {
-
-    $('.qr-code').each(function() {
-        $(this).attr('src', 'https://chart.googleapis.com/chart?cht=qr&chs=180x180&chl=' + urlRC);
     });
 
 }

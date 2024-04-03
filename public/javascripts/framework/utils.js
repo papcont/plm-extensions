@@ -1,6 +1,26 @@
-let languageId  = '1';
-let isiPad      = navigator.userAgent.match(/iPad/i)   != null;
-let isiPhone    = navigator.userAgent.match(/iPhone/i) != null;
+let userAccount     = { displayName : '', groupsAssigned : [] };
+let languageId      = '1';
+let username        = '';
+let isiPad          = navigator.userAgent.match(/iPad/i)   != null;
+let isiPhone        = navigator.userAgent.match(/iPhone/i) != null;
+
+
+let settings = {
+    details         : {},
+    attachments     : {},
+    bom             : {},
+    flatBOM         : {},
+    grid            : {},
+    processes       : {},
+    recents         : {},
+    bookmarks       : {},
+    mow             : {},
+    workspaceViews  : {},
+    workspaceItems  : {},
+    workflowHistory : {}
+}
+
+const includesAny = (arr, values) => values.some(v => arr.includes(v));
 
 
 $(document).ready(function() {  
@@ -21,6 +41,66 @@ $(document).ready(function() {
 
 });
 
+
+// Get list of disabled features
+function getApplicationFeatures(app, callback) {
+
+    $('body').children().addClass('hidden');
+
+    $('<div></div>').appendTo('body')
+        .attr('id', 'startup')
+        .addClass(getSurfaceLevel($('body')));
+
+    $('<div></div>').appendTo($('#startup'))
+        .attr('id', 'startup-logo');
+
+    if(isBlank(config[app].features)) {
+        $('body').children().removeClass('hidden');
+        getApplicationFeaturesDone(app);
+        callback();
+    } else {
+
+        $.get('/plm/groups-assigned', {}, function(response) {
+            
+            let settingsFeatures = config[app].features;
+            
+            for(let group of response.data) userAccount.groupsAssigned.push(group.shortName);
+
+            for(let feature of Object.keys(features)) {
+                if(feature !== 'viewer') {
+                    for(let settingFeature of Object.keys(settingsFeatures)) {
+                        if(feature === settingFeature) {
+                            if(typeof settingsFeatures[settingFeature] === 'object') {
+                                features[feature] = includesAny(userAccount.groupsAssigned, settingsFeatures[settingFeature]);
+                            } else features[feature] = settingsFeatures[settingFeature];
+                        }
+                    }
+                }
+            }
+
+            if(!isBlank(features.viewer)) {
+                if(!isBlank(settingsFeatures.viewer)) {
+                    for(let feature of Object.keys(features.viewer)) {
+                        for(let settingFeature of Object.keys(settingsFeatures.viewer)) {
+                            if(feature === settingFeature) {
+                                if(typeof settingsFeatures.viewer[settingFeature] === 'object') {
+                                    features.viewer[feature] = includesAny(userAccount.groupsAssigned, settingsFeatures.viewer[settingFeature]);
+                                } else features.viewer[feature] = settingsFeatures.viewer[settingFeature];
+                            }
+                        }
+                    }
+                }
+            }          
+
+            $('body').children().removeClass('hidden');
+            getApplicationFeaturesDone(app);
+            callback();
+
+        });
+    }
+
+}
+function getApplicationFeaturesDone(app) {}
 
 
 // Validate if given variable is null or empty
@@ -73,46 +153,36 @@ function appendProcessing(id, hidden) {
 
 
 // Insert messaging and process indicator for the viewer
-function appendViewerProcessing() {
+function appendViewerProcessing(id, hidden) {
     
-    let elemViewer = $('#viewer');
+    if(isBlank(id)) id = 'viewer';
+    if(isBlank(hidden)) hidden = true;
+
+    let elemViewer = $('#' + id);
     
     if(elemViewer.length === 0) return;
     
-    let elemWrapper = $('<div></div>');
-        elemWrapper.attr('id', 'viewer-processing');
-        elemWrapper.addClass('viewer');
-        elemWrapper.insertAfter(elemViewer);
+    let elemWrapper = $('<div></div>').insertAfter(elemViewer)
+        .attr('id', 'viewer-processing')
+        .addClass('viewer');
+    
+    let elemProcessing = $('<div></div>').appendTo(elemWrapper)
+        .addClass('processing');
 
-    let elemProcessing = $('<div></div>');
-        elemProcessing.addClass('processing');
-        elemProcessing.appendTo(elemWrapper);
+    $('<div></div>').appendTo(elemProcessing).addClass('bounce1');
+    $('<div></div>').appendTo(elemProcessing).addClass('bounce2');
+    $('<div></div>').appendTo(elemProcessing).addClass('bounce3');
 
-    let elemBoune1 = $('<div></div>');
-        elemBoune1.addClass('bounce1');
-        elemBoune1.appendTo(elemProcessing);
+    let elemMessage = $('<div></div>').insertAfter(elemViewer)
+        .attr('id', 'viewer-message')
+        .addClass('viewer');
 
-    let elemBoune2 = $('<div></div>');
-        elemBoune2.addClass('bounce2');
-        elemBoune2.appendTo(elemProcessing);
+    $('<span></span>').appendTo(elemMessage)
+        .addClass('icon')
+        .html('view_in_ar');
 
-    let elemBoune3 = $('<div></div>');
-        elemBoune3.addClass('bounce3');
-        elemBoune3.appendTo(elemProcessing);
-
-    let elemMessage = $('<div></div>');
-        elemMessage.attr('id', 'viewer-message');
-        elemMessage.addClass('viewer');
-        elemMessage.insertAfter(elemViewer);
-
-    let elemMessageIcon = $('<span></span>');
-        elemMessageIcon.addClass('icon');
-        elemMessageIcon.html('view_in_ar');
-        elemMessageIcon.appendTo(elemMessage);
-
-    let elemMessageText = $('<span></span>');
-        elemMessageText.html('No Viewble Found');
-        elemMessageText.appendTo(elemMessage);
+    $('<span></span>').appendTo(elemMessage)
+        .html('No Viewble Found');
 
     let classNames = elemViewer.attr('class');
 
@@ -172,10 +242,11 @@ function appendNoDataFound(id, icon, text) {
         .addClass('no-data')
         .attr('id', id + '-no-data')
         .hide();
-
-     $('<div></div>').appendTo(elemNoData)
+        
+    $('<div></div>').appendTo(elemNoData)
         .addClass('no-data-icon')
         .addClass('icon')
+        .addClass('filled')
         .addClass(icon);
 
     $('<div></div>').appendTo(elemNoData)
@@ -256,9 +327,50 @@ function getSurfaceLevel(elem) {
     if(elem.hasClass('surface-level-4')) return 'surface-level-4';
     if(elem.hasClass('surface-level-5')) return 'surface-level-5';
 
+    if(elem.parent().hasClass('surface-level-1')) return 'surface-level-1';
+    if(elem.parent().hasClass('surface-level-2')) return 'surface-level-2';
+    if(elem.parent().hasClass('surface-level-3')) return 'surface-level-3';
+    if(elem.parent().hasClass('surface-level-4')) return 'surface-level-4';
+    if(elem.parent().hasClass('surface-level-5')) return 'surface-level-5';
+
+    if(elem.parent().parent().hasClass('surface-level-1')) return 'surface-level-1';
+    if(elem.parent().parent().hasClass('surface-level-2')) return 'surface-level-2';
+    if(elem.parent().parent().hasClass('surface-level-3')) return 'surface-level-3';
+    if(elem.parent().parent().hasClass('surface-level-4')) return 'surface-level-4';
+    if(elem.parent().parent().hasClass('surface-level-5')) return 'surface-level-5';
+
     return 'surface-level-0';
 
 }
+
+
+// Set user profile picture
+function insertAvatar() {
+
+    let elemAvatar = $('#header-avatar');
+
+    if(elemAvatar.length === 0) return;
+
+    $.get('/plm/me', {}, function(response) {
+
+        userAccount.displayName  = response.data.displayName;
+        userAccount.email        = response.data.email;
+        userAccount.organization = response.data.organization;
+        
+        elemAvatar.html('')
+            .addClass('no-icon')
+            .attr('title', response.data.displayName + ' @ ' + tenant)
+            .css('background', 'url(' + response.data.image.large + ')')
+            .css('background-position', 'center')
+            .css('background-size', elemAvatar.css('height'));
+
+        insertAvatarDone(response.data);
+
+
+    });
+
+}
+function insertAvatarDone(data) {}
 
 
 // Panel Header collapse / expand
@@ -523,34 +635,59 @@ function getBrowserLanguage() {
 }
 
 
+// Generate and return Panel Header
+function genPanelHeader(id, headerToggle, headerLabel) {
+
+    let elemHeader = $('<div></div>', {
+        id : id + '-header'
+    }).addClass('panel-header');
+
+    if(headerToggle) {
+
+        $('<div></div>').appendTo(elemHeader)
+            .addClass('panel-header-toggle')
+            .addClass('icon')
+            .addClass('icon-collapse');
+
+        elemHeader.addClass('with-toggle');
+        elemHeader.click(function() {
+            togglePanelHeader($(this));
+        });
+
+    }
+
+    $('<div></div>').appendTo(elemHeader)
+        .addClass('panel-title')
+        .attr('id', id + '-title')
+        .html(headerLabel);
+
+    return elemHeader;
+
+}
+
+
 // Generate Tile HTML
 function genTile(link, urn, image, icon, title, subtitle) {
 
-    let elemTile = $('<div></div>');
-        elemTile.addClass('tile');
-        elemTile.attr('data-title', title);
+    let elemTile = $('<div></div>')
+        .addClass('tile')
+        .attr('data-title', title);
 
     if(link !== '') elemTile.attr('data-link', link);
-    if(urn  !== '') elemTile.attr('data-urn', urn);
+    if(urn  !== '') elemTile.attr('data-urn',  urn );
 
-    let elemTileImage = $('<div></div>');
-        elemTileImage.addClass('tile-image');
-        elemTileImage.appendTo(elemTile);
+    let elemTileImage   = $('<div></div>').appendTo(elemTile).addClass('tile-image');
+    let elemTileDetails = $('<div></div>').appendTo(elemTile).addClass('tile-details');
 
-    let elemTileDetails = $('<div></div>');
-        elemTileDetails.addClass('tile-details');
-        elemTileDetails.appendTo(elemTile);
-
-    let elemTileTitle = $('<div></div>');
-        elemTileTitle.addClass('tile-title');
-        elemTileTitle.html(title);
-        elemTileTitle.appendTo(elemTileDetails);
+    $('<div></div>').appendTo(elemTileDetails)
+        .addClass('tile-title')
+        .html(title);
 
     if(typeof subtitle !== 'undefined') {
-        let elemTileText = $('<div></div>');
-            elemTileText.addClass('tile-subtitle');
-            elemTileText.html(subtitle);
-            elemTileText.appendTo(elemTileDetails);
+        $('<div></div>')
+            .addClass('tile-subtitle')
+            .html(subtitle)
+            .appendTo(elemTileDetails);
     }
         
     getImageFromCache(elemTileImage, { 'link' : image }, icon, function() {});
@@ -562,8 +699,6 @@ function genTile(link, urn, image, icon, title, subtitle) {
 
 // Append further fields to HTML tile
 function appendTileDetails(elemTile, data) {
-
-    // used by reviews.js
 
     let elemDetails = elemTile.find('.tile-details').first();
 
@@ -604,7 +739,7 @@ function appendTileDetails(elemTile, data) {
 // Search in list of tiles
 function searchInTiles(id, elemInput) {
 
-    let elemContent = $('#' + id);
+    let elemContent = $('#' + id + '-list');
     let filterValue = elemInput.val().toLowerCase();
 
     if(isBlank(filterValue)) {
@@ -625,9 +760,6 @@ function searchInTiles(id, elemInput) {
                 let value = $(this).html().toLowerCase();
                 if(value.indexOf(filterValue) > -1) elemTile.show();
             });
-
-            // let value = $(this).find('.tile-title').html().toLowerCase();
-            // if(value.indexOf(filterValue) > -1) $(this).show();
         });
 
         elemContent.children('.workspace-items-group').each(function() {
@@ -824,6 +956,46 @@ function getSearchResultFieldValue(item, fieldId, defaultValue) {
 
 
 
+// Get Workspace view record field value
+function getWorkspaceViewRowValue(row, fieldId, defaultValue, property) {
+
+    if(isBlank(row)) return defaultValue;
+
+    for(let field of row.fields) {
+        if(field.id === fieldId) {
+
+            let value = field.value;
+
+            if(isBlank(value)) return defaultValue;
+
+
+            if(typeof value === 'object') {
+
+                if(Array.isArray(value)) return value;
+                else if(typeof property === 'undefined') return field.value.link;
+                else return field.value[property];
+                
+            } else if(field.type.title === 'Paragraph') {
+
+                var txt = document.createElement("textarea");
+                    txt.innerHTML = field.value;
+                return txt.value;
+
+            } else {
+
+                return field.value;
+            }
+
+        }
+
+    }
+
+    return defaultValue;
+
+}
+
+
+
 // Retrieve section id of given field
 function getFieldSectionId(sections, fieldId) {
 
@@ -922,10 +1094,10 @@ function getBOMCellValue(urn, key, nodes, property) {
 
     if(urn === '') return '';
 
-    for(node of nodes) {
+    for(let node of nodes) {
         if(node.item.urn === urn) {
 
-            for(field of node.fields) {
+            for(let field of node.fields) {
                 if((field.metaData.urn === key) || (field.metaData.link === key)) {
 
                     if(field.value === null) { return '';
@@ -948,7 +1120,7 @@ function getBOMCellValue(urn, key, nodes, property) {
 }
 function getFlatBOMCellValue(flatBom, link, key, property) {
 
-    for(item of flatBom) {
+    for(let item of flatBom) {
 
         if(item.item.link === link) {
 
@@ -977,7 +1149,7 @@ function getBOMEdgeValue(edge, key, property, defaultValue) {
 
     if(typeof defaultValue === 'undefined') defaultValue = '';
 
-    for(field of edge.fields) {
+    for(let field of edge.fields) {
         if(field.metaData.urn === key) {
             if(typeof field.value === 'object') {
                 if(typeof property === 'undefined') return field.value.link;
@@ -994,7 +1166,7 @@ function getBOMEdgeValue(edge, key, property, defaultValue) {
     
 }
 function getBOMNodeLink(id, nodes) {
-    for(node of nodes) {
+    for(let node of nodes) {
         if(node.item.urn === id) {
             return node.item.link;
         }
@@ -1003,10 +1175,33 @@ function getBOMNodeLink(id, nodes) {
 }
 
 
+
+// Validate if there are restricted columns in the BOM to validate item access permissions
+function hasBOMRestrictedFields(urn, nodes) {
+
+    if(urn === '') return '';
+
+    for(let node of nodes) {
+        if(node.item.urn === urn) {
+
+            for(let field of node.fields) {
+                if('context' in field) {
+
+                    if(field.context === 'SECURITY') return true;
+
+                }
+            }
+        }
+    }
+
+    return false;
+    
+}
+
+
+
 // Retrieve field value from item's grid row data
 function getGridRowValue(row, fieldId, defaultValue, property) {
-
-    // used by configurator.js
 
     for(var i = 1; i < row.rowData.length; i++) {
 
@@ -1135,10 +1330,9 @@ function getFirstImageFieldValue(sections) {
 // Display image from cache, use defined placeholder icon while processing
 function getImageFromCache(elemParent, params, icon, onclick) {
 
-    let elemIcon = $('<span></span>');
-        elemIcon.addClass('icon');
-        elemIcon.html(icon);
-        elemIcon.appendTo(elemParent);
+    $('<span></span>').appendTo(elemParent)
+        .addClass('icon')
+        .addClass(icon);
 
     if(typeof params === 'undefined')  return;
     if(params === null)  return;
@@ -1157,10 +1351,9 @@ function getImageFromCache(elemParent, params, icon, onclick) {
 
         if(document.location.href.indexOf('/addins/') > -1) src = '../' + src;
 
-        let elemImage = $('<img>');
-            elemImage.attr('src', src);
-            elemImage.appendTo(elemParent);
-            elemImage.click(function() {
+        $('<img>').appendTo(elemParent)
+            .attr('src', src)
+            .click(function() {
                 onclick($(this));
             });
 
@@ -1196,6 +1389,8 @@ function addFieldToPayload(payload, sections, elemField, fieldId, value, skipEmp
             'value'   : value
         };
     }
+
+    if(sectionId === -1) return;
 
     for(section of payload) {
         if(section.id === sectionId) {

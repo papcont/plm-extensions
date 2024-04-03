@@ -3,143 +3,92 @@ let cachePicklists  = []; // keys: link, data
 let cacheSections   = [];
 let cacheWorkspaces = [];
 let urnsBOMFields   = [];
-let username        = '';
 let requestsLimit   = 5;
-let settings        = {
-    attachments : {},
-    bom         : {},
-    flatBOM     : {}
-}
 
-
-
-// Set user profile picture
-function insertAvatar() {
-
-    let elemAvatar = $('#header-avatar');
-
-    if(elemAvatar.length === 0) return;
-
-    $.get( '/plm/me', {}, function(response) {
-
-        username = response.data.displayName;
-        
-        let elemAvatar = $('#header-avatar');
-            elemAvatar.addClass('no-icon');
-            elemAvatar.html('');
-            elemAvatar.attr('title', response.data.displayName + ' @ ' + tenant);
-            elemAvatar.css('background', 'url(' + response.data.image.large + ')');
-            elemAvatar.css('background-position', 'center');
-            elemAvatar.css('background-size', elemAvatar.css('height'));
-
-    });
-
-}
 
 
 // Insert APS Viewer
-function insertViewer(link, color) {
+function insertViewer(link, params) {
 
     if(isBlank(link)) return;
-    if(typeof color === 'undefined') color = 255;
 
-    let elemInstance = $('#viewer').children('.adsk-viewing-viewer');
+    //  Set defaults for optional parameters
+    // --------------------------------------
+    let id           = 'viewer';    // ID of the DOM element where the viewer should be inserted
+    let fileId       = '';         // Select a specific file to be rendered by providing its unique ID
+    let filename     = '';         // Select a specific file to be rendered by providing its filename (matches the Title column in the attachments tab)
+    let extensionsIn = [];         // Defines the list of attachment file types to take into account when requesting the possible list of viewable files. Only file types included in this list will be taken into account.
+    let extensionsEx = [];         // Defines the list of attachment file types to exclued when requesting the possible list of viewable files. Files with an extension listed will not be considered as valid viewable.
+    let color        = '';         // Background color
+    
+    if( isBlank(params)             )       params = {};
+    if(!isBlank(params.id)          )           id = params.id;
+    if(!isBlank(params.fileId)      )       fileId = params.fileId;
+    if(!isBlank(params.filename)    )     filename = params.filename;
+    if(!isBlank(params.extensionsIn)) extensionsIn = params.extensionsIn;
+    if(!isBlank(params.extensionsEx)) extensionsEx = params.extensionsEx;
+    if(!isBlank(params.color)       )        color = params.color;
+
+    let elemInstance = $('#' + id).children('.adsk-viewing-viewer');
     if(elemInstance.length > 0) elemInstance.hide();
 
-    $('#viewer-processing').show();
-    $('#viewer').attr('data-link', link);1433
+    $('#' + id).attr('data-link', link);
 
-    $.get('/plm/get-viewables', { 'link' : link }, function(response) {
+    let elemProcessing = $('#' + id + '-processing')
 
-        if($('#viewer').attr('data-link') !== response.params.link) return;
+    if(elemProcessing.length === 0) {
+        appendViewerProcessing(id, false);
+    } else {
+        elemProcessing.show();
+        $('#' + id + '-message').hide();
+    }
+
+    $.get('/plm/get-viewables', { 
+        'link'          : link, 
+        'fileId'        : fileId, 
+        'filename'      : filename, 
+        'extensionsIn'  : extensionsIn, 
+        'extensionsEx'  : extensionsEx 
+    }, function(response) {
+
+        if($('#' + id).attr('data-link') !== response.params.link) return;
 
         if(response.data.length > 0) {
 
             let foundAssembly = false;
-            let viewable = response.data[0];
 
             $('body').removeClass('no-viewer');
 
-            for(viewable of response.data) {
+            for(let viewable of response.data) {
                 if((viewable.name.indexOf('.iam.dwf') > -1) || (viewable.name.indexOf('.ipt.dwf') > -1)) {
                     $('body').removeClass('no-viewer');
                     if(elemInstance.length > 0) elemInstance.show();
                     foundAssembly = true;
-                    insertViewerCallback(viewable);
-                    initViewer(viewable, color);
+                    insertViewerDone(id, viewable, response.data);
+                    initViewer(id, viewable, color);
                     break;
                 }
             }
 
             if(!foundAssembly) {
                 if(elemInstance.length > 0) elemInstance.show();
-                insertViewerCallback(response.data[0]);
-                initViewer(response.data[0], color);
+                insertViewerDone(id, response.data[0], response.data);
+                initViewer(id, response.data[0], color);
             }
 
         } else {
 
-            $('#viewer').hide();
-            $('#viewer-processing').hide();
-            $('#viewer-message').css('display', 'flex');
+            $('#' + id).hide();
+            $('#' + id + '-processing').hide();
+            $('#' + id + '-message').css('display', 'flex');
             $('body').addClass('no-viewer');
 
         }
     });
 
 }
-function insertViewerCallback() {}
+function insertViewerDone(id, viewable, viewables) {}
 
-
-// Insert Create Dialog
-function insertCreateForm(wsId, id, hideReadOnly, excludeSections, excludeFields) {
-
-    console.log('insertCreateForm');
-
-    if(isBlank(wsId)            ) return;
-    if(isBlank(id)              )               id = 'create';
-    if(isBlank(hideReadOnly)    )    hideReadOnly  = true;
-    if(isBlank(excludeSections)) excludeSections = [];
-
-    let sections = [];
-    let fields   = [];
-    
-    for(workspace of cacheWorkspaces) {
-        if(workspace.id === wsId) {
-            if(isBlank(sections)) sections = workspace.sections;
-            if(isBlank(fields)  ) fields   = workspace.fields;
-        }
-    }
-
-    console.log(sections);
-    
-    if(sections.length === 0) {
-
-        let requests = [
-            $.get('/plm/sections', { 'wsId' : wsId }),
-            $.get('/plm/fields', { 'wsId' : wsId })
-        ]
-
-        Promise.all(requests).then(function(responses) {
-
-            console.log(responses);
-
-            cacheWorkspaces.push({
-                'id'        : wsId,
-                'sections'  : requests[0].data,
-                'fields'    : requests[1].data
-            });
-
-            insertItemDetailsFields('', id, responses[0].data, responses[1].data, null, true, true, hideReadOnly, excludeSections, excludeFields)
-
-        });
-
-    } else {
-
-        insertItemDetailsFields('', id, sections, fields, null, true, true, hideReadOnly, excludeSections, excludeFields)
-    
-    }
-}
 
 
 // Insert Item Status
@@ -887,7 +836,188 @@ function getEditableFields(fields) {
 }
 
 
-// Parse details page to create record (created for client.js)
+// Insert Create Dialog
+function insertCreateForm(id, wsId, params) {
+
+    if(isBlank(id)  ) return;
+    if(isBlank(wsId)) return;
+
+    //  Set defaults for optional parameters
+    // --------------------------------------
+    let hideReadOnly    = true;             // Hide header with setting this to false
+    let sectionsIn      = [];    // Set the header text
+    let sectionsEx      = [];    // Set the header text
+    let fieldsIn        = [];    // Set the header text
+    let fieldsEx        = [];    // Set the header text
+
+    if( isBlank(params)             )       params = {};
+    if(!isBlank(params.hideReadOnly)) hideReadOnly = params.hideReadOnly;
+    if(!isBlank(params.sectionsIn)  )   sectionsIn = params.sectionsIn;
+    if(!isBlank(params.sectionsEx)  )   sectionsEx = params.sectionsEx;
+    if(!isBlank(params.fieldsIn)    )     fieldsIn = params.fieldsIn;
+    if(!isBlank(params.fieldsEx)    )     fieldsEx = params.fieldsEx;
+
+    let paramsForm = {
+        id           : id,
+        sections     : [],
+        fields       : [],
+        hideReadOnly : hideReadOnly,
+        sectionsIn   : sectionsIn,
+        sectionsEx   : sectionsEx,
+        fieldsIn     : fieldsIn,
+        fieldsEx     : fieldsEx,
+    }
+
+    wsId = wsId.toString();
+    
+    for(let workspace of cacheWorkspaces) {
+        if(workspace.id === wsId) {
+            if(!isBlank(workspace.sections)) paramsForm.sections = workspace.sections;
+            if(!isBlank(workspace.fields)  ) paramsForm.fields   = workspace.fields;
+        }
+    }
+    
+    if((paramsForm.sections.length === 0) || (paramsForm.fields.length === 0)) {
+
+        let requests = [
+            $.get('/plm/sections', { 'wsId' : wsId } ),
+            $.get('/plm/fields',   { 'wsId' : wsId } )
+        ]
+
+        Promise.all(requests).then(function(responses) {
+
+            let addToCache = true;
+
+            for(let workspace of cacheWorkspaces) {
+                if(workspace.id === wsId) {
+                    workspace.sections = responses[0].data;
+                    workspace.fields   = responses[0].data;
+                    addToCache         = false;
+                }
+            }
+
+            if(addToCache) {
+                cacheWorkspaces.push({
+                    'id'        : wsId,
+                    'sections'  : responses[0].data,
+                    'fields'    : responses[1].data
+                });
+            }
+
+            paramsForm.sections = responses[0].data;
+            paramsForm.fields   = responses[1].data;
+
+            insertCreateFormFields(paramsForm);
+
+        });
+
+    } else insertCreateFormFields(paramsForm);
+    
+}
+function insertCreateFormFields(params) {
+  
+    $('#' + params.id + '-processing').hide();
+
+    let elemSections = $('#' + params.id + '-sections');
+        elemSections.html('');
+
+    for(let section of params.sections) {
+
+        let isNew       = true;
+        let className   = 'expanded'
+
+        if(params.sectionsIn.length === 0 || params.sectionsIn.includes(section.name)) {
+            if(params.sectionsEx.length === 0 || !params.sectionsEx.includes(section.name)) {
+
+                for(let cacheSection of cacheSections) {
+                    if(cacheSection.urn === section.urn) {
+                        isNew = false;
+                        className = cacheSection.className;
+                    }
+                }
+
+                if(isNew) {
+                    cacheSections.push({
+                        'urn' : section.urn, 'className' : 'expanded'
+                    })
+                }
+
+                let elemSection = $('<div></div>')
+                    .attr('data-urn', section.urn)
+                    .addClass('section')
+                    .addClass(className)
+                    .html(section.name)
+                    .click(function() {
+                        $(this).next().toggle();
+                        $(this).toggleClass('expanded');
+                        $(this).toggleClass('collapsed');
+                        for(let cacheSection of cacheSections) {
+                            if(cacheSection.urn === $(this).attr('data-urn')) {
+                                cacheSection.className = $(this).hasClass('expanded') ? 'expanded' : 'collapsed';
+                            }
+                        }
+
+                    });
+
+                let elemFields = $('<div></div>')
+                    .addClass('section-fields')
+                    .attr('data-id', section.__self__.split('/')[6]);
+
+                if(className !== 'expanded') elemFields.toggle();
+
+                for(let sectionField of section.fields) {
+
+                    let fieldId = sectionField.link.split('/')[8];
+
+                    if(params.fieldsIn.length === 0 || params.fieldsIn.includes(fieldId)) {
+                        if(params.fieldsEx.length === 0 || !params.fieldsEx.includes(fieldId)) {
+
+                            if(sectionField.type === 'MATRIX') {
+                                for(let matrix of section.matrices) {
+                                    if(matrix.urn === sectionField.urn) {
+                                        for(let matrixFields of matrix.fields) {
+                                            for(let matrixField  of matrixFields) {
+                                                if(matrixField !== null) {
+                                                    for(let wsField of params.fields) {
+                                                        if(wsField.urn === matrixField.urn) {
+                                                            let matrixFieldId = matrixField.link.split('/')[8];
+                                                            if(params.fieldsIn.length === 0 || params.fieldsIn.includes(matrixFieldId)) {
+                                                                if(params.fieldsEx.length === 0 || !params.fieldsEx.includes(matrixFieldId)) {
+                                                                    insertField(wsField, null, elemFields, params.hideComputed, params.hideReadOnly, true);
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                for(let wsField of params.fields) {
+                                    if(wsField.urn === sectionField.urn)
+                                        insertField(wsField, null, elemFields, params.hideComputed, params.hideReadOnly, true);
+                                }
+                            }
+                                
+                        }
+                    }
+                }
+
+                if(elemFields.children().length > 0) {
+                    elemSection.appendTo(elemSections);
+                    elemFields.appendTo(elemSections);
+                }
+
+            }
+        }
+
+    }
+
+    $('#' + params.id + '-sections').show();
+    $('#' + params.id + '-processing').hide();
+
+}
 function submitCreateForm(wsId, elemParent, idMarkup, callback) {
 
     let params = { 
@@ -1065,7 +1195,567 @@ function validateForm(elemForm) {
 
 
 
-// Insert attachments as tiles
+// Insert Details
+function insertDetails(link, params) {
+
+    if(isBlank(link)) return;
+
+    //  Set defaults for optional parameters
+    // --------------------------------------
+    let id              = 'details';    // ID of the DOM element where the history should be inserted
+    let header          = true;         // Can be used to suppress addition of the panel header element
+    let headerLabel     = 'Details';    // Set the header label
+    let headerToggle    = false;        // Enable header toggles
+    let inline          = false;        // Display the grid inline with other elements
+    let reload          = false;        // Enable reload button for the history panel
+    let hideComputed    = false;        // Hide computed fields
+    let hideReadOnly    = false;        // Hide read only fields
+    let hideLabels      = false;        // Hide field labels
+    let suppressLinks   = false;        // When set to true, linking pick lists will not be shown as links, preventing users from opening the native PLM user interface
+    let editable        = false;        // Display form in edit mode
+    let compactDisplay  = false;        // Enable compact display
+    let sectionsIn      = [];           // Define list of columns to include by fieldId; columns not included in this list will not be shown at all. Keep empty to show all columns.
+    let sectionsEx      = [];           // Define list of columns to exclude by fieldId; columns in this list will not be shown at all. Keep empty to show all columns.
+    let fieldsIn        = [];           // Define list of columns to include by fieldId; columns not included in this list will not be shown at all. Keep empty to show all columns.
+    let fieldsEx        = [];           // Define list of columns to exclude by fieldId; columns in this list will not be shown at all. Keep empty to show all columns.
+
+    if( isBlank(params)               )         params = {};
+    if(!isBlank(params.id)            )             id = params.id;
+    if(!isBlank(params.header)        )         header = params.header;
+    if(!isBlank(params.headerLabel)   )    headerLabel = params.headerLabel;
+    if(!isBlank(params.headerToggle)  )   headerToggle = params.headerToggle;
+    if(!isBlank(params.inline)        )         inline = params.inline;
+    if(!isBlank(params.reload)        )         reload = params.reload;
+    if(!isBlank(params.hideComputed)  )   hideComputed = params.hideComputed;
+    if(!isBlank(params.hideReadOnly)  )   hideReadOnly = params.hideReadOnly;
+    if(!isBlank(params.hideLabels)    )     hideLabels = params.hideLabels;
+    if(!isBlank(params.suppressLinks) )  suppressLinks = params.suppressLinks;
+    if(!isBlank(params.editable)      )      columnsIn = params.editable;
+    if(!isBlank(params.compactDisplay)) compactDisplay = params.compactDisplay;
+    if(!isBlank(params.sectionsIn)    )      columnsIn = params.sectionsIn;
+    if(!isBlank(params.sectionsEx)    )      columnsIn = params.sectionsEx;
+    if(!isBlank(params.fieldsIn)      )      columnsIn = params.fieldsIn;
+    if(!isBlank(params.fieldsEx)      )       fieldsEx = params.fieldsEx;
+
+    settings.details[id]                = {};
+    settings.details[id].hideComputed   = hideComputed;
+    settings.details[id].hideReadOnly   = hideReadOnly;
+    settings.details[id].hideLabels     = hideLabels;
+    settings.details[id].suppressLinks  = suppressLinks;
+    settings.details[id].editable       = editable;
+    settings.details[id].sectionsIn     = sectionsIn;
+    settings.details[id].sectionsEx     = sectionsEx;
+    settings.details[id].fieldsIn       = fieldsIn;
+    settings.details[id].fieldsEx       = fieldsEx;
+
+    let elemParent = $('#' + id)
+        .addClass('details')
+        .html('');
+
+    if(header) {
+        
+        let elemHeader = genPanelHeader(id, headerToggle, headerLabel);
+            elemHeader.appendTo(elemParent);   
+
+        if(reload) {
+
+            let elemToolbar = $('<div></div>').appendTo(elemHeader)
+                .addClass('panel-toolbar')
+                .attr('id', id + '-toolbar');
+
+            $('<div></div>').appendTo(elemToolbar)
+                .addClass('button')
+                .addClass('icon')
+                .addClass('icon-refresh')
+                .attr('id', id + '-reload')
+                .attr('title', 'Reload this view')
+                .click(function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertDetailsData(id);
+                });
+
+        }
+    }
+
+    let elemContent = $('<div></div>').appendTo(elemParent)
+        .attr('id', id + '-content')
+        .attr('data-link', link)
+        .addClass('grid-content')
+        .addClass('no-scrollbar');
+
+    if(compactDisplay) elemContent.addClass('compact')
+    if(!inline) elemContent.addClass('panel-content')
+
+    appendProcessing(id, true);
+    insertDetailsData(id);
+
+}
+function insertDetailsData(id) {
+
+    let timestamp   = new Date().getTime();
+    let elemContent = $('#' + id + '-content');
+    let link        = elemContent.attr('data-link');
+    let requests    = [ $.get('/plm/details', { 'link' : link, 'timestamp' : timestamp }) ];
+    let sections    = null;
+    let fields      = null;
+
+    $('#' + id + '-content').hide();
+    $('#' + id + '-processing').show();
+
+    elemContent.attr('data-timestamp', timestamp).html('');
+
+    for(let workspace of cacheWorkspaces) {
+        if(workspace.id === link.split('/')[4]) {
+            sections = workspace.sections;
+            fields   = workspace.fields;
+        }
+    }
+
+    if(isBlank(sections)) requests.push($.get('/plm/sections', { 'link' : link }));
+    if(isBlank(fields)  ) requests.push($.get('/plm/fields'  , { 'link' : link }));
+
+    Promise.all(requests).then(function(responses) {
+
+        if(responses[0].params.timestamp === $('#' + id + '-content').attr('data-timestamp')) {
+            if(responses[0].params.link === $('#' + id + '-content').attr('data-link')) {
+
+                $('#' + id + '-processing').hide();
+                elemContent.show();
+
+                let elemParent   = $('#' + id + '-content');
+                let data         = responses[0].data;
+                let sectionsIn   = settings.details[id].sectionsIn;
+                let sectionsEx   = settings.details[id].sectionsEx;
+                let fieldsIn     = settings.details[id].fieldsIn;
+                let fieldsEx     = settings.details[id].fieldsEx;
+
+                if(responses.length > 1) sections  = responses[1].data;
+                if(responses.length > 2) fields    = responses[2].data;
+
+                if(responses.length > 1) {
+                    cacheWorkspaces.push({
+                        'id'                : responses[0].params.link.split('/')[4],
+                        'sections'          : sections,
+                        'fields'            : fields,
+                        'editableFields'    : null,
+                        'bomViews'          : null
+                    })
+                }
+
+                cacheSections = [];
+
+                for(let section of sections) {
+
+                    let sectionId   = section.__self__.split('/')[6];
+                    let isNew       = true;
+                    let className   = 'expanded'
+
+                    if(sectionsIn.length === 0 || sectionsIn.includes(section.name)) {
+                        if(sectionsEx.length === 0 || !sectionsEx.includes(section.name)) 
+
+                            for(let cacheSection of cacheSections) {
+                                if(cacheSection.urn === section.urn) {
+                                    isNew = false;
+                                    className = cacheSection.className;
+                                }
+                            }
+            
+                            if(isNew) {
+                                cacheSections.push({
+                                    'urn' : section.urn, 'className' : 'expanded'
+                                })
+                            }
+            
+                            let elemSection = $('<div></div>').appendTo(elemParent)
+                                .attr('data-urn', section.urn)
+                                .addClass('section')
+                                .addClass(className)
+                                .html(section.name)
+                                .appendTo(elemParent)
+                                .click(function() {
+                                    
+                                    $(this).next().toggle();
+                                    $(this).toggleClass('expanded');
+                                    $(this).toggleClass('collapsed');
+                
+                                    for(let cacheSection of cacheSections) {
+                                        if(cacheSection.urn === $(this).attr('data-urn')) {
+                                            cacheSection.className = $(this).hasClass('expanded') ? 'expanded' : 'collapsed';
+                                        }
+                                    }
+                
+                                });
+            
+                            let elemFields = $('<div></div>').appendTo(elemParent)
+                                .addClass('section-fields')
+                                .attr('data-id', sectionId);
+            
+                            if(className !== 'expanded') elemFields.toggle();
+            
+                            for(let sectionField of section.fields) {
+                
+                                let fieldId = sectionField.link.split('/')[8];
+
+                                if(fieldsIn.length === 0 || fieldsIn.includes(fieldId)) {
+                                    if(fieldsEx.length === 0 || !sectionsEx.includes(fieldId)) {
+                                        if(sectionField.type === 'MATRIX') {
+                                            for(let matrix of section.matrices) {
+                                                if(matrix.urn === sectionField.urn) {
+                                                    for(let matrixFields of matrix.fields) {
+                                                        for(let matrixField  of matrixFields) {
+                                                            if(matrixField !== null) {
+                                                                for(let wsField of fields) {
+                                                                    if(wsField.urn === matrixField.urn)
+                                                                    insertDetailsField(id, wsField, data, elemFields);
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            for(let wsField of fields) {
+                                                if(wsField.urn === sectionField.urn)
+                                                    insertDetailsField(id, wsField, data, elemFields);
+                                            }
+                                        }
+                                    }
+                                    
+                                }
+                            }
+            
+                        if(elemFields.children().length === 0) {
+                            elemFields.remove();
+                            elemSection.remove();
+                        }
+            
+                    }
+                }
+
+                insertItemDetailsDone(id, data, sections, fields);
+
+            }
+        }
+    });
+
+}
+function insertDetailsDone(id, data, sections, fields) {}
+function insertDetailsField(id, field, data, elemFields) {
+
+    let hideComputed  = settings.details[id].hideComputed;
+    let hideReadOnly  = settings.details[id].hideReadOnly;
+    let hideLabels    = settings.details[id].hideLabels;
+    let suppressLinks = settings.details[id].suppressLinks;
+    let editable      = settings.details[id].editable;
+
+    if(field.visibility === 'NEVER') return;
+    if((field.editability === 'NEVER') && hideReadOnly) return;
+    if(field.formulaField  && hideComputed) return;
+
+    let value    = null;
+    let urn      = field.urn.split('.');
+    let fieldId  = urn[urn.length - 1];
+    let readonly = (!editable || field.editability === 'NEVER' || (field.editability !== 'ALWAYS' && (typeof itemData === 'undefined')) || field.formulaField);
+
+    let elemField = $('<div></div').addClass('field');
+    let elemValue = $('<div></div>');
+    let elemInput = $('<input>');
+
+    if(!hideLabels) {
+        $('<div></div>').appendTo(elemField)
+            .addClass('field-label')
+            .html(field.name);
+    }
+
+    if(!isBlank(data)) {
+        for(let nextSection of data.sections) {
+            for(let itemField of nextSection.fields) {
+                if(itemField.hasOwnProperty('urn')) {
+                    let urn = itemField.urn.split('.');
+                    let itemFieldId = urn[urn.length - 1];
+                    if(fieldId === itemFieldId) {
+                        value = itemField.value;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    if(typeof value === 'undefined') value = null;
+
+    switch(field.type.title) {
+
+        case 'Auto Number':
+            elemValue.addClass('string');
+            elemValue.append(elemInput);
+            if(value !== null) elemInput.val(value);
+            break;
+
+        case 'Single Line Text':
+            if(field.formulaField) {
+                elemValue.addClass('computed');
+                elemValue.addClass('no-scrollbar');
+                elemValue.html($('<div></div>').html(value).text());
+            } else {
+                if(value !== null) elemInput.val(value);
+                if(field.fieldLength !== null) {
+                    elemInput.attr('maxlength', field.fieldLength);
+                    elemInput.css('max-width', field.fieldLength * 8 + 'px');
+                }
+                elemValue.addClass('string');
+                elemValue.append(elemInput);
+            }
+            break;
+
+        case 'Paragraph':
+            elemValue.addClass('paragraph');
+            if(editable) {
+                elemInput = $('<textarea></textarea>');
+                elemValue.append(elemInput);
+                // if(value !== null) elemValue.val($('<div></div>').html(value).text());
+                if(value !== null) elemInput.html(value);
+            } else {
+                elemValue.html($('<div></div>').html(value).text());
+            }
+            break;
+
+        case 'URL':
+            if(editable) {
+                elemValue.append(elemInput);
+                if(value !== null) elemInput.val(value);
+            } else {
+                elemInput = $('<div></div>');
+                elemValue.addClass('link');
+                elemValue.append(elemInput);
+                if(value !== '') {
+                    elemInput.attr('onclick', 'window.open("' + value + '")');
+                    elemInput.html(value);
+                }
+            }
+            break;
+
+        case 'Integer':
+            elemValue.addClass('integer');
+            elemValue.append(elemInput);
+            if(value !== null) elemInput.val(value);
+            break;
+            
+        case 'Float':
+        case 'Money':
+            elemValue.addClass('float');
+            elemValue.append(elemInput);
+            if(value !== null) elemInput.val(value);
+            break;
+
+        case 'Date':
+            elemInput.attr('type', 'date');
+            elemValue.addClass('date');
+            elemValue.append(elemInput);
+            if(value !== null) elemInput.val(value);
+            break;
+            
+        case 'Check Box':
+            elemInput.attr('type', 'checkbox');
+            elemValue.addClass('checkbox');
+            elemValue.append(elemInput);
+            if(value !== null) if(value === 'true') elemInput.attr('checked', true);
+            break;
+
+        case 'Single Selection':
+            if(editable) {
+                elemInput = $('<select>');
+                elemValue.addClass('picklist');
+                elemValue.append(elemInput);
+                let elemOptionBlank = $('<option></option>');
+                    elemOptionBlank.attr('value', null);
+                    elemOptionBlank.appendTo(elemInput);
+                getOptions(elemInput, field.picklist, fieldId, 'select', value);
+            } else {
+                elemValue = $('<div></div>');
+                elemValue.addClass('string');
+                if(value !== null) {
+                    elemValue.html(value.title);
+                    if(field.type.link === '/api/v3/field-types/23') {
+                        elemValue.attr('data-item-link', value.link);
+                        if(!suppressLinks) {
+                            elemValue.addClass('link');
+                            elemValue.attr('onclick', 'openItemByURN("' + value.urn + '")');
+                        }
+                    }
+                }
+                if(field.type.link === '/api/v3/field-types/23') elemValue.addClass('linking');
+            }
+            break;
+
+        case 'Multiple Selection':
+            elemValue.addClass('multi-picklist');
+            if(editable) {
+                if(value !== null) {
+                    for(optionValue of value) {
+                        let elemOption = $('<div></div>');
+                            elemOption.attr('data-link', optionValue.link);
+                            elemOption.addClass('field-multi-picklist-item');
+                            elemOption.html(optionValue.title);
+                            elemOption.appendTo(elemValue);
+                            elemOption.click(function() { openItemByLink($(this).attr('data-link')); });
+                    }
+                }
+            }
+            break;
+
+        case 'Filtered':
+            if(editable) {
+                
+                elemValue.addClass('filtered-picklist');
+                elemValue.append(elemInput);
+                elemInput.attr('data-filter-list', field.picklist);
+                elemInput.attr('data-filter-field', field.picklistFieldDefinition.split('/')[8]);
+                elemInput.addClass('filtered-picklist-input');
+                elemInput.click(function() {
+                    getFilteredPicklistOptions($(this));
+                });
+                
+                if(value !== null) elemInput.val(value);
+                
+                let elemList = $('<div></div>');
+                    elemList.addClass('filtered-picklist-options');
+                    elemList.appendTo(elemValue);
+                
+                let elemIcon = $('<div></div>');
+                    elemIcon.addClass('icon');
+                    elemIcon.addClass('icon-close');
+                    elemIcon.addClass('xxs');
+                    elemIcon.appendTo(elemValue);
+                    elemIcon.click(function() {
+                        clearFilteredPicklist($(this));
+                    });
+
+            } else {
+                elemValue = $('<div></div>');
+                elemValue.addClass('string');
+                elemValue.addClass('link');
+                if(value !== null) {
+                    elemValue.html(value.title);
+                    if(field.type.link === '/api/v3/field-types/23') {
+                        elemValue.attr('onclick', 'openItemByURN("' + value.urn + '")');
+                        elemValue.attr('data-item-link', value.link);
+                    }
+                }
+                if(field.type.link === '/api/v3/field-types/23') elemValue.addClass('linking');
+            }
+            break;
+
+        case 'BOM UOM Pick List':
+            if(editable) {
+                
+                elemInput = $('<select>');
+                elemValue.addClass('picklist');
+                elemValue.append(elemInput);
+
+                let elemOptionBlank = $('<option></option>');
+                    elemOptionBlank.attr('value', null);
+                    elemOptionBlank.appendTo(elemInput);
+
+                getOptions(elemInput, field.picklist, fieldId, 'select', value);
+
+            } else {
+                elemInput = $('<div></div>');
+                elemValue.addClass('string');
+                elemValue.append(elemInput);
+
+                if(value !== null) {
+                    elemInput.html(value.title);
+                    if(field.type.link === '/api/v3/field-types/28') {
+                        elemInput.attr('data-item-link', value.link);
+                    }
+                }
+                if(field.type.link === '/api/v3/field-types/28') elemValue.addClass('bom-uom');
+            }
+            break;
+
+        case 'Image':
+            elemValue.addClass('drop-zone');
+            elemValue.addClass('image');
+            getImage(elemValue, value);
+            break;
+
+        case 'Radio Button':
+            if(editable) {
+                elemValue = $('<div></div>');
+                elemValue.addClass('radio');
+                getOptions(elemValue, field.picklist, fieldId, 'radio', value);
+            } else {
+                elemValue = $('<input>');
+                elemValue.addClass('string');
+                if(value !== null) elemValue.val(value.title);
+            }
+            break;
+
+        default:
+
+            if(!isBlank(field.defaultValue)) {
+                elemValue.val(field.defaultValue);
+            }
+
+            break;
+
+    }
+
+    elemValue.addClass('field-value');
+
+    elemValue.attr('data-id'        , fieldId);
+    elemValue.attr('data-title'     , field.name);
+    elemValue.attr('data-link'      , field.__self__);
+    elemValue.attr('data-type-id'   , field.type.link.split('/')[4]);
+
+    if(readonly) {
+        elemInput.attr('readonly', true);
+        elemInput.attr('disabled', true);
+        elemValue.addClass('readonly');    
+        elemField.addClass('readonly');    
+    } else {
+        elemField.addClass('editable');               
+
+        if(field.fieldValidators !== null) {
+            for(let validator of field.fieldValidators) {
+                if(validator.validatorName === 'required') {
+                    elemField.addClass('required');
+                } else if(validator.validatorName === 'dropDownSelection') {
+                    elemField.addClass('required');
+                } else if(validator.validatorName === 'maxlength') {
+                    elemValue.attr('maxlength', validator.variables.maxlength);
+                }
+            }
+        }
+
+    }
+
+    if(field.unitOfMeasure !== null) {
+        
+        elemValue.addClass('with-unit');
+
+        let elemText = $('<div></div>');
+            elemText.addClass('field-unit');
+            elemText.html(field.unitOfMeasure);
+            elemText.appendTo(elemValue);
+
+    }
+    
+    if(hideLabels) {
+        if(elemFields !== null) elemValue.appendTo(elemFields); 
+        return elemValue;
+    } else {
+        elemValue.appendTo(elemField);
+        if(elemFields !== null) elemField.appendTo(elemFields);
+        return elemField;
+    }
+
+}
+
+
+// Insert attachments as tiles or table
 function insertAttachments(link, params) {
 
     if(isBlank(link)) return;
@@ -1081,6 +1771,7 @@ function insertAttachments(link, params) {
     let upload       = false;            // Enable file uploads
     let uploadLabel  = 'Upload File';    // File upload button label
     let layout       = 'tiles';          // Content layout (tiles, list or table)
+    let inline       = false;            // Display the attachments inline with other elements
     let size         = 'm';              // layout size (xxs, xs, s, m, l, xl, xxl)
     let fileVersion  = true;             // Display version of each attachment
     let fileSize     = true;             // Display size of each attachment
@@ -1088,7 +1779,7 @@ function insertAttachments(link, params) {
     let extensionsEx = '';               // Defines list of file extensions to be excluded ('.dwf,.dwfx')
     let split        = false;
 
-    if(isBlank(params)              )       params = {};
+    if( isBlank(params)            )       params = {};
     if(!isBlank(params.id)          )           id = params.id;
     if(!isBlank(params.header)      )       header = params.header;
     if(!isBlank(params.headerLabel) )  headerLabel = params.headerLabel;
@@ -1097,6 +1788,7 @@ function insertAttachments(link, params) {
     if(!isBlank(params.download)    )     download = params.download;
     if(!isBlank(params.upload)      )       upload = params.upload;
     if(!isBlank(params.layout)      )       layout = params.layout;
+    if(!isBlank(params.inline)      )       inline = params.inline;
     if(!isBlank(params.size)        )         size = params.size;
     if(!isBlank(params.fileVersion) )  fileVersion = params.fileVersion;
     if(!isBlank(params.fileSize)    )     fileSize = params.fileSize;
@@ -1126,7 +1818,7 @@ function insertAttachments(link, params) {
 
         let elemHeader = $('<div></div>', {
             id : id + '-header'
-        }).appendTo(elemParent).addClass('panel-header')
+        }).appendTo(elemParent).addClass('panel-header');
 
         if(headerToggle) {
 
@@ -1234,13 +1926,14 @@ function insertAttachments(link, params) {
     appendProcessing(id, false);
     appendNoDataFound(id, 'icon-no-data', 'No attachments');
 
-    let elemList  = $('<div></div>').appendTo(elemParent)
+    let elemContent  = $('<div></div>').appendTo(elemParent)
         .attr('id', id + '-list')
         .addClass('attachments-list')
         .addClass('no-scrollbar')
         .addClass(layout);
 
-    if(!isBlank(size)) elemList.addClass(size);
+    if(!inline) elemContent.addClass('panel-content')
+    if(!isBlank(size)) elemContent.addClass(size);
 
     $('#' + id + '-no-data').hide();
 
@@ -1648,65 +2341,72 @@ function insertBOM(link , params) {
 
     //  Set defaults for optional parameters
     // --------------------------------------
-    let id          = 'bom';    // id of DOM element where the BOM will be inseerted
-    let title       = 'BOM';    // Title being shown on top of the BOM display
-    let bomViewName = '';       // Name of the BOM view in PLM to use (if no value is provided, the first view will be used)
-    let collapsed   = false;    // When enabled, the BOM will be collapsed at startup
-    let multiSelect = false;    // Enables selection of multiple items and adds buttons to select / deselect all elements as well as checkboxes
-    let reset       = false;    // Adds button to deselect selected elements (not required if multiSelect is enabled)
-    let openInPLM   = true;     // Adds button to open selected element in PLM
-    let goThere     = false;    // Adds button to open the same view for the selected element
-    let toggles     = true;     // Enables expand all / collapse all buttons on top of BOM
-    let views       = false;    // Adds drop down menu to select from the available PLM BOM views
-    let search      = true;     // Adds quick filtering using search input on top of BOM
-    let position    = true;     // When set to true, the position / find number will be displayed
-    let quantity    = false;    // When set to true, the quantity column will be displayed
-    let hideDetails = true;     // When set to true, detail columns will be skipped, only the descriptor will be shown
-    let headers     = true;     // When set to false, the table headers will not be shown
-    let counters    = true;     // When set to true, a footer will inidicate total items, selected items and filtered items
-    let getFlatBOM  = false;    // Retrieve Flat BOM at the same time (i.e. to get total quantities)
-    let depth       = 10;       // BOM Levels to expand
-    let endItem     = null;
+    let id              = 'bom';    // id of DOM element where the BOM will be inseerted
+    let title           = 'BOM';    // Title being shown on top of the BOM display
+    let bomViewName     = '';       // Name of the BOM view in PLM to use (if no value is provided, the first view will be used)
+    let collapsed       = false;    // When enabled, the BOM will be collapsed at startup
+    let multiSelect     = false;    // Enables selection of multiple items and adds buttons to select / deselect all elements as well as checkboxes
+    let deselect        = true;     // Adds button to deselect selected element (not available if multiSelect is enabled)
+    let reset           = false;    // Reset the BOM view to its default layout
+    let openInPLM       = true;     // Adds button to open selected element in PLM
+    let goThere         = false;    // Adds button to open the same view for the selected element
+    let toggles         = true;     // Enables expand all / collapse all buttons on top of BOM
+    let views           = false;    // Adds drop down menu to select from the available PLM BOM views
+    let search          = true;     // Adds quick filtering using search input on top of BOM
+    let position        = true;     // When set to true, the position / find number will be displayed
+    let quantity        = false;    // When set to true, the quantity column will be displayed
+    let hideDetails     = true;     // When set to true, detail columns will be skipped, only the descriptor will be shown
+    let headers         = true;     // When set to false, the table headers will not be shown
+    let counters        = true;     // When set to true, a footer will inidicate total items, selected items and filtered items
+    let depth           = 10;       // BOM Levels to expand
+    let showRestricted  = true;     // When set to true, red lock icons will be shown if an item's BOM contains items that are not accessilbe for the user due to access permissions
+    let getFlatBOM      = false;    // Retrieve Flat BOM at the same time (i.e. to get total quantities)
 
 
     if(isBlank(link)) return;
     if(isBlank(params)) params = {};
 
-    if(!isBlank(params.id)         )            id = params.id;
-    if(!isEmpty(params.title)      )         title = params.title;
-    if(!isBlank(params.bomViewName))   bomViewName = params.bomViewName;
-    if(!isBlank(params.collapsed)  )     collapsed = params.collapsed;
-    if(!isBlank(params.multiSelect))   multiSelect = params.multiSelect;
-    if(!isBlank(params.reset)      )         reset = params.reset;
-    if(!isBlank(params.openInPLM)  )     openInPLM = params.openInPLM;
-    if(!isBlank(params.goThere)    )       goThere = params.goThere;
-    if(!isBlank(params.toggles)    )       toggles = params.toggles;
-    if(!isBlank(params.views)      )         views = params.views;
-    if(!isBlank(params.search)     )        search = params.search;
-    if(!isBlank(params.position)   )      position = params.position;
-    if(!isBlank(params.quantity)   )      quantity = params.quantity;
-    if(!isBlank(params.hideDetails)) { hideDetails = params.hideDetails } else { hideDetails = ((bomViewName === '') && (views === false)); }
-    if(!isBlank(params.headers)    )     { headers = params.headers } else { headers = !hideDetails; }
-    if(!isBlank(params.counters)   )      counters = params.counters;
-    if(!isBlank(params.depth)      )         depth = params.depth;
-    if(!isBlank(params.getFlatBOM) )    getFlatBOM = params.getFlatBOM;
+    if(!isBlank(params.id)              )             id = params.id;
+    if(!isEmpty(params.title)           )          title = params.title;
+    if(!isBlank(params.bomViewName)     )    bomViewName = params.bomViewName;
+    if(!isBlank(params.collapsed)       )      collapsed = params.collapsed;
+    if(!isBlank(params.multiSelect)     )    multiSelect = params.multiSelect;
+    if(!isBlank(params.deselect)        )       deselect = params.deselect;
+    if(!isBlank(params.reset)           )          reset = params.reset;
+    if(!isBlank(params.openInPLM)       )      openInPLM = params.openInPLM;
+    if(!isBlank(params.goThere)         )        goThere = params.goThere;
+    if(!isBlank(params.toggles)         )        toggles = params.toggles;
+    if(!isBlank(params.views)           )          views = params.views;
+    if(!isBlank(params.search)          )         search = params.search;
+    if(!isBlank(params.position)        )       position = params.position;
+    if(!isBlank(params.quantity)        )       quantity = params.quantity;
+    if(!isBlank(params.hideDetails)     )  { hideDetails = params.hideDetails } else { hideDetails = ((bomViewName === '') && (views === false)); }
+    if(!isBlank(params.headers)         )      { headers = params.headers } else { headers = !hideDetails; }
+    if(!isBlank(params.counters)        )       counters = params.counters;
+    if(!isBlank(params.depth)           )          depth = params.depth;
+    if(!isBlank(params.showRestricted)  ) showRestricted = params.showRestricted;
+    if(!isBlank(params.getFlatBOM)      )     getFlatBOM = params.getFlatBOM;
 
     let elemBOM = $('#' + id);
         elemBOM.attr('data-link', link);
-        elemBOM.attr('data-collapsed', collapsed);
-        elemBOM.attr('data-position', position);
-        elemBOM.attr('data-quantity', quantity);
-        elemBOM.attr('data-depth', depth);
-        elemBOM.attr('data-hide-details', hideDetails);
-        elemBOM.attr('data-get-flat-bom', getFlatBOM);
         elemBOM.attr('data-select-mode', (multiSelect) ? 'multi' : 'single');
-        elemBOM.attr('data-enditem', endItem);
         elemBOM.addClass('bom');
         elemBOM.html('');
 
+    settings.bom[id] = {};
+    settings.bom[id].collapsed      = collapsed;
+    settings.bom[id].position       = position;
+    settings.bom[id].quantity       = quantity;
+    settings.bom[id].hideDetails    = hideDetails;
+    settings.bom[id].depth          = depth;
+    settings.bom[id].showRestricted = showRestricted;
+    settings.bom[id].endItemFieldId = null;
+    settings.bom[id].endItemValue   = null;
+    settings.bom[id].getFlatBOM     = getFlatBOM;
+
     if(!isBlank(params.endItem)) {
-        if(!isBlank(params.endItem.fieldId)) elemBOM.attr('data-enditem-fieldId', params.endItem.fieldId);
-        if(!isBlank(params.endItem.value  )) elemBOM.attr('data-enditem-value'  , params.endItem.value  );
+        if(!isBlank(params.endItem.fieldId)) settings.bom[id].endItemFieldId = params.endItem.fieldId;
+        if(!isBlank(params.endItem.value  )) settings.bom[id].endItemValue   = params.endItem.value;
     }
 
     let elemHeader = $('<div></div>').appendTo(elemBOM)
@@ -1735,7 +2435,7 @@ function insertBOM(link , params) {
                 clickBOMSelectAll($(this));
             });
 
-            $('<div></div>').appendTo(elemToolbar)
+        $('<div></div>').appendTo(elemToolbar)
             .addClass('button')
             .addClass('icon')
             .addClass('icon-deselect-all')
@@ -1747,9 +2447,7 @@ function insertBOM(link , params) {
                 clickBOMDeselectAll($(this));
             });
     
-    }
-
-    if(reset) {
+    } else if(deselect) {
 
         $('<div></div>').appendTo(elemToolbar)
             .addClass('button')
@@ -1757,11 +2455,11 @@ function insertBOM(link , params) {
             .addClass('icon-deselect')
             .addClass('xs')
             .addClass('bom-single-select-action')
-            .attr('id', id + '-action-reset')
+            .attr('id', id + '-deselect')
             .attr('title', 'Deselect BOM item')
             .hide()
             .click(function() {
-                clickBOMReset($(this));
+                clickBOMDeselectAll($(this));
             });
 
     }
@@ -1839,13 +2537,27 @@ function insertBOM(link , params) {
             .addClass('with-icon')
             .addClass('icon-search-list');
 
-        let elemSearchInput = $('<input></input>');
-            elemSearchInput.attr('placeholder', 'Search');
-            elemSearchInput.attr('id', id + '-search-input');
-            elemSearchInput.addClass('bom-search-input')
-            elemSearchInput.appendTo(elemSearch);
-            elemSearchInput.keyup(function() {
+        $('<input></input>').appendTo(elemSearch)
+            .attr('placeholder', 'Search')
+            .attr('id', id + '-search-input')
+            .addClass('bom-search-input')
+            .keyup(function() {
                 searchInBOM(id, $(this));
+            });
+
+    }
+
+    if(reset) {
+
+        $('<div></div>').appendTo(elemToolbar)
+            .addClass('button')
+            .addClass('icon')
+            .addClass('icon-reset')
+            .addClass('xs')
+            .attr('id', id + '-action-reset')
+            .attr('title', 'Reset BOM view')
+            .click(function() {
+                clickBOMReset($(this));
             });
 
     }
@@ -1982,14 +2694,6 @@ function insertBOMDone(id) {}
 function changeBOMView(id) {
 
     let elemBOM             = $('#' + id);
-    let depth               = Number(elemBOM.attr('data-depth'));
-    let collapsed           = (elemBOM.attr('data-collapsed'   ).toLowerCase() === 'true');
-    let position            = (elemBOM.attr('data-position'    ).toLowerCase() === 'true');
-    let quantity            = (elemBOM.attr('data-quantity'    ).toLowerCase() === 'true');
-    let hideDetails         = (elemBOM.attr('data-hide-details').toLowerCase() === 'true');
-    let getFlatBOM          = (elemBOM.attr('data-get-flat-bom').toLowerCase() === 'true');
-    let fieldIdEndItem      = (typeof elemBOM.attr('data-enditem-fieldId') === 'undefined') ? '' : elemBOM.attr('data-enditem-fieldId');
-    let valueEndItem        = (typeof elemBOM.attr('data-enditem-value') === 'undefined') ? '' : elemBOM.attr('data-enditem-value');
     let link                = elemBOM.attr('data-link');
     let bomViewId           = $('#' + id + '-view-selector').val();
     let elemProcessing      = $('#' + id + '-processing');
@@ -2000,7 +2704,7 @@ function changeBOMView(id) {
 
     let params = {
         'link'          : link,
-        'depth'         : depth,
+        'depth'         : settings.bom[id].depth,
         'revisionBias'  : 'release',
         'viewId'        : bomViewId
     }
@@ -2021,26 +2725,26 @@ function changeBOMView(id) {
     for(field of bomView.fields) {
              if(field.fieldId === config.viewer.fieldIdPartNumber) fieldURNPartNumber = field.__self__.urn;
         else if(field.fieldId === 'QUANTITY') fieldURNQuantity = field.__self__.urn;
-        else if(field.fieldId === fieldIdEndItem) fieldURNEndItem = field.__self__.urn;
+        else if(field.fieldId === settings.bom[id].endItemFieldId) fieldURNEndItem = field.__self__.urn;
     }
 
     let requests = [$.get('/plm/bom', params)];
 
-    if(getFlatBOM) requests.push($.get('/plm/bom-flat', params));
+    if(settings.bom[id].getFlatBOM) requests.push($.get('/plm/bom-flat', params));
 
     Promise.all(requests).then(function(responses) {
 
-        setBOMHeaders(id, quantity, hideDetails, bomView.fields);
-        insertNextBOMLevel(responses[0].data, elemBOMTableBody, responses[0].data.root, position, quantity, hideDetails, bomView.fields, fieldURNPartNumber, fieldURNQuantity, fieldURNEndItem, valueEndItem);
+        setBOMHeaders(id, bomView.fields);
+        insertNextBOMLevel(id,responses[0].data, elemBOMTableBody, responses[0].data.root, settings.bom[id].quantity, bomView.fields, fieldURNPartNumber, fieldURNQuantity, fieldURNEndItem);
         enableBOMToggles(id);
         updateBOMCounters(id);
 
-        if(collapsed) clickBOMCollapseAll($('#' + id + '-toolbar'));
+        if(settings.bom[id].collapsed) clickBOMCollapseAll($('#' + id + '-toolbar'));
 
         if(!elemBOM.hasClass('no-bom-counters')) { $('#' + id + '-bom-counters').show(); }
 
-        if(getFlatBOM) changeBOMViewDone(id, bomView.fields, responses[0].data, responses[1].data);
-        else           changeBOMViewDone(id, bomView.fields, responses[0].data);
+        if(settings.bom[id].getFlatBOM) changeBOMViewDone(id, bomView.fields, responses[0].data, responses[1].data);
+        else                            changeBOMViewDone(id, bomView.fields, responses[0].data);
         
         elemProcessing.hide();
 
@@ -2048,7 +2752,7 @@ function changeBOMView(id) {
 
 }
 function changeBOMViewDone(id) {}
-function setBOMHeaders(id, quantity, hideDetails, fields) {
+function setBOMHeaders(id, fields) {
 
     let elemBOMTableHead = $('#'+  id + '-thead');
         elemBOMTableHead.html('');
@@ -2059,14 +2763,18 @@ function setBOMHeaders(id, quantity, hideDetails, fields) {
     $('<th></th>').appendTo(elemBOMTableHeadRow).html('').addClass('bom-color');
     $('<th></th>').appendTo(elemBOMTableHeadRow).html('Item');
 
-    if(quantity) {
+    if(settings.bom[id].quantity) {
         
         $('<th></th>').appendTo(elemBOMTableHeadRow)
             .html('Qty');
     
     }
 
-    if(!hideDetails) {
+    if(settings.bom[id].showRestricted) {
+        $('<th></th>').appendTo(elemBOMTableHeadRow).html('').addClass('bom-column-locks');
+    }
+
+    if(!settings.bom[id].hideDetails) {
         for(field of fields) {
             $('<th></th>').appendTo(elemBOMTableHeadRow)
                 .html(field.displayName)
@@ -2075,105 +2783,119 @@ function setBOMHeaders(id, quantity, hideDetails, fields) {
     }
 
 }
-function insertNextBOMLevel(bom, elemTable, parent, position, quantity, hideDetails, fields, fieldURNPartNumber, fieldURNQuantity, fieldURNEndItem, valueEndItem) {
+function insertNextBOMLevel(id, bom, elemTable, parent, quantity, fields, fieldURNPartNumber, fieldURNQuantity, fieldURNEndItem) {
 
-    let result    = false;
+    let result    = { hasChildren : false, hasRestricted : false};
     let firstLeaf = true;
 
     for(edge of bom.edges) {
 
         if(edge.parent === parent) {
 
-            result = true;
-
             let partNumber   = getBOMCellValue(edge.child, fieldURNPartNumber, bom.nodes);
             let rowQuantity  = getBOMEdgeValue(edge, fieldURNQuantity, null, 0);
+            let isRestricted = hasBOMRestrictedFields(edge.child, bom.nodes);
 
-            let elemRow = $('<tr></tr>');
-                elemRow.attr('data-number', edge.itemNumber);
-                elemRow.attr('data-part-number', partNumber);
-                elemRow.attr('data-quantity', rowQuantity);
-                elemRow.attr('data-number', edge.itemNumber);
-                elemRow.addClass('bom-item');
-                elemRow.appendTo(elemTable);
-                elemRow.click(function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    clickBOMItem(e, $(this));
-                    toggleBOMItemActions($(this));
-                })
-    
-            for(node of bom.nodes) {
-                if(node.item.urn === edge.child) {
-                    elemRow.attr('data-dmsId',      node.item.link.split('/')[6]);
-                    elemRow.attr('data-link',       node.item.link);
-                    elemRow.attr('data-urn',        edge.child);
-                    elemRow.attr('data-title',      node.item.title);
-                    elemRow.attr('data-edgeId',     edge.edgeId);
-                    elemRow.attr('data-edge-Link',  edge.edgeLink);
-                    elemRow.attr('data-level',      edge.depth);
-                    elemRow.addClass('bom-level-' + edge.depth);
+            if(isRestricted) {
+
+                result.hasRestricted = true;
+
+            } else {
+
+                result.hasChildren = true;
+                
+                let elemRow = $('<tr></tr>');
+                    elemRow.attr('data-number', edge.itemNumber);
+                    elemRow.attr('data-part-number', partNumber);
+                    elemRow.attr('data-quantity', rowQuantity);
+                    elemRow.attr('data-number', edge.itemNumber);
+                    elemRow.addClass('bom-item');
+                    elemRow.appendTo(elemTable);
+                    elemRow.click(function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        clickBOMItem(e, $(this));
+                        toggleBOMItemActions($(this));
+                    })
+        
+                for(let node of bom.nodes) {
+                    if(node.item.urn === edge.child) {
+                        elemRow.attr('data-dmsId',      node.item.link.split('/')[6]);
+                        elemRow.attr('data-link',       node.item.link);
+                        elemRow.attr('data-urn',        edge.child);
+                        elemRow.attr('data-title',      node.item.title);
+                        elemRow.attr('data-edgeId',     edge.edgeId);
+                        elemRow.attr('data-edge-Link',  edge.edgeLink);
+                        elemRow.attr('data-level',      edge.depth);
+                        elemRow.addClass('bom-level-' + edge.depth);
+                    }
                 }
-            }
 
-            let elemColor = $('<td></td>').appendTo(elemRow)
-                .addClass('bom-color');
+                let elemColor = $('<td></td>').appendTo(elemRow)
+                    .addClass('bom-color');
 
-            let elemCell = $('<td></td>').appendTo(elemRow)
-                .addClass('bom-first-col');
+                let elemCell = $('<td></td>').appendTo(elemRow)
+                    .addClass('bom-first-col');
 
-            if(position) {
+                if(settings.bom[id].position) {
 
-                let elemCellNumber = $('<span></span>');
-                    elemCellNumber.addClass('bom-number');
-                    elemCellNumber.html(edge.depth + '.' + edge.itemNumber);
-                    elemCellNumber.appendTo(elemCell);
+                    let elemCellNumber = $('<span></span>');
+                        elemCellNumber.addClass('bom-number');
+                        elemCellNumber.html(edge.depth + '.' + edge.itemNumber);
+                        elemCellNumber.appendTo(elemCell);
 
-            }
+                }
 
-            let elemCellTitle = $('<span></span>');
-                elemCellTitle.addClass('bom-descriptor');
-                elemCellTitle.html(getBOMItemTitle(edge.child, bom.nodes));
-                elemCellTitle.appendTo(elemCell);
+                let elemCellTitle = $('<span></span>');
+                    elemCellTitle.addClass('bom-descriptor');
+                    elemCellTitle.html(getBOMItemTitle(edge.child, bom.nodes));
+                    elemCellTitle.appendTo(elemCell);
 
-
-            if(quantity) {
-
-                $('<td></td>').appendTo(elemRow)
-                    .addClass('bom-quantity')
-                    .html(rowQuantity);
-
-            }
-
-            if(!hideDetails) {
-                for(let field of fields) {
-
-                    let value = ''
-
-                    if(field.fieldTab === 'STANDARD_BOM') value = getBOMEdgeValue(edge, field.__self__.urn, null, '');
-                    else value = getBOMCellValue(edge.child, field.__self__.urn, bom.nodes);
+                if(quantity) {
 
                     $('<td></td>').appendTo(elemRow)
-                        .html(value)
-                        .addClass('bom-column-' + field.fieldId.toLowerCase());
+                        .addClass('bom-quantity')
+                        .html(rowQuantity);
 
                 }
-            }
 
-            let isEndItem = false;
+                let elemCellLocks = $('<td></td>')
+                    .addClass('bom-column-icon')
+                    .addClass('bom-column-locks');
 
-            if(fieldURNEndItem !== '') {
-                let cellEndItem = getBOMCellValue(edge.child, fieldURNEndItem, bom.nodes);
-                if(valueEndItem === cellEndItem) {
-                    isEndItem = true;
+                if(settings.bom[id].showRestricted) elemCellLocks.appendTo(elemRow);
+
+                if(!settings.bom[id].hideDetails) {
+                    for(let field of fields) {
+
+                        let value = ''
+
+                        if(field.fieldTab === 'STANDARD_BOM') value = getBOMEdgeValue(edge, field.__self__.urn, null, '');
+                        else value = getBOMCellValue(edge.child, field.__self__.urn, bom.nodes);
+
+                        $('<td></td>').appendTo(elemRow)
+                            .html(value)
+                            .addClass('bom-column-' + field.fieldId.toLowerCase());
+
+                    }
                 }
-            }
 
-            let hasChildren = (isEndItem) ? false : insertNextBOMLevel(bom, elemTable, edge.child, position, quantity, hideDetails, fields, fieldURNPartNumber, fieldURNQuantity, fieldURNEndItem, valueEndItem);
+                let isEndItem = false;
 
-            elemRow.children().first().each(function() {
-                
-                if(hasChildren) {
+                if(fieldURNEndItem !== '') {
+                    let cellEndItem = getBOMCellValue(edge.child, fieldURNEndItem, bom.nodes);
+                    isEndItem = (settings.bom[id].endItemValue.toString().toLowerCase() === cellEndItem.toString().toLowerCase());
+                }
+
+                let itemBOM = (isEndItem) ? { hasChildren : false, hasRestricted : false } : insertNextBOMLevel(id, bom, elemTable, edge.child, quantity, fields, fieldURNPartNumber, fieldURNQuantity, fieldURNEndItem);
+
+                if(!itemBOM.hasChildren) {
+
+                    elemRow.addClass('leaf');
+                    if(firstLeaf) elemRow.addClass('first-leaf');
+                    firstLeaf = false;
+
+                } else {
 
                     $('<span></span>').prependTo(elemCell)
                         .addClass('bom-nav')
@@ -2182,18 +2904,21 @@ function insertNextBOMLevel(bom, elemTable, parent, position, quantity, hideDeta
 
                     elemRow.addClass('node');
 
-                } else {
-
-                    elemRow.addClass('leaf');
-                    if(firstLeaf) elemRow.addClass('first-leaf');
-                    firstLeaf = false;
-
                 }
 
-            });
+                if(itemBOM.hasRestricted) {
+                    if(settings.bom[id].showRestricted) {
+                        $('<span></span>').appendTo(elemCellLocks)
+                            .addClass('bom-restricted')
+                            .addClass('icon')
+                            .addClass('icon-lock')
+                            .addClass('filled')
+                            .attr('title', 'You do not have access to all items in this BOM');
+                    }
+                }
 
+            }
         }
-
     }
 
     return result;
@@ -2226,6 +2951,7 @@ function enableBOMToggles(id) {
 
         if(e.shiftKey) levelHide = 100;
 
+        elemItem.toggleClass('collapsed').toggleClass('expanded');
         $(this).toggleClass('collapsed');
         
         do {
@@ -2237,15 +2963,29 @@ function enableBOMToggles(id) {
                 if(doExpand) {
                     if(levelHide > levelNext) {
                         elemNext.show();
-                        if(e.shiftKey) elemNext.find('.bom-nav').removeClass('collapsed');
+                        if(e.shiftKey) {
+                            elemNext.removeClass('collapsed').addClass('expanded');
+                            elemNext.find('.bom-nav').removeClass('collapsed').addClass('expanded');
+                        }
                     }
                 } else {
                     elemNext.hide();
-                    elemNext.find('.bom-nav').addClass('collapsed');
+                    elemNext.addClass('collapsed').removeClass('expanded');
+                    elemNext.find('.bom-nav').addClass('collapsed').removeClass('expanded');
                 }
             }
 
         } while(levelNext > level);
+
+
+        if(!$(this).hasClass('collapsed')) {
+
+            let elemInput   = $('#' + id + '-search-input');
+            let filterValue = elemInput.val().toLowerCase();
+
+            if(!isBlank(filterValue)) searchInBOM(id, elemInput);
+            
+        }
 
     });
 
@@ -2323,7 +3063,10 @@ function clickBOMDeselectAll(elemClicked) {
     toggleBOMItemActions(elemClicked);
     updateBOMCounters(elemBOM.attr('id'));
 
+    clickBOMDeselectAllDone(elemClicked);
+
 }
+function clickBOMDeselectAllDone(elemClicked) {}
 function clickBOMExpandAll(elemClicked) {
 
     let elemBOM     = elemClicked.closest('.bom');
@@ -2332,8 +3075,14 @@ function clickBOMExpandAll(elemClicked) {
 
     elemContent.find('tr').each(function() {
         $(this).show();
-        $(this).find('.bom-nav').removeClass('collapsed');
+        $(this).find('.bom-nav').removeClass('collapsed').addClass('expanded');
+        $(this).removeClass('collapsed').addClass('expanded');
     });
+
+    let elemInput   = $('#' + id + '-search-input');
+    let filterValue = elemInput.val().toLowerCase();
+
+    if(!isBlank(filterValue)) searchInBOM(id, elemInput);
 
 }
 function clickBOMCollapseAll(elemClicked) {
@@ -2348,7 +3097,8 @@ function clickBOMCollapseAll(elemClicked) {
                 $(this).hide();
             }
         }
-        $(this).find('.bom-nav').addClass('collapsed');
+        $(this).find('.bom-nav').addClass('collapsed').removeClass('expanded');
+        $(this).addClass('collapsed').removeClass('expanded');
     });
 
 }
@@ -2368,6 +3118,7 @@ function searchInBOM(id, elemInput) {
     } else {
 
         $('.bom-nav').removeClass('collapsed').addClass('expanded');
+        $('.bom-item').removeClass('collapsed').addClass('expanded');
         elemTable.children().each(function() {
             $(this).hide();
         });
@@ -2399,6 +3150,9 @@ function unhideBOMParents(level, elem) {
 
         let prevLevel = Number($(this).attr('data-level'));
 
+        console.log(prevLevel);
+
+
         if(level === prevLevel) {
             level--;
             $(this).show();
@@ -2409,16 +3163,17 @@ function unhideBOMParents(level, elem) {
 }
 function clickBOMReset(elemClicked) {
 
-    let id = elemClicked.closest('.bom').attr('id');
-    let elemSearchInput = $('#' + id + '-search-input');
-    
+    let id          = elemClicked.closest('.bom').attr('id');
     let elemContent = elemClicked.closest('.bom').find('.bom-tbody');
-        elemContent.find('tr.selected').removeClass('selected');
 
-    if(elemSearchInput.length > 0) {
-        elemSearchInput.val('');
-        searchInBOM(id, elemSearchInput);
-    }
+    elemContent.find('tr.selected').removeClass('selected');
+    elemContent.find('tr.result').removeClass('result');
+    elemContent.find('.bom-nav').removeClass('expanded');
+    elemContent.find('tr').show();
+    
+    if(settings.bom[id].collapsed) clickBOMCollapseAll($('#' + id + '-toolbar'));
+
+    $('#' + id + '-search-input').val('');
 
     toggleBOMItemActions(elemClicked);
     updateBOMCounters(id);
@@ -2521,6 +3276,39 @@ function getBOMItemPath(elemItem) {
     });
 
     return result;
+
+}
+function bomDisplayItem(elemItem) {
+
+    let level   = Number(elemItem.attr('data-level'));
+    
+    expandBOMParents(level - 1, elemItem);
+    
+    let elemBOM = elemItem.closest('.bom-content');
+    let top     = elemItem.position().top - (elemBOM.innerHeight() / 2);
+    
+    elemBOM.animate({ scrollTop: top }, 500);
+
+}
+function expandBOMParents(level, elem) {
+
+    elem.prevAll('.bom-item.node').each(function() {
+
+        let prevLevel   = Number($(this).attr('data-level'));
+        let isNode      = $(this).hasClass('node');
+        let isCollapsed = $(this).hasClass('collapsed');
+
+        if(level === prevLevel) {
+            level--;
+            $(this).show();
+            if(isNode) {
+                if(isCollapsed) {
+                    $(this).find('.bom-nav').click();
+                }
+            }
+        }
+
+    });
 
 }
 
@@ -3764,98 +4552,175 @@ function clickChildrenChangedItem(elemClicked) {}
 
 
 // Insert Grid table
-function insertGrid(link, id, rotate) {
+function insertGrid(link, params) {
 
-    // used by portfolio.js
+    if(isBlank(link)) return;
 
-    if(typeof id === 'undefined') id = 'grid';
-    if(typeof rotate === 'undefined') rotate = false;
+    //  Set defaults for optional parameters
+    // --------------------------------------
+    let id                  = 'grid';   // ID of the DOM element where the history should be inserted
+    let header              = true;     // Can be used to suppress addition of the panel header element
+    let headerLabel         = 'Grid';   // Set the header label
+    let headerToggle        = false;    // Enable header toggles
+    let reload              = true;     // Enable reload button for the history panel
+    let rotate              = false;    // Rotate the table display by 90 degrees
+    let inline              = false;    // Display the grid inline with other elements
+    let columnsIn           = [];       // Define list of columns to include by fieldId; columns not included in this list will not be shown at all. Keep empty to show all columns.
+    let columnsEx           = [];       // Define list of columns to exclude by fieldId; columns in this list will not be shown at all. Keep empty to show all columns.
+
+    if( isBlank(params)             )       params = {};
+    if(!isBlank(params.id)          )           id = params.id;
+    if(!isBlank(params.header)      )       header = params.header;
+    if(!isBlank(params.headerLabel) )  headerLabel = params.headerLabel;
+    if(!isBlank(params.headerToggle)) headerToggle = params.headerToggle;
+    if(!isBlank(params.reload)      )       reload = params.reload;
+    if(!isBlank(params.rotate)      )       rotate = params.rotate;
+    if(!isBlank(params.inline)      )       inline = params.inline;
+    if(!isBlank(params.columnsIn)   )    columnsIn = params.columnsIn;
+    if(!isBlank(params.columnsEx)   )    columnsEx = params.columnsEx;
+
+    settings.workflowHistory[id]           = {};
+    settings.workflowHistory[id].rotate    = rotate;
+    settings.workflowHistory[id].columnsIn = columnsIn;
+    settings.workflowHistory[id].columnsEx = columnsEx;
+
+    let elemParent = $('#' + id)
+        .addClass('grid')
+        .html('');
+
+    if(header) {
+        
+        let elemHeader = genPanelHeader(id, headerToggle, headerLabel);
+            elemHeader.appendTo(elemParent);   
+
+        if(reload) {
+
+            let elemToolbar = $('<div></div>').appendTo(elemHeader)
+                .addClass('panel-toolbar')
+                .attr('id', id + '-toolbar');
+
+            $('<div></div>').appendTo(elemToolbar)
+                .addClass('button')
+                .addClass('icon')
+                .addClass('icon-refresh')
+                .attr('id', id + '-reload')
+                .attr('title', 'Reload this view')
+                .click(function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertGridData(id);
+                });
+
+        }
+    }
+
+    let elemContent = $('<div></div>').appendTo(elemParent)
+        .attr('id', id + '-content')
+        .attr('data-link', link)
+        .addClass('grid-content')
+        .addClass('no-scrollbar');
+
+    if(!inline) elemContent.addClass('panel-content')
+
+    appendProcessing(id, true);
+    appendNoDataFound(id, 'icon-no-data', 'No Data');
+
+    insertGridData(id);
+
+}
+function insertGridData(id) {
 
     $('#' + id + '-processing').show();
 
-    let elemParent = $('#' + id + '-list');
-        elemParent.html('');
-
-    let requests = [
+    let elemContent = $('#' + id + '-content');
+    let link        = elemContent.attr('data-link');
+    let requests    = [
         $.get('/plm/grid', { 'link' : link }),
         $.get('/plm/grid-columns', { 'wsId' : link.split('/')[4] })
     ];
 
+    elemContent.html('');
+
     Promise.all(requests).then(function(responses) {
 
-        let columns = responses[1].data.fields;
+        let fields      = responses[1].data.fields;
+        let columnsIn   = settings.workflowHistory[id].columnsIn;
+        let columnsEx   = settings.workflowHistory[id].columnsEx;
+        let columns     = [];
+
+        for(let field of fields) {
+            let fieldId = field.__self__.split('/').pop();
+            if(columnsIn.length === 0 || columnsIn.includes(fieldId)) {
+                if(columnsEx.length === 0 || !columnsEx.includes(fieldId)) {
+                    columns.push(field);
+                }
+            }
+        }
+
+        $('#' + id + '-processing').hide();
 
         if(responses[0].data.length > 0 ) {
 
-            let elemTable = $('<table></table>');
-                elemTable.addClass('grid');
-                elemTable.appendTo(elemParent);
-        
-            let elemTableBody = $('<tbody></tbody>');
-                elemTableBody.appendTo(elemTable);
+            let elemTable       = $('<table></table>').appendTo(elemContent).addClass('grid')
+            let elemTableBody   = $('<tbody></tbody>').appendTo(elemTable);
+            let elemTableHead   = $('<tr></tr>').appendTo(elemTableBody).addClass('fixed')
 
-            let elemTableHead = $('<tr></tr>');
-                elemTableHead.appendTo(elemTableBody);
+            if(!settings.workflowHistory[id].rotate) {
 
+                elemTable.addClass('row-hovering');
+                elemTable.addClass('fixed-header');
 
-            if(!rotate) {
-
-                for(column of columns) {
-
-                    let elemTableHeadCell = $('<th></th>');
-                        elemTableHeadCell.html(column.name);
-                        elemTableHeadCell.appendTo(elemTableHead);
-                    
+                for(let column of columns) {
+                    $('<th></th>').appendTo(elemTableHead).html(column.name);
                 }
 
                 for(row of responses[0].data) {
 
-                    let elemTableRow = $('<tr></tr>');
-                        elemTableRow.appendTo(elemTableBody);
+                    let elemTableRow = $('<tr></tr>').appendTo(elemTableBody)
+                        .click(function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            clickGridRow($(this), e);
+                        });
 
-                    for(column of columns) {
-
-                        let value = '';
-
-                        for(field of row.rowData) {
-                            if(field.title === column.name) {
-                                value = field.value;
-                            }
+                    for(let field of row.rowData) {
+                        if(field.title === 'Row Id') {
+                            elemTableRow.attr('data-link', field.__self__);
                         }
+                    }
 
-                        let elemTableCell = $('<td></td>');
-                            elemTableCell.html(value);
-                            elemTableCell.appendTo(elemTableRow);
+                    for(let column of columns) {
+
+                        let fieldId = column.__self__.split('/').pop();
+                        let value   = getGridRowValue(row, fieldId, '', 'title');
+
+                        $('<td></td>').appendTo(elemTableRow).html(value);
                     }
 
                 }
 
             } else {
 
-                for(column of columns) {
+                elemTable.addClass('rotated');
 
-                    elemTable.addClass('rotated');
+                for(let column of columns) {
 
-                    let elemTableRow = $('<tr></tr>');
-                        elemTableRow.appendTo(elemTableBody);
+                    let elemTableRow = $('<tr></tr>').appendTo(elemTableBody)
+                        .click(function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            clickGridRow($(this), e);
+                        });
 
-                    let elemTableHeadCell = $('<th></th>');
-                        elemTableHeadCell.html(column.name);
-                        elemTableHeadCell.appendTo(elemTableRow);
+                    $('<th></th>').appendTo(elemTableRow).html(column.name);
 
-                    for(row of responses[0].data) {
+                    for(let row of responses[0].data) {
 
-                        let value = '';
+                        let fieldId = column.__self__.split('/').pop();
+                        let value   = getGridRowValue(row, fieldId, '', 'title');
 
-                        for(field of row.rowData) {
-                            if(field.title === column.name) {
-                                value = field.value;
-                            }
-                        }
+                        $('<td></td>').appendTo(elemTableRow).html(value);
 
-                        let elemTableCell = $('<td></td>');
-                            elemTableCell.html(value);
-                            elemTableCell.appendTo(elemTableRow);
                     }
 
                 }
@@ -3864,119 +4729,355 @@ function insertGrid(link, id, rotate) {
 
         }
 
+        insertGridDone(id, responses[0].data, responses[1].data);
+
     });
 
 }
+function insertGridDone(id, data, columns) {}
+function clickGridRow(elemClicked, e) {}
 
 
 // Insert related processes
-function insertChangeProcesses(link, id, icon) {
+function insertChangeProcesses(link, params) {
 
     if(isBlank(link)) return;
-    if(isBlank(id)  )   id = 'processes';
-    if(isBlank(icon)) icon = 'schema';
 
-    let elemParent = $('#' + id + '-list');
-        elemParent.html('');
-        elemParent.closest('.panel').attr('data-link', link);
+    //  Set defaults for optional parameters
+    // --------------------------------------
+    let id                  = 'processes';     // ID of the DOM element where the processes list & create form will be inserted
+    let header              = true;            // Hide header with setting this to false
+    let headerLabel         = 'Processes';     // Sets the header label (if header is enabled)
+    let headerToggle        = false;           // Enables collapsing and expanding the panel
+    let reload              = true;            // Enable reload button for the processes list
+    let size                = 'l';             // Layout size (xxs, xs, s, m, l, xl, xxl)
+    let icon                = 'icon-workflow'; // Icon to be displayed in each tile
+    let inline              = false;           // Display the processes list with other elements
+    let workspacesIn        = [];              // List of workspace to be included, identified by workspace IDs (example: ['82'])
+    let workspacesEx        = [];              // List of workspace to be excluded, identified by workspace ID (example: ['83','84'])
+    let createWSID          = '';              // Enable creation of new records by providing the given workspace ID in which new records should be created
+    let createSectionsIn    = [];              // If creation of new records is enabled (using parameter createWSID), this list can be used to select the sections to be shown in the create dialog (example: ['Header','Details'])
+    let createSectionsEx    = [];              // If creation of new records is enabled (using parameter createWSID), this list can be used to hide sections in the create dialog (example: ['Review'])
+    let createFieldsIn      = [];              // If creation of new records is enabled (using parameter createWSID), this list can be used to select the fields to be shown in the create dialog (example: ['Title','Description'])
+    let createFieldsEx      = [];              // If creation of new records is enabled (using parameter createWSID), this list can be used to hide fields in the create dialog. Fields of this list will not be shown (example: ['Closing Comment']).
 
-    let elemProcessing = $('#' + id + '-processing');
-        elemProcessing.show();
 
-    $.get('/plm/changes', { 'link' : link }, function(response) {
+    if( isBlank(params)                 )           params = {};
+    if(!isBlank(params.id)              )               id = params.id;
+    if(!isBlank(params.header)          )           header = params.header;
+    if(!isEmpty(params.headerLabel)     )      headerLabel = params.headerLabel;
+    if(!isBlank(params.headerToggle)    )     headerToggle = params.headerToggle;
+    if(!isBlank(params.reload)          )           reload = params.reload;
+    if(!isBlank(params.size)            )             size = params.size;
+    if(!isBlank(params.icon)            )             icon = params.icon;
+    if(!isBlank(params.workspacesIn)    )     workspacesIn = params.workspacesIn;
+    if(!isBlank(params.workspacesEx)    )     workspacesEx = params.workspacesEx;
+    if(!isBlank(params.createWSID)      )       createWSID = params.createWSID;
+    if(!isBlank(params.createSectionsIn)) createSectionsIn = params.createSectionsIn;
+    if(!isBlank(params.createSectionsEx)) createSectionsEx = params.createSectionsEx;
+    if(!isBlank(params.createFieldsIn)  )   createFieldsIn = params.createFieldsIn;
+    if(!isBlank(params.createFieldsEx)  )   createFieldsEx = params.createFieldsEx;
 
-             if(response.data.statusCode === 403) return;
-        else if(response.data.statusCode === 404) return;
+    settings.processes[id]                  = {};
+    settings.processes[id].icon             = icon;
+    settings.processes[id].workspacesIn     = workspacesIn;
+    settings.processes[id].workspacesEx     = workspacesEx;
+    settings.processes[id].createWSID       = createWSID;
+    settings.processes[id].createSectionsIn = createSectionsIn;
+    settings.processes[id].createSectionsEx = createSectionsEx;
+    settings.processes[id].createFieldsIn   = createFieldsIn;
+    settings.processes[id].createFieldsEx   = createFieldsEx;
+
+    let elemParent = $('#' + id).addClass('processes').html('');
+
+    if(header) {
+        
+        let elemHeader = genPanelHeader(id, headerToggle, headerLabel);
+            elemHeader.appendTo(elemParent);   
+
+        let elemToolbar = $('<div></div>').addClass('panel-toolbar').attr('id', id + '-toolbar');
+
+        if(reload) {
+
+            elemToolbar.appendTo(elemHeader);
+
+            $('<div></div>').appendTo(elemToolbar)
+                .addClass('button')
+                .addClass('icon')
+                .addClass('icon-refresh')
+                .attr('id', id + '-reload')
+                .attr('title', 'Reload this view')
+                .click(function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertChangeProcessesData(id);
+                });
+
+        }
+
+        if(!isBlank(createWSID)) {
+
+            elemToolbar.appendTo(elemHeader);
+
+            $('<div></div>').appendTo(elemToolbar)
+                .addClass('button')
+                .attr('id', id + '-create')
+                .attr('title', 'Create new process')
+                .html('Create')
+                .click(function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleProcessCreateForm(id, true);
+                });
+
+            $('<div></div>').appendTo(elemToolbar)
+                .addClass('button')
+                .addClass('processes-action-create')
+                .attr('id', id + '-cancel')
+                .attr('title', 'Cancel process creation')
+                .html('Cancel')
+                .click(function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleProcessCreateForm(id, false);
+                });
+
+            $('<div></div>').appendTo(elemToolbar)
+                .addClass('button')
+                .addClass('processes-action-create')
+                .addClass('default')
+                .attr('id', id + '-save')
+                .attr('title', 'Submit form and create process')
+                .html('Save')
+                .click(function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    submitProcessCreateForm(id);
+                });
+
+            let elemSections = $('<div></div>').appendTo(elemParent)
+                .attr('id', id + '-sections')
+                .attr('data-wsid', createWSID)
+                .attr('data-link', link)
+                .addClass('form')
+                .addClass('no-scrollbar')
+                .addClass(getSurfaceLevel($('body')));
+
+            if(!inline) elemSections.addClass('panel-content')
+
+        }
+    }
+
+    let elemList = $('<div></div>').appendTo(elemParent)
+        .attr('id', id + '-list')
+        .attr('data-link', link)
+        .addClass('tiles')
+        .addClass('list')
+        .addClass(size)
+        .addClass(getSurfaceLevel($('body')))
+        .addClass('processes-content')
+        .addClass('no-scrollbar');
+
+    if(!inline) elemList.addClass('panel-content')
+
+    appendProcessing(id, true);
+    appendNoDataFound(id, 'icon-no-data', 'No Processes');
+    insertChangeProcessesData(id);
+
+}
+function toggleProcessCreateForm(id, visible) {
+
+    let elemToolbar  = $('#' + id + '-toolbar');
+    let elemList     = $('#' + id + '-list');
+    let elemNoData   = $('#' + id + '-no-data');
+    let elemSections = $('#' + id + '-sections');
+
+    if(visible) {
+
+        $('#' + id + '-processing').show();
+        
+        elemToolbar.children().hide();
+        elemToolbar.children('.processes-action-create').show();
+
+        elemSections.html('').show();
+        elemList.hide();
+        elemNoData.hide();
+
+        insertCreateForm(id, settings.processes[id].createWSID, {
+            sectionsIn : settings.processes[id].createSectionsIn,
+            sectionsEx : settings.processes[id].createSectionsEx,
+            fieldsIn   : settings.processes[id].createFieldsIn,
+            fieldsEx   : settings.processes[id].createFieldsEx
+        });
+
+    } else {
+        
+        elemToolbar.children().show();
+        elemToolbar.children('.processes-action-create').hide();
+
+        elemSections.hide();
+
+        if(elemList.children().length === 0) {
+            elemNoData.show();
+        } else {
+            elemList.show();
+        }
+
+    }
+
+    elemToolbar.show();
+
+    toggleProcessCreateFormDone(id);
+
+}
+function toggleProcessCreateFormDone(id) {}
+function submitProcessCreateForm(id) {
+
+    if(!validateForm($('#' + id + '-sections'))) return;
+
+    $('#' + id + '-toolbar').hide();
+    $('#' + id + '-sections').hide();
+    $('#' + id + '-list').hide();
+    $('#' + id + '-no-data').hide();
+    $('#' + id + '-processing').show();
+
+    viewerCaptureScreenshot(null, function() {
+
+        submitCreateForm(settings.processes[id].createWSID, $('#' + id + '-sections'), 'viewer-markup-image', function(response) {
+               
+            let link    = $('#' + id + '-list').attr('data-link');
+            let newLink = response.data.split('.autodeskplm360.net')[1];
+                
+            $.get('/plm/add-managed-items', { 'link' : newLink, 'items' : [ link ] }, function(response) {
+                toggleProcessCreateForm(id, false)
+                createProcessDone(id, response);
+            });
+
+        });
+
+    });
+
+}
+function createProcessDone(id, reponse) {
+
+    insertChangeProcessesData(id);
+
+}
+function insertChangeProcessesData(id) {
+
+    $('#' + id + '-processing').show();
+    $('#' + id + '-no-data').hide();
+
+    let timestamp    = new Date().getTime();
+    let elemList    = $('#' + id + '-list');
+    let link         = elemList.attr('data-link');
+    let workspacesIn = settings.processes[id].workspacesIn;
+    let workspacesEx = settings.processes[id].workspacesEx;
+
+    elemList.attr('data-timestamp', timestamp)
+        .html('')
+        .hide();
+
+    let params = {
+        'link'      : link,
+        'timestamp' : timestamp
+    }
+
+    $.get('/plm/changes', params, function(response) {
 
         if(response.params.link === link) {
+            if(response.params.timestamp === $('#' + id + '-list').attr('data-timestamp')) {
 
-            elemProcessing.hide();
-            elemParent.show();
+                     if(response.data.statusCode === 403) return;
+                else if(response.data.statusCode === 404) return;
 
-            for(process of response.data) {
-                process.sort = process['last-workflow-history'].created
-            }
+                $('#' + id + '-processing').hide();
 
-            sortArray(response.data, 'sort', 'date', 'descending');
+                for(let process of response.data) {
+                    process.sort = process['last-workflow-history'].created
+                }
 
-            for(process of response.data) {
-        
-                let link = process.item.link;
-                let user = process['first-workflow-history'].user.title;
-                let date = process['first-workflow-history'].created;
-        
-                let elemProcess = $('<div></div>');
-                    elemProcess.addClass('animation');
-                    elemProcess.addClass('process');
-                    elemProcess.addClass('tile');
-                    elemProcess.attr('data-link', link);
-                    elemProcess.attr('data-urn', process.item.urn);
-                    elemProcess.appendTo(elemParent);
-                    elemProcess.click(function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        clickChangeProcess($(this));
-                    });
-        
-                let elemProcessImage = $('<div></div>');
-                    elemProcessImage.addClass('tile-image');
-                    elemProcessImage.appendTo(elemProcess);
-        
-                let elemProcessDetails = $('<div></div>');
-                    elemProcessDetails.addClass('tile-details');
-                    elemProcessDetails.appendTo(elemProcess);
-        
-                let elemProcessWorkspace = $('<div></div>');
-                    elemProcessWorkspace.addClass('tile-title');
-                    elemProcessWorkspace.appendTo(elemProcessDetails);
-        
-                let elemProcessDescriptor = $('<div></div>');
-                    elemProcessDescriptor.addClass('tile-subtitle');
-                    elemProcessDescriptor.appendTo(elemProcessDetails);
-        
-                let elemProcessData = $('<div></div>');
-                    elemProcessData.addClass('tile-data');
-                    elemProcessData.appendTo(elemProcessDetails);
-        
-                let elemProcessCreator = $('<div></div>');
-                    elemProcessCreator.addClass('process-creator');
-                    elemProcessCreator.appendTo(elemProcessData);
-        
-                let elemProcessStatus = $('<div></div>');
-                    elemProcessStatus.addClass('process-status');
-                    elemProcessStatus.appendTo(elemProcessData);
-        
-                $.get('/plm/details', { 'link' : link}, function(response) {
-        
-                    $('.process').each(function() {
-                        let elemProcess = $(this);
-                        if(elemProcess.attr('data-link') === link) {
-            
-                            elemProcess.removeClass('animation');
-            
-                            let linkImage   = getFirstImageFieldValue(response.data.sections);
-                            let elemImage   = elemProcess.find('.tile-image').first();
-            
-                            getImageFromCache(elemImage, { 'link' : linkImage }, icon, function() {});
-        
-                            date = date.split('T')[0].split('-');
-                            let creationDate = new Date(date[0], date[1], date[2]);
-            
-                            elemProcess.find('.tile-title').first().html(response.data.title);
-                            elemProcess.find('.tile-subtitle').first().html(response.data.workspace.title);
-                            elemProcess.find('.process-status').first().html('Status : ' + response.data.currentState.title);
-                            elemProcess.find('.process-creator').first().html('Created by ' + user + ' on ' + creationDate.toLocaleDateString());
-            
+                sortArray(response.data, 'sort', 'date', 'descending');
+
+                for(let process of response.data) {
+
+                    let processWSID = process.item.link.split('/')[4];
+
+                    if(workspacesIn.length === 0 || workspacesIn.includes(processWSID)) {
+                        if(workspacesEx.length === 0 || !workspacesEx.includes(processWSID)) {
+
+                            let user = process['first-workflow-history'].user.title;
+                            let date = process['first-workflow-history'].created;
+
+                            let elemProcess = $('<div></div>').appendTo(elemList)
+                                .addClass('animation')
+                                .addClass('process')
+                                .addClass('tile')
+                                .attr('data-link', process.item.link)
+                                .attr('data-urn', process.item.urn)
+                                .click(function(e) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    clickChangeProcess($(this));
+                                });
+                    
+                            $('<div></div>').appendTo(elemProcess).addClass('tile-image');
+                    
+                            let elemProcessDetails = $('<div></div>').appendTo(elemProcess).addClass('tile-details');
+                    
+                            $('<div></div>').appendTo(elemProcessDetails).addClass('tile-title');
+                            $('<div></div>').appendTo(elemProcessDetails).addClass('tile-subtitle');
+                    
+                            let elemProcessData = $('<div></div>').appendTo(elemProcessDetails).addClass('tile-data');
+                            
+                            $('<div></div>').appendTo(elemProcessData).addClass('process-creator');
+                            $('<div></div>').appendTo(elemProcessData).addClass('process-status');
+                                
+                            $.get('/plm/details', { 'link' : process.item.link}, function(response) {
+                    
+                                $('.process').each(function() {
+                                    let elemProcess = $(this);
+                                    if(elemProcess.attr('data-link') === process.item.link) {
+                        
+                                        elemProcess.removeClass('animation');
+                        
+                                        let linkImage   = getFirstImageFieldValue(response.data.sections);
+                                        let elemImage   = elemProcess.find('.tile-image').first();
+                        
+                                        getImageFromCache(elemImage, { 'link' : linkImage }, settings.processes[id].icon, function() {});
+                    
+                                        date = date.split('T')[0].split('-');
+                                        let creationDate = new Date(date[0], date[1], date[2]);
+                        
+                                        elemProcess.find('.tile-title').first().html(response.data.title);
+                                        elemProcess.find('.tile-subtitle').first().html(response.data.workspace.title);
+                                        elemProcess.find('.process-status').first().html('Status : ' + response.data.currentState.title);
+                                        elemProcess.find('.process-creator').first().html('Created by ' + user + ' on ' + creationDate.toLocaleDateString());
+                        
+                                    }
+                                });
+                            });
+
                         }
-                    });
-                });
+                    }
+                }
+
+                if(elemList.children().length === 0) {
+                    $('#' + id + '-no-data').css('display', 'flex');
+                } else {
+                    $('#' + id + '-no-data').hide();
+                    elemList.show();
+                }
+
+                insertChangeProcessesDone(id, response.data);
 
             }
         }
     });
-
+    
 }
-function clickChangeProcess(elemClicked) { openItemByURN(elemClicked.attr('data-urn')); }
+function insertChangeProcessesDone(id, data) {}
+function clickChangeProcess(elemClicked, e) { openItemByLink(elemClicked.attr('data-link')); }
 
 
 // Insert Relationship Items
@@ -4122,160 +5223,252 @@ function clickManagedItem(elemClicked) {}
 
 
 // Insert Workflow History
-function insertWorkflowHistory(link, id, currentStatus, currentStatusId, excludedTransitions, finalStates, showNextTransitions) {
+function insertWorkflowHistory(link, params) {
 
-    if(isBlank(id                 )) id                  = 'workflow-history';
-    if(isBlank(excludedTransitions)) excludedTransitions = [];
-    if(isBlank(finalStates        )) finalStates         = [];
-    if(isBlank(showNextTransitions)) showNextTransitions = false;
+    if(isBlank(link)) return;
 
-    let elemParent = $('#' + id + '-events');
-        elemParent.html('');
+    //  Set defaults for optional parameters
+    // --------------------------------------
+    let id                  = 'workflow-history';   // ID of the DOM element where the history should be inserted
+    let header              = true;                 // Can be used to suppress addition of the panel header element
+    let headerLabel         = 'Workflow History';   // Set the header label
+    let headerToggle        = false;                // Enable header toggles
+    let reload              = true;                 // Enable reload button for the history panel
+    let showNextTransitions = true;                 // If set to true, the list of possible next actions will be shown on top of the history entries
+    let finalStates         = ['Complete', 'Completed', 'Closed', 'Done'];  // This list may be used to define the final states of workflows. These final states will be shown with a different icon.
+    let transitionsIn       = [];                   // List of transitions that will be included in the history log and next transitions list. Transitions not included in this list will not be shown.
+    let transitionsEx       = ['Cancel', 'Delete']; // List of transitions that will be excluded in the history log and next transitions list. Transitions included in this list will not be shown.
+
+    if( isBlank(params)                    )              params = {};
+    if(!isBlank(params.id)                 )                  id = params.id;
+    if(!isBlank(params.header)             )              header = params.header;
+    if(!isBlank(params.headerLabel)        )         headerLabel = params.headerLabel;
+    if(!isBlank(params.headerToggle)       )        headerToggle = params.headerToggle;
+    if(!isBlank(params.reload)             )              reload = params.reload;
+    if(!isBlank(params.showNextTransitions)) showNextTransitions = params.showNextTransitions;
+    if(!isBlank(params.finalStates)        )         finalStates = params.finalStates;
+    if(!isBlank(params.transitionsIn)      )       transitionsIn = params.transitionsIn;
+    if(!isBlank(params.transitionsEx)      )       transitionsEx = params.transitionsEx;
+
+    settings.workflowHistory[id]                     = {};
+    settings.workflowHistory[id].showNextTransitions = showNextTransitions;
+    settings.workflowHistory[id].finalStates         = finalStates;
+    settings.workflowHistory[id].transitionsIn       = transitionsIn;
+    settings.workflowHistory[id].transitionsEx       = transitionsEx;
+
+    let elemParent = $('#' + id)
+        .addClass('workflow-history')
+        .html('');
+
+    if(header) {
+
+        let elemHeader = $('<div></div>', {
+            id : id + '-header'
+        }).appendTo(elemParent).addClass('panel-header');
+    
+        if(headerToggle) {
+    
+            $('<div></div>').appendTo(elemHeader)
+                .addClass('panel-header-toggle')
+                .addClass('icon')
+                .addClass('icon-collapse');
+    
+            elemHeader.addClass('with-toggle');
+            elemHeader.click(function() {
+                togglePanelHeader($(this));
+            });
+    
+        }
+
+        $('<div></div>').appendTo(elemHeader)
+            .addClass('panel-title')
+            .attr('id', id + '-title')
+            .html(headerLabel);
+
+        if(reload) {
+
+            let elemToolbar = $('<div></div>').appendTo(elemHeader)
+                .addClass('panel-toolbar')
+                .attr('id', id + '-toolbar');
+
+            $('<div></div>').appendTo(elemToolbar)
+                .addClass('button')
+                .addClass('icon')
+                .addClass('icon-refresh')
+                .attr('id', id + '-reload')
+                .attr('title', 'Reload this view')
+                .click(function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertWorkflowHistoryData(id);
+                });
+
+        }
+
+    }
+
+    if(!header) { elemParent.addClass('no-header'); }
+
+    appendProcessing(id, true);
+
+    $('<div></div>').appendTo(elemParent)
+        .attr('id', id + '-content')
+        .attr('data-link', link)
+        .addClass('panel-content')
+        .addClass('workflow-history-content')
+        .addClass('no-scrollbar');
+
+    insertWorkflowHistoryData(id);
+
+}
+
+function insertWorkflowHistoryData(id) {
 
     $('#' + id + '-processing').show();
 
-    if(showNextTransitions && isBlank(currentStatusId)) {
-        
-        $.get('/plm/details', { 'link' : link }, function(response) {
-            currentStatusId = response.data.currentState.link.split('/').pop();
-            insertWorkflowHistory(link, id, currentStatus, currentStatusId, excludedTransitions, finalStates, showNextTransitions);
-        });
+    let elemContent = $('#' + id + '-content');
+    let link        = elemContent.attr('data-link');
+    let requests    = [ 
+        $.get('/plm/workflow-history', { 'link' : link }),
+        $.get('/plm/details', { 'link' : link })
+    ];
 
-    } else {
+    elemContent.html('');
 
-        let requests = [
-            $.get('/plm/workflow-history', { 'link' : link })
-        ];
+    if(settings.workflowHistory[id].showNextTransitions) requests.push($.get('/plm/transitions', { 'link' : link }));
 
-        if(showNextTransitions) requests.push($.get('/plm/transitions', { 'link' : link }));
+    Promise.all(requests).then(function(responses) {
 
-        Promise.all(requests).then(function(responses){
+        $('#' + id + '-processing').hide();
 
-            $('#' + id + '-processing').hide();
+        let index         = 1;
+        let transitionsIn = settings.workflowHistory[id].transitionsIn;
+        let transitionsEx = settings.workflowHistory[id].transitionsEx;
+        let currentStatus = responses[1].data.currentState.title;
 
-            if(showNextTransitions) {
-                if(!finalStates.includes(currentStatus)) {
+        if(settings.workflowHistory[id].showNextTransitions) {
+            if(!settings.workflowHistory[id].finalStates.includes(currentStatus)) {
 
-                    let elemNextActions = $('<div></div>');
-                        elemNextActions.addClass('workflow-next');
+                let elemNext = $('<div></div>').addClass('workflow-next');
 
-                    let elemNextActionsTitle = $('<div></div>');
-                        elemNextActionsTitle.html('Next Step');
-                        elemNextActionsTitle.addClass('workflow-next-title');
-                        elemNextActionsTitle.appendTo(elemNextActions);
+                let elemNextTitle = $('<div></div>').appendTo(elemNext)
+                    .html('Next Step')
+                    .addClass('workflow-next-title');
 
-                    for(next of responses[1].data) {
+                for(let nextTransition of responses[2].data) {
 
-                        if(!excludedTransitions.includes(next.name)) {
+                    if(!transitionsEx.includes(nextTransition.name)) {
                     
-                            let elemAction = $('<div></div>');
-                                elemAction.addClass('with-icon');
-                                elemAction.addClass('icon-arrow-right');
-                                elemAction.addClass('workflow-next-action');
-                                elemAction.html(next.name);
-                                elemAction.appendTo(elemNextActions);
+                        $('<div></div>').appendTo(elemNext)
+                            .addClass('with-icon')
+                            .addClass('icon-arrow-right')
+                            .addClass('workflow-next-action')
+                            .html(nextTransition.name);
 
                         }
 
-                    }
-
-                    if(elemNextActions.children().length > 1) elemNextActions.appendTo(elemParent);
-                    if(elemNextActions.children().length > 2) elemNextActionsTitle.html('Possible Next Steps');
-
                 }
+
+                if(elemNext.children().length > 1) elemNext.appendTo(elemContent);
+                if(elemNext.children().length > 2) elemNextTitle.html('Possible Next Steps');
+
             }
+        }
 
-            let index = 1;
+        for(let action of responses[0].data.history) {
+            
+            let actionTitle = action.workflowTransition.title;
 
-            //Workflow History
-            for(action of responses[0].data.history) {
-
-                if(!excludedTransitions.includes(action.workflowTransition.title)) {
+            if(transitionsIn.length === 0 || transitionsIn.includes(actionTitle)) {
+                if(transitionsEx.length === 0 || !transitionsEx.includes(actionTitle)) {
 
                     let timeStamp = new Date(action.created);
-                    let icon = (index++ === responses[0].data.history.length) ? 'icon-start' : 'icon-check';
+                    let icon      = (index++ === responses[0].data.history.length) ? 'icon-start' : 'icon-check';
 
-                    if((index === 2) && finalStates.includes(currentStatus)) icon = 'icon-finish';
+                    if((index === 2) && settings.workflowHistory[id].finalStates.includes(currentStatus)) icon = 'icon-finish';
+                    
+                    let elemEvent = $('<div></div>').appendTo(elemContent)
+                        .addClass('workflowh-history-event');
 
-                    let elemAction = $('<div></div>');
-                        elemAction.addClass('workflowh-history-event')
-                        elemAction.appendTo(elemParent);
+                    let elemAction = $('<div></div>').appendTo(elemEvent)
+                        .addClass('workflow-history-action');
 
-                    let elemActionAction = $('<div></div>');
-                        elemActionAction.addClass('workflow-history-action');
-                        elemActionAction.appendTo(elemAction);
+                    $('<div></div>').appendTo(elemAction)
+                        .addClass('workflow-history-action-icon')
+                        .addClass('icon')
+                        .addClass(icon)
+                        .addClass('filled');
 
-                    let elemActionActionIcon = $('<div></div>');
-                        elemActionActionIcon.addClass('workflow-history-action-icon');
-                        elemActionActionIcon.addClass('icon');
-                        elemActionActionIcon.addClass(icon);
-                        elemActionActionIcon.addClass('filled');
-                        elemActionActionIcon.appendTo(elemActionAction);
+                    $('<div></div>').appendTo(elemAction)
+                        .addClass('workflow-history-action-text')
+                        .html(action.workflowTransition.title);
+                        
 
-                    let elemActionActionText = $('<div></div>');
-                        elemActionActionText.addClass('workflow-history-action-text');
-                        elemActionActionText.html(action.workflowTransition.title);
-                        elemActionActionText.appendTo(elemActionAction);
+                    $('<div></div>').appendTo(elemEvent)
+                        .addClass('workflow-history-comment')
+                        .html(action.comments);
 
-                    let elemActionDescription = $('<div></div>');
-                        elemActionDescription.addClass('workflow-history-comment');
-                        elemActionDescription.html(action.comments);
-                        elemActionDescription.appendTo(elemAction);
+                    $('<div></div>').appendTo(elemEvent)
+                        .addClass('workflow-history-user')
+                        .html(action.user.title);
 
-                    let elemActionUser = $('<div></div>');
-                        elemActionUser.addClass('workflow-history-user');
-                        elemActionUser.html(action.user.title);
-                        elemActionUser.appendTo(elemAction);
-
-                    let elemActionDate = $('<div></div>');
-                        elemActionDate.addClass('workflow-history-date');
-                        elemActionDate.html(timeStamp.toLocaleDateString());
-                        elemActionDate.appendTo(elemAction);
+                    $('<div></div>').appendTo(elemEvent)
+                        .addClass('workflow-history-date')
+                        .html(timeStamp.toLocaleDateString());
 
                 }
-
             }
+        }
 
-        });
+        insertWorkflowHistoryDone(id, responses[0].data, responses[1].data);
 
-    }
+    });
+
 }
+function insertWorkflowHistoryDone(id, dataHistory, dataItem) {}
 
 
 // Set options of defined select element to trigger workflow action
-function insertWorkflowActions(link, id, hideEmpty) {
+function insertWorkflowActions(link, params) {
 
-    if(isBlank(id)) id = 'workflow-actions';
-    if(isBlank(hideEmpty)) hideEmpty = false;
+    if(isBlank(link)) return;
 
-    let elemActions = $('#' + id);
-        elemActions.addClass('disabled');
-        elemActions.attr('disabled', '');
-        elemActions.attr('data-link', link);
-        elemActions.html('');
+    //  Set defaults for optional parameters
+    // --------------------------------------
+    let id               = 'workflow-actions';  // id of DOM element where the actions menu will be inserted
+    let label            = 'Select Action';     // Label that will be shown in the select control
+    let hideIfEmpty      = true;                // If set to true, the select control will be hidden if there are not workflow actions available
+    let disableAtStartup = false;               // If set to true, the select control will be disabled until the available actions have been retrieved
 
-    let label = elemActions.attr('label');
+    if( isBlank(params)                 )           params = {};
+    if(!isBlank(params.id)              )               id = params.id;
+    if(!isBlank(params.label)           )            label = params.label;
+    if(!isBlank(params.hideIfEmpty)     )      hideIfEmpty = params.hideIfEmpty;
+    if(!isBlank(params.disableAtStartup)) disableAtStartup = params.disableAtStartup;
 
-    if(isBlank(label)) label = 'Worfklow Actions';
+    let elemActions = $('#' + id)
+        .attr('data-link', link)
+        .html('')
+        .change(function() {
+            clickWorkflowAction($(this));
+        });
 
-    let elemLabel = $('<option></option>');
-        elemLabel.attr('value', '');
-        elemLabel.attr('hidden', '');
-        elemLabel.attr('selected', '');
-        elemLabel.html(label);
-        elemLabel.appendTo(elemActions);
+    if(disableAtStartup) elemActions.addClass('disabled').attr('disabled', '')
 
-    if(typeof link === 'undefined') return;
-    if(       link === ''         ) return;
+    $('<option></option>')
+        .attr('value', '')
+        .attr('hidden', '')
+        .attr('selected', '')
+        .html(label)
+        .appendTo(elemActions);
 
     $.get('/plm/transitions', { 'link' : link }, function(response) {
 
         for(action of response.data) {
 
-            let elemAction = $('<option></option>');
-                elemAction.attr('value', action.__self__);
-                elemAction.html(action.name);
-                elemAction.appendTo(elemActions);
+            $('<option></option>').appendTo(elemActions)
+                .attr('value', action.__self__)
+                .html(action.name);
 
         }
 
@@ -4283,13 +5476,30 @@ function insertWorkflowActions(link, id, hideEmpty) {
             elemActions.show();
             elemActions.removeClass('disabled');
             elemActions.removeAttr('disabled');
-        } else if(hideEmpty) {
+        } else if(hideIfEmpty) {
             elemActions.hide();
         }
+
+        insertWorkflowActionsDone(id, response);
 
     });
 
 }
+function insertWorkflowActionsDone(id, data) {}
+function clickWorkflowAction(elemClicked) {
+
+    $('#overlay').show();
+
+    let link       = elemClicked.attr('data-link');
+    let transition = elemClicked.val();
+
+    $.get('/plm/transition', { 'link' : link, 'transition' : transition }, function(response) {
+        $('#overlay').hide();
+        clickWorkflowActionDone(link, tranistion, response);
+    });
+
+}
+function clickWorkflowActionDone(link, transition, data) {}
 
 
 // Togggle item bookmark
@@ -4336,29 +5546,29 @@ function toggleBookmark(elemBookmark) {
 }
 
 
-// Set tab labels
+// Set tab labels and toggle visibility based on user permission
 function insertTabLabels(tabs) {
 
-    $('#tabItemDetails').hide();
-    $('#tabAttachments').hide();
-    $('#tabWorkflow').hide();
-    $('#tabGrid').hide();
-    $('#tabProject').hide();
+    $('#tabItemDetails'  ).hide();
+    $('#tabAttachments'  ).hide();
+    $('#tabWorkflow'     ).hide();
+    $('#tabGrid'         ).hide();
+    $('#tabProject'      ).hide();
     $('#tabRelationships').hide();
-    $('#tabChangeLog').hide();
+    $('#tabChangeLog'    ).hide();
 
-    for(tab of tabs) {
+    for(let tab of tabs) {
 
         let label = (tab.name === null) ? tab.key : tab.name;
 
         switch(tab.workspaceTabName) {
-            case 'ITEM_DETAILS'         : $('#tabItemDetails').html(label).show(); break;
-            case 'PART_ATTACHMENTS'     : $('#tabAttachments').html(label).show(); break;
-            case 'WORKFLOW_ACTIONS'     : $('#tabWorkflow').html(label).show(); break;
-            case 'PART_GRID'            : $('#tabGrid').html(label).show(); break;
-            case 'PROJECT_MANAGEMENT'   : $('#tabProject').html(label).show(); break;
+            case 'ITEM_DETAILS'         : $('#tabItemDetails'  ).html(label).show(); break;
+            case 'PART_ATTACHMENTS'     : $('#tabAttachments'  ).html(label).show(); break;
+            case 'WORKFLOW_ACTIONS'     : $('#tabWorkflow'     ).html(label).show(); break;
+            case 'PART_GRID'            : $('#tabGrid'         ).html(label).show(); break;
+            case 'PROJECT_MANAGEMENT'   : $('#tabProject'      ).html(label).show(); break;
             case 'RELATIONSHIPS'        : $('#tabRelationships').html(label).show(); break;
-            case 'PART_HISTORY'         : $('#tabChangeLog').html(label).show(); break;
+            case 'PART_HISTORY'         : $('#tabChangeLog'    ).html(label).show(); break;
         }
 
     }
