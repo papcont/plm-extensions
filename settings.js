@@ -552,7 +552,7 @@ exports.config = {
             // 'manageProblemReports'  : true,
             // 'showStock'             : true,
             // 'requestWorkflowActions': true,
-            // 'viewer' : {
+             'viewer' : {
             //     'cube'          : false,
             //     'orbit'         : false,
             //     'firstPerson'   : false,
@@ -564,11 +564,11 @@ exports.config = {
             //     'properties'    : false,
             //     'settings'      : false,
             //     'fullscreen'    : true,
-            //     'markup'        : true,
+                 'markup'        : true,
             //     'ghosting'      : true,
             //     'reset'         : true,
             //     'views'         : true
-            // }
+             }
         }
     },
 
