@@ -502,7 +502,7 @@ exports.config = {
         'startupReportNames' : ['Audits by Workflow State', 'CR approval status', 'DR: Rework Required', 'EX: Change Requests'],
         'startupReportCount' : 5
     },
-//reviews id von 76 zu 307 geaendert
+
     'reviews' : {
         'fieldIdItem'   : 'ITEM',
         'fieldIdImage'  : 'IMAGE',
@@ -552,7 +552,7 @@ exports.config = {
             // 'manageProblemReports'  : true,
             // 'showStock'             : true,
             // 'requestWorkflowActions': true,
-            // 'viewer' : {
+             'viewer' : {
             //     'cube'          : false,
             //     'orbit'         : false,
             //     'firstPerson'   : false,
@@ -564,14 +564,14 @@ exports.config = {
             //     'properties'    : false,
             //     'settings'      : false,
             //     'fullscreen'    : true,
-            //     'markup'        : false,
+                 'markup'        : true,
             //     'ghosting'      : true,
             //     'reset'         : true,
             //     'views'         : true
             // }
         }
     },
-// variants id von 208 auf 241 geaendert
+
     'variants' : {
         'wsIdItemVariants'       : 241,
         'variantsSectionLabel'   : 'Variant Definition',
