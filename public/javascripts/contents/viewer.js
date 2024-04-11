@@ -204,22 +204,22 @@ function onViewerGeometryLoaded() {
 }
 function setViewerFeatures() {
 
-    if (typeof features === 'undefined') {
+    if (Object.keys(applicationFeatures).length === 0) {
         viewer.toolbar.setVisible(true);
         return;
     }
 
-    if(isBlank(features)) return;
-    if(isBlank(features.viewer)) return;
+    if(isBlank(applicationFeatures)) return;
+    if(isBlank(applicationFeatures.viewer)) return;
 
-    for(let feature of Object.keys(features.viewer)) {
+    for(let applicationFeature of Object.keys(applicationFeatures.viewer)) {
 
-        if(features.viewer[feature] === false) {
+        if(applicationFeatures.viewer[applicationFeature] === false) {
 
             let elemParent = null;
             let controlId  = '';
 
-            switch(feature) {
+            switch(applicationFeature) {
 
                 case 'orbit'        : elemParent = viewer.toolbar.getControl('navTools');       controlId = 'toolbar-orbitTools'; break;
                 case 'firstPerson'  : elemParent = viewer.toolbar.getControl('navTools');       controlId = 'toolbar-bimWalkTool'; break;
@@ -242,12 +242,14 @@ function setViewerFeatures() {
                     
         } else {
 
-            switch(feature) {
+            switch(applicationFeature) {
                 
                 case 'markup'    : viewerAddMarkupControls();  break;
                 case 'reset'     : viewerAddResetButton();     break;
                 case 'ghosting'  : viewerAddGhostingToggle();  break;
                 case 'highlight' : viewerAddHighlightToggle(); break;
+                case 'fitToView' : viewerAddFitToView();       break;
+                case 'single'    : viewerAddFitFirstInstance();break;
                 case 'views'     : viewerAddViewsToolbar();    break;
 
             }
@@ -255,8 +257,8 @@ function setViewerFeatures() {
         }      
     }
 
-    if(!isBlank(features.viewer.cube)) {
-        if(features.viewer.cube) $('body').removeClass('no-viewer-cube');
+    if(!isBlank(applicationFeatures.viewer.cube)) {
+        if(applicationFeatures.viewer.cube) $('body').removeClass('no-viewer-cube');
     }
 
     viewer.toolbar.setVisible(true);
@@ -271,10 +273,12 @@ function setViewerInstancedData() {
 
     Promise.all(promises).then(function(instances) {
         for(let instance of instances) {
-            let partNumber = getInstancePartNumber(instance);
-            if(partNumber !== null) {
-                instance.partNumber = partNumber;
-                dataInstances.push(instance);
+            if(!isBlank(instance.name)) {
+                let partNumber = getInstancePartNumber(instance);
+                if(partNumber !== null) {
+                    instance.partNumber = partNumber;
+                    dataInstances.push(instance);
+                }
             }
         }
         setViewerInstancedDataDone();
@@ -409,13 +413,16 @@ function viewerSelectModels(partNumbers, params) {
     }
 
     for(let dataInstance of dataInstances) {
+        let isSelected = false;
         for(let partNumber of partNumbers) {
             if(dataInstance.partNumber === partNumber) {
                 dbIds.push(dataInstance.dbId);
                 viewer.show(dataInstance.dbId);
+                isSelected = true;
                 if(highlight) viewer.setThemingColor(dataInstance.dbId, color, null, true );
             }
         }
+        dataInstance.selected = isSelected;
     }
 
     if(ghosting)  viewer.setGhosting(true);
@@ -495,7 +502,7 @@ function viewerSelectInstances(dbIds, params) {
     disableViewerSelectionEvent = false;
 
 }
-function viewerHighlightInstances(partNumber, dbIds, params) {
+function viewerHighlightInstances(partNumber, ids, params) {
     
     // Select all occurences of a partNumber and highlight defined instance IDs
 
@@ -503,7 +510,8 @@ function viewerHighlightInstances(partNumber, dbIds, params) {
     if(isBlank(partNumber)) return;
     if(isBlank(ids)) return;
 
-        //  Set defaults for optional parameters
+
+    //  Set defaults for optional parameters
     // --------------------------------------
     let isolate         = true;    // Enable isolation of selected component(s)
     let ghosting        = false;   // Enforce ghosting of hidden components
@@ -522,22 +530,25 @@ function viewerHighlightInstances(partNumber, dbIds, params) {
     if(!isBlank(params.colorHighlight)) colorHighlight = params.colorHighlight;
 
     disableViewerSelectionEvent = true;
+    ghosting = getToolbarGhostingToggle(ghosting);
+    
+    let dbIds   = [];
 
     if(isolate)     viewer.hideAll();
     if(resetColors) viewer.clearThemingColors();
 
     for(let dataInstance of dataInstances) {
-        for(let partNumber of partNumbers) {
-            if(dataInstance.partNumber === partNumber) {
-                dbIds.push(dataInstance.dbId);
-                viewer.show(dataInstance.dbId);
-                if(!ids.includes(String.valueOf(item.dbId))) viewer.setThemingColor(item.dbId, color, null, true );
-            }
+        if(dataInstance.partNumber === partNumber) {
+            dbIds.push(dataInstance.dbId);
+            viewer.show(dataInstance.dbId);
         }
     }
 
     for(let dbId of dbIds) {
-        viewer.setThemingColor(Number(dbId), colorHighlight, null, true );
+        viewer.setThemingColor(Number(dbId), colorModelSelected, null, true );
+    }
+    for(let dbIdHighlight of ids) {
+        viewer.setThemingColor(Number(dbIdHighlight), colorModelHighlighted, null, true );
     }
      
     if(ghosting)  viewer.setGhosting(false);
@@ -553,17 +564,20 @@ function viewerResetSelection(params) {
     //  Set defaults for optional parameters
     // --------------------------------------
     let fitToView   = true;     // Zoom in / out to fit all into view
+    let resetView   = false;    // Reset view to initial view from file
     let resetColors = true;     // Highlight given partNumber(s) by defined color (colorModelSelected)
 
     if( isBlank(params)            )      params = {};
     if(!isBlank(params.fitToView)  )   fitToView = params.fitToView;
+    if(!isBlank(params.resetView)  )   resetView = params.resetView;
     if(!isBlank(params.resetColors)) resetColors = params.resetColors;
 
     viewer.showAll();
     viewer.clearSelection();
     
-    if(resetColors) viewer.clearThemingColors();
-    if(fitToView  ) viewer.setViewFromFile();
+         if(resetColors) viewer.clearThemingColors();
+         if(resetView  ) viewer.setViewFromFile();
+    else if(fitToView  ) viewer.fitToView();
 
 }
 
@@ -829,7 +843,7 @@ function viewerGetComponentsInstances(partNumbers) {
     if(!isViewerStarted()) return [];
 
     let result = [];
-        
+
     for(let partNumber of partNumbers) {
         result.push({
             'partNumber' : partNumber,
@@ -864,7 +878,7 @@ function getComponentPath(id) {
 
     for(let dataInstance of dataInstances) {
         if(dataInstance.dbId === id) {
-            result = dataInstance.partNumber + ';' + dataInstance.name;
+            result = dataInstance.partNumber + ';xx' + dataInstance.name;
             for(let property of dataInstance.properties) {
                 if(property.attributeName === 'parent') {
                     let partNumber = getComponentPath(property.displayValue);
@@ -1002,6 +1016,17 @@ function addCustomControl(toolbar, id, icon, tooltip) {
     return newButton;
 
 }
+function getToolbarGhostingToggle(value) {
+
+    let toolbar = $('#my-custom-toolbar-ghosting');
+    if(toolbar.length > 0) {
+        if(toolbar.hasClass('ghosting')) return true;
+        else return false;
+    } else {
+        return value;
+    }
+
+}
 
 
 // Custom Controls : Highlight Toggle
@@ -1039,6 +1064,60 @@ function toggleSelectionHighlight(enabled) {
             viewer.setThemingColor(dataInstance.dbId, colorModelSelected, null, true );
         }
     }
+
+}
+
+
+// Custom Controls : Fit (selection) to view
+function viewerAddFitToView() {
+    
+    let customToolbar = new Autodesk.Viewing.UI.ControlGroup('custom-toolbar-fit');
+
+    let buttionFitToView = addCustomControl(customToolbar, 'button-fit-to-view', 'icon-viewer', 'Fit (selected) components to view');
+        buttionFitToView.onClick = function() { 
+
+            let dbIds = [];
+
+            for(let dataInstance of dataInstances) {
+                if(viewer.isNodeVisible(dataInstance.dbId)) {
+                    dbIds.push(dataInstance.dbId);
+                }
+            }
+
+            viewer.fitToView(dbIds);
+
+        };
+        
+    viewer.toolbar.addControl(customToolbar);
+
+}
+
+
+// Custom Controls : 
+function viewerAddFitFirstInstance() {
+
+    let customToolbar = new Autodesk.Viewing.UI.ControlGroup('custom-toolbar-single');
+
+    let buttionFitFirst = addCustomControl(customToolbar, 'button-fit-first', 'icon-first', 'Fit first instance to view');
+        buttionFitFirst.onClick = function() { 
+
+            let dbIdFirst = [];
+
+            for(let dataInstance of dataInstances) {
+                if(dataInstance.selected === true) {
+                    if(!isBlank(dataInstance.name)) {
+                        if(dbIdFirst.length === 0) {
+                            dbIdFirst.push(dataInstance.dbId);
+                        }
+                    }
+                }
+            }
+
+            viewer.fitToView(dbIdFirst);
+            
+        };
+        
+    viewer.toolbar.addControl(customToolbar);
 
 }
 

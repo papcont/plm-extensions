@@ -3,6 +3,7 @@ let clientId        = '';
 let clientSecret    = '';
 let tenant          = '';
 let redirectUri     = 'http://localhost:8080/callback';
+let defaultTheme    = 'light';
 
 
 
@@ -546,7 +547,9 @@ exports.config = {
         'wsIdProducts'           : 95,
         'wsIdProblemReports'     : 82,
         'wsIdSparePartsRequests' : 208,
-        'features' : {
+        'requestSectionsExcluded': ['Workflow Activity'],
+        'requestColumnsExcluded' : ['UNIT_COST', 'TOTAL_COST', 'MAKE_OR_BUY', 'MANUFACTURER', 'MANUFACTURER_PN', 'LEAD_TIME', 'LONG_LEAD_TIME'],
+        'applicationFeatures' : {
             // 'homeButton'            : true,
             // 'toggleItemAttachments' : true,
             // 'toggleItemDetails'     : true,
@@ -569,6 +572,8 @@ exports.config = {
             //     'ghosting'      : true,
             //     'highlight'     : true,
             //     'reset'         : true,
+            //     'fitToView'     : true,
+            //     'single'        : true,
             //     'views'         : true
              }
         }

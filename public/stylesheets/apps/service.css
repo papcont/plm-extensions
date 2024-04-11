@@ -1,6 +1,6 @@
 :root {
 
-    --width-requests         : 800px;
+    --width-requests         : 650px;
     --padding-landing-top    : 24px;
     --padding-landing-side   : 40px;
     --padding-landing-bottom : 16px;
@@ -9,7 +9,7 @@
     --width-panel            : 540px;
     --height-attachments     : 184px;
     --width-request-history  : 300px;
-    --width-request-details  : 400px;
+    --width-request-details  : 440px;
     --height-request-files   : 226px;
     --padding-panel          :  24px;
 
@@ -283,7 +283,7 @@
     font-size   : 16px;
     padding     : 20px 30px 20px 30px;
     position    : absolute;
-    top         : 6px;
+    top         : 0px;
     right       : 0px;
     left        : 0px;
     height      : 400px;
@@ -407,17 +407,17 @@
 .col-right {
     width : calc(100% - 540px);
 }
-.field {
+#contact-details .field {
     display         : flex;
     margin-bottom   : 8px;
 }
-.field-label {
+#contact-details .field-label {
     font-weight : normal;
     min-width   : 100px;
     padding-top : 8px;
     width       : 100px;
 }
-.field input {
+#contact-details .field input {
     background      : var(--color-surface-level-2);
     border-color    : var(--color-surface-level-5);
     font-size       : 14px;
@@ -547,7 +547,18 @@
     bottom          : var(--margin-item);
     transition      : all ease 0.25s;
 }
-
+#request-details-content .field {
+    margin-bottom : 0px;
+}
+#request-details-content .field-label {
+    font-weight : bold;
+    max-width   : 150px;
+    min-width   : 150px;
+    width       : 150px;
+}
+#request-attachments-toolbar {
+    display : none;
+}
 
 /* PROCESSES */
 /* ----------------------------------------------------------------------------- */
