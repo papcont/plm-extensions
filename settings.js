@@ -168,10 +168,11 @@ exports.config = {
     }],
 
     'explorer' : {
-        'bomViewName'               : 'Details',
-        'fieldIdProblemReportImage' : 'IMAGE_1',
-        'wsIdProblemReports'        : 82,
-        'wsIdSupplierPackages'      : 147,
+        'bomViewName'           : 'Details',
+        'fieldIdPRImage'        : 'IMAGE_1',
+        'fieldIdPRContext'      : 'AFFECTED_ITEM',
+        'wsIdProblemReports'    : 82,
+        'wsIdSupplierPackages' : 147,
         'kpis' : [{
             'id'        : 'lifecycle',
             'title'     : 'Item Lifecycle',
@@ -534,8 +535,9 @@ exports.config = {
         'endItemFilter'          : { 'fieldId' : 'SBOM_END_ITEM', 'value' : true },
         'fieldId'                : 'SPARE_WEAR_PART',
         'fieldValues'            : ['spare part', 'yes', 'x', 'y', 'wear part'],
-        'fieldIdImage'           : 'IMAGE',
+        'fieldIdSparePartImage'  : 'IMAGE',
         'spartPartDetails'       : ['MATERIAL', 'ITEM_WEIGHT', 'DIMENSIONS'],
+        'fieldIdPRImage'         : 'IMAGE_1',
         'productsFilter'         : '',
         'productsSortBy'         : 'TITLE',
         'productsGroupBy'        : 'PRODUCT_LINE',

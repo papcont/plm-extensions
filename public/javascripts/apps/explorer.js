@@ -8,13 +8,26 @@ let multiSelect         = { 'wsId' : '', 'links' : [], 'common': [], 'varies' : 
 let wsItems             = { 'id' : wsId, 'sections' : [], 'fields' : [], 'viewId' : '' };
 let wsProblemReports    = { 'id' : ''  , 'sections' : [], 'fields' : [] };
 let wsSupplierPackages  = { 'id' : ''  , 'sections' : [], 'fields' : [] };
+
+let paramsAttachments = { 
+    'size'          : 's', 
+    'upload'        : true, 
+    'extensionsEx'  : '.dwf,.dwfx' 
+}
+let paramsProcesses = { 
+    'headerLabel'    : 'Change Processes', 
+    'createWSID'     : '' ,
+    'fieldIdMarkup'  : ''
+}
+let context = {}
  
 
 $(document).ready(function() {
     
-    wsProblemReports.id   = config.explorer.wsIdProblemReports;
-    wsSupplierPackages.id = config.explorer.wsIdSupplierPackages;
-
+    wsProblemReports.id             = config.explorer.wsIdProblemReports;
+    wsSupplierPackages.id           = config.explorer.wsIdSupplierPackages;
+    paramsProcesses.createWSID      = config.explorer.wsIdProblemReports;
+    paramsProcesses.fieldIdMarkup   = config.explorer.fieldIdPRImage;
 
     let link = '/api/v3/workspaces/' + wsId + '/items/' + dmsId;
     
@@ -23,14 +36,17 @@ $(document).ready(function() {
     appendProcessing('dashboard', false);
     appendProcessing('bom', false);
     appendProcessing('details', false);
-    appendProcessing('processes', false);
     appendViewerProcessing();
     appendOverlay();
     
+    paramsProcesses.createContext  = {
+        'fieldId' : config.explorer.fieldIdPRContext
+    }
+
     getInitialData();
     insertViewer(link);
-    insertAttachments(link, { 'size' : 's', 'upload' : true, 'extensionsEx' : '.dwf,.dwfx' });
-    insertChangeProcesses(link, 'processes');
+    insertAttachments(link, paramsAttachments);
+    insertChangeProcesses(link, paramsProcesses);
     setUIEvents();
 
 });
@@ -177,7 +193,7 @@ function setUIEvents() {
 
                 $.get('/plm/add-managed-items', { 'link' : newLink, 'items' : [ link ] }, function(response) {
 
-                    insertChangeProcesses(link, 'processes');
+                    insertChangeProcesses(link, paramsProcesses);
                     $('.process-dialog').hide();
                     $('#create-process').show();
                     $('#processes-list').show();
@@ -308,6 +324,9 @@ function getInitialData() {
 
         $('#header-subtitle').html(responses[1].data.title);
 
+        context.link  = '/api/v3/workspaces/' + wsId + '/items/' + dmsId;
+        context.title = responses[1].data.title 
+
         wsItems.sections            = responses[2].data;
         wsItems.fields              = responses[3].data;
         wsProblemReports.sections   = responses[4].data;
@@ -321,7 +340,7 @@ function getInitialData() {
         }
 
         getBOMData();
-        setItemDetails('/api/v3/workspaces/' + wsId + '/items/' + dmsId);
+        setItemDetails(context.link);
         
         editableFields = getEditableFields(wsItems.fields);
 
@@ -704,9 +723,14 @@ function selectBOMItem(e, elemClicked) {
 
     if(elemClicked.hasClass('selected')) {
         
+        paramsProcesses.createContext.link  = context.link;
+        paramsProcesses.createContext.title = context.title;
+
         elemClicked.removeClass('selected');
+        
         viewerResetSelection(true);
-        insertAttachments($('#viewer').attr('data-link'), { 'size' : 's', 'upload' : true, 'extensionsEx' : '.dwf,.dwfx' });
+        insertAttachments($('#viewer').attr('data-link'), paramsAttachments);
+        insertChangeProcesses(context.link, paramsProcesses);
 
         // if($('.flat-bom-row.selected').length === 0) {
 
@@ -780,11 +804,13 @@ function selectBOMItem(e, elemClicked) {
         $('.bom-action').show();
         $('#go-there').show();
         
+        paramsProcesses.createContext.title = elemClicked.attr('data-title');
+        paramsProcesses.createContext.link  = linkSelected;
+        
         viewerSelectModels(partNumbers);
-
         setItemDetails(linkSelected);
-        insertAttachments(linkSelected, { 'size' : 's', 'upload' : true, 'extensionsEx' : '.dwf,.dwfx' });
-        insertChangeProcesses(linkSelected, 'processes');
+        insertAttachments(linkSelected, paramsAttachments);
+        insertChangeProcesses(linkSelected, paramsProcesses);
         
     }
 

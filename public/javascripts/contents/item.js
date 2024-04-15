@@ -301,12 +301,13 @@ function processItemDetailsFields(id, sections, fields, data, editable, hideComp
 }
 function insertItemDetailsDone(id) {}
 function processItemDetailsFieldsDone(id) {}
-function insertField(field, itemData, elemParent, hideComputed, hideReadOnly, editable, hideLabel) {
+function insertField(field, itemData, elemParent, hideComputed, hideReadOnly, editable, hideLabel, context) {
 
     if(typeof hideComputed === 'undefined') hideComputed = false;  // hide computed fields
     if(typeof hideReadOnly === 'undefined') hideReadOnly = false;  // hide read only fields
     if(typeof editable     === 'undefined')     editable = false;  // display editable
     if(typeof hideLabel    === 'undefined')    hideLabel = false;  // return value only, without label field
+    if(typeof context      === 'undefined')      context = null;  
 
     if(field.visibility !== 'NEVER') {
 
@@ -431,10 +432,15 @@ function insertField(field, itemData, elemParent, hideComputed, hideReadOnly, ed
                             elemInput = $('<select>');
                             elemValue.addClass('picklist');
                             elemValue.append(elemInput);
-                            let elemOptionBlank = $('<option></option>');
-                                elemOptionBlank.attr('value', null);
-                                elemOptionBlank.appendTo(elemInput);
-                            getOptions(elemInput, field.picklist, fieldId, 'select', value);
+                            if(context === null) {
+                                 $('<option></option>').appendTo(elemInput)
+                                    .attr('value', null);
+                                getOptions(elemInput, field.picklist, fieldId, 'select', value);
+                            } else {
+                                $('<option></option>').appendTo(elemInput)
+                                    .attr('value', context.link)
+                                    .html(context.title);
+                            }
                         } else {
                             elemValue = $('<div></div>');
                             elemValue.addClass('string');
@@ -706,11 +712,15 @@ function insertOptions(elemParent, data, fieldId, type, value) {
 
         } else if(type === 'select') {
 
+            let title = option.title;
+
+            if(!isBlank(option.version)) title += ' ' + option.version;
+
             let elemOption = $('<option></option>');
                 elemOption.attr('id', option.link);
                 elemOption.attr('value', option.link);
-                elemOption.attr('displayValue', option.title);
-                elemOption.html(option.title);
+                elemOption.attr('displayValue', title);
+                elemOption.html(title);
                 elemOption.appendTo(elemParent);
 
             if(typeof value !== 'undefined') {
@@ -852,11 +862,12 @@ function insertCreateForm(id, wsId, params) {
 
     //  Set defaults for optional parameters
     // --------------------------------------
-    let hideReadOnly    = true;             // Hide header with setting this to false
-    let sectionsIn      = [];    // Set the header text
-    let sectionsEx      = [];    // Set the header text
-    let fieldsIn        = [];    // Set the header text
-    let fieldsEx        = [];    // Set the header text
+    let hideReadOnly    = true;  // Hide header with setting this to false
+    let sectionsIn      = [];    // Defines sections to be incluced (by section names)
+    let sectionsEx      = [];    // Defines sections to be excluded (by section names)
+    let fieldsIn        = [];    // Defines fields to be included (by field ID)
+    let fieldsEx        = [];    // Defines fields to be excluded (by field ID)
+    let context         = null;  // Provide context item information ( { title, link, fieldId })
 
     if( isBlank(params)             )       params = {};
     if(!isBlank(params.hideReadOnly)) hideReadOnly = params.hideReadOnly;
@@ -864,6 +875,7 @@ function insertCreateForm(id, wsId, params) {
     if(!isBlank(params.sectionsEx)  )   sectionsEx = params.sectionsEx;
     if(!isBlank(params.fieldsIn)    )     fieldsIn = params.fieldsIn;
     if(!isBlank(params.fieldsEx)    )     fieldsEx = params.fieldsEx;
+    if(!isBlank(params.context)     )      context = params.context;
 
     let paramsForm = {
         id           : id,
@@ -874,7 +886,10 @@ function insertCreateForm(id, wsId, params) {
         sectionsEx   : sectionsEx,
         fieldsIn     : fieldsIn,
         fieldsEx     : fieldsEx,
+        context      : context
     }
+
+    let requests = [];
 
     wsId = wsId.toString();
     
@@ -886,34 +901,52 @@ function insertCreateForm(id, wsId, params) {
     }
     
     if((paramsForm.sections.length === 0) || (paramsForm.fields.length === 0)) {
-
-        let requests = [
+        requests = [
             $.get('/plm/sections', { 'wsId' : wsId } ),
             $.get('/plm/fields',   { 'wsId' : wsId } )
         ]
+    }
+
+    if(context !== null) {
+        if(isBlank(context.title)) {
+            requests.push($.get('/plm/details', { 'link' : context.link } ));
+        }
+    }
+
+    if(requests.length > 0) {
 
         Promise.all(requests).then(function(responses) {
 
-            let addToCache = true;
+            if(requests.length > 1) {
 
-            for(let workspace of cacheWorkspaces) {
-                if(workspace.id === wsId) {
-                    workspace.sections = responses[0].data;
-                    workspace.fields   = responses[0].data;
-                    addToCache         = false;
+                let addToCache = true;
+
+                for(let workspace of cacheWorkspaces) {
+                    if(workspace.id === wsId) {
+                        workspace.sections = responses[0].data;
+                        workspace.fields   = responses[0].data;
+                        addToCache         = false;
+                    }
+                }
+
+                if(addToCache) {
+                    cacheWorkspaces.push({
+                        'id'        : wsId,
+                        'sections'  : responses[0].data,
+                        'fields'    : responses[1].data
+                    });
+                }
+
+                paramsForm.sections = responses[0].data;
+                paramsForm.fields   = responses[1].data;
+
+            }
+
+            for(let response of responses) {
+                if(response.url.indexOf('/details') === 0) {
+                    paramsForm.context.title = response.data.title;
                 }
             }
-
-            if(addToCache) {
-                cacheWorkspaces.push({
-                    'id'        : wsId,
-                    'sections'  : responses[0].data,
-                    'fields'    : responses[1].data
-                });
-            }
-
-            paramsForm.sections = responses[0].data;
-            paramsForm.fields   = responses[1].data;
 
             insertCreateFormFields(paramsForm);
 
@@ -929,6 +962,8 @@ function insertCreateFormFields(params) {
     let elemSections = $('#' + params.id + '-sections');
         elemSections.html('');
 
+    let contextFieldId = (isBlank(params.context)) ? '' : params.context.fieldId;
+    
     for(let section of params.sections) {
 
         let isNew       = true;
@@ -976,7 +1011,8 @@ function insertCreateFormFields(params) {
                 for(let sectionField of section.fields) {
 
                     let fieldId = sectionField.link.split('/')[8];
-
+                    let context = (fieldId === contextFieldId) ? params.context : null;
+                    
                     if(params.fieldsIn.length === 0 || params.fieldsIn.includes(fieldId)) {
                         if(params.fieldsEx.length === 0 || !params.fieldsEx.includes(fieldId)) {
 
@@ -989,9 +1025,10 @@ function insertCreateFormFields(params) {
                                                     for(let wsField of params.fields) {
                                                         if(wsField.urn === matrixField.urn) {
                                                             let matrixFieldId = matrixField.link.split('/')[8];
+                                                            context = (matrixFieldId === contextFieldId) ? params.context : null;
                                                             if(params.fieldsIn.length === 0 || params.fieldsIn.includes(matrixFieldId)) {
                                                                 if(params.fieldsEx.length === 0 || !params.fieldsEx.includes(matrixFieldId)) {
-                                                                    insertField(wsField, null, elemFields, params.hideComputed, params.hideReadOnly, true);
+                                                                    insertField(wsField, null, elemFields, params.hideComputed, params.hideReadOnly, true, null, context);
                                                                 }
                                                             }
                                                         }
@@ -1004,7 +1041,7 @@ function insertCreateFormFields(params) {
                             } else {
                                 for(let wsField of params.fields) {
                                     if(wsField.urn === sectionField.urn)
-                                        insertField(wsField, null, elemFields, params.hideComputed, params.hideReadOnly, true);
+                                        insertField(wsField, null, elemFields, params.hideComputed, params.hideReadOnly, true, null, context);
                                 }
                             }
                                 
@@ -1026,10 +1063,10 @@ function insertCreateFormFields(params) {
     $('#' + params.id + '-processing').hide();
 
 }
-function submitCreateForm(wsId, elemParent, idMarkup, callback) {
+function submitCreateForm(wsIdNew, elemParent, idMarkup, callback) {
 
     let params = { 
-        'wsId'     : wsId,
+        'wsId'     : wsIdNew,
         'sections' : getSectionsPayload(elemParent) 
     };
 
@@ -1039,7 +1076,7 @@ function submitCreateForm(wsId, elemParent, idMarkup, callback) {
 
         if(elemMarkupImage.length > 0) {
             params.image = {
-                'fieldId' : elemMarkupImage.attr('data-field-id'),
+                'fieldId' : elemParent.attr('data-field-id-markup'),
                 'value'   : elemMarkupImage[0].toDataURL('image/jpg')
             }
         }
@@ -1047,9 +1084,9 @@ function submitCreateForm(wsId, elemParent, idMarkup, callback) {
     }
 
     $.post({
-        url : '/plm/create', 
-        contentType : "application/json",
-        data : JSON.stringify(params)
+        url         : '/plm/create', 
+        contentType : 'application/json',
+        data        : JSON.stringify(params)
     }, function(response) {
         callback(response);
     });
@@ -2015,6 +2052,10 @@ function getFileSVG(extension) {
         case 'PNG':
         case 'tiff':
             svg = "data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIGlkPSJhc3NldHMiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4IiB3aWR0aD0iMTVweCIgaGVpZ2h0PSIxNXB4IiB2aWV3Ym94PSIwIDAgMTUgMTUiIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDE1IDE1IiB4bWw6c3BhY2U9InByZXNlcnZlIj48cGF0aCBmaWxsPSIjN0I4RkE2IiBkPSJNMSwxaDEzdjExSDFWMXogTTAsMHYxNWgxNVYwSDB6IE0xMCw0LjVDMTAsNS4zLDEwLjcsNiwxMS41LDZDMTIuMyw2LDEzLDUuMywxMyw0LjVDMTMsMy43LDEyLjMsMywxMS41LDMNCglDMTAuNywzLDEwLDMuNywxMCw0LjV6IE0yLDExaDEwTDYsNUwyLDlWMTF6Ii8+PC9zdmc+";
+            break;
+
+        case '.rvt':
+            svg = 'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIGlkPSJhc3NldHMiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4IiB3aWR0aD0iMTZweCIgaGVpZ2h0PSIxNnB4IiB2aWV3Qm94PSIwIDAgMTYgMTYiIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDE2IDE2IiB4bWw6c3BhY2U9InByZXNlcnZlIj48Zz48ZyBpZD0iZmlsZUljb25CR181NV8iPjxwYXRoIGlkPSJmb2xkZWRDb3JuZXJfMTUxXyIgZmlsbD0iIzEyNzNDNSIgZD0iTTExLDBsNSw1aC01VjB6Ii8+PHBhdGggaWQ9ImJhY2tncm91bmRfMTUxXyIgZmlsbD0iIzBDNTA4OSIgZD0iTTAsMHYxNmgxNlY1aC01VjBIMHoiLz48cGF0aCBpZD0id2hpdGVfMTAxXyIgZmlsbD0iI0ZGRkZGRiIgZD0iTTEsMXY4aDE0VjVoLTRWMUgxeiIvPjxwYXRoIGlkPSJzaGFkb3dfMTI2XyIgb3BhY2l0eT0iMC4yIiBmaWxsPSIjMUIzRjYzIiBlbmFibGUtYmFja2dyb3VuZD0ibmV3ICAgICIgZD0iTTE2LDEwbC01LTVoNVYxMHoiLz48L2c+PGc+PHBhdGggZmlsbD0iI0ZGRkZGRiIgZD0iTTMsMTFoMWMwLjMsMCwwLjUsMC4yLDAuNSwwLjVTNC4zLDEyLDQsMTJIM1YxMXogTTIsMTB2NWgxdi0yaDAuN0w1LDE1aDFsLTEuNC0yLjENCgkJCWMwLjUtMC4yLDAuOS0wLjgsMC45LTEuNEM1LjUsMTAuNyw0LjgsMTAsNCwxMEgyeiIvPjxwYXRoIGZpbGw9IiNGRkZGRkYiIGQ9Ik0xMywxMWgxLjN2LTFoLTMuN3YxSDEydjRoMVYxMXoiLz48cGF0aCBmaWxsPSIjRkZGRkZGIiBkPSJNOSwxNWwyLTVoLTFsLTEuNSw0TDcsMTBINmwyLDVIOXoiLz48L2c+PC9nPjwvc3ZnPg==';
             break;
 
         default: 
@@ -4840,10 +4881,12 @@ function insertChangeProcesses(link, params) {
     let workspacesIn        = [];              // List of workspace to be included, identified by workspace IDs (example: ['82'])
     let workspacesEx        = [];              // List of workspace to be excluded, identified by workspace ID (example: ['83','84'])
     let createWSID          = '';              // Enable creation of new records by providing the given workspace ID in which new records should be created
+    let fieldIdMarkup       = '';              // If viewer markups should be stored when creating new records, provide the given image field's ID 
     let createSectionsIn    = [];              // If creation of new records is enabled (using parameter createWSID), this list can be used to select the sections to be shown in the create dialog (example: ['Header','Details'])
     let createSectionsEx    = [];              // If creation of new records is enabled (using parameter createWSID), this list can be used to hide sections in the create dialog (example: ['Review'])
     let createFieldsIn      = [];              // If creation of new records is enabled (using parameter createWSID), this list can be used to select the fields to be shown in the create dialog (example: ['Title','Description'])
     let createFieldsEx      = [];              // If creation of new records is enabled (using parameter createWSID), this list can be used to hide fields in the create dialog. Fields of this list will not be shown (example: ['Closing Comment']).
+    let createContext       = null;            // Provide context item information if default value should be set in linking pick list field ( { title, link, fieldId })
 
 
     if( isBlank(params)                 )           params = {};
@@ -4857,10 +4900,17 @@ function insertChangeProcesses(link, params) {
     if(!isBlank(params.workspacesIn)    )     workspacesIn = params.workspacesIn;
     if(!isBlank(params.workspacesEx)    )     workspacesEx = params.workspacesEx;
     if(!isBlank(params.createWSID)      )       createWSID = params.createWSID;
+    if(!isBlank(params.fieldIdMarkup)   )    fieldIdMarkup = params.fieldIdMarkup;
     if(!isBlank(params.createSectionsIn)) createSectionsIn = params.createSectionsIn;
     if(!isBlank(params.createSectionsEx)) createSectionsEx = params.createSectionsEx;
     if(!isBlank(params.createFieldsIn)  )   createFieldsIn = params.createFieldsIn;
     if(!isBlank(params.createFieldsEx)  )   createFieldsEx = params.createFieldsEx;
+    if(!isBlank(params.createContext)   )    createContext = params.createContext;
+
+    if(createContext !== null) {
+        if(isBlank(createContext.link)) createContext.link = link;
+    }
+
 
     settings.processes[id]                  = {};
     settings.processes[id].icon             = icon;
@@ -4871,6 +4921,7 @@ function insertChangeProcesses(link, params) {
     settings.processes[id].createSectionsEx = createSectionsEx;
     settings.processes[id].createFieldsIn   = createFieldsIn;
     settings.processes[id].createFieldsEx   = createFieldsEx;
+    settings.processes[id].context          = createContext;
 
     let elemParent = $('#' + id).addClass('processes').html('');
 
@@ -4943,9 +4994,9 @@ function insertChangeProcesses(link, params) {
                 .attr('id', id + '-sections')
                 .attr('data-wsid', createWSID)
                 .attr('data-link', link)
+                .attr('data-field-id-markup', fieldIdMarkup)
                 .addClass('form')
-                .addClass('no-scrollbar')
-                .addClass(getSurfaceLevel($('body')));
+                .addClass('no-scrollbar');
 
             if(!inline) elemSections.addClass('panel-content')
 
@@ -4958,7 +5009,6 @@ function insertChangeProcesses(link, params) {
         .addClass('tiles')
         .addClass('list')
         .addClass(size)
-        .addClass(getSurfaceLevel($('body')))
         .addClass('processes-content')
         .addClass('no-scrollbar');
 
@@ -4991,7 +5041,8 @@ function toggleProcessCreateForm(id, visible) {
             sectionsIn : settings.processes[id].createSectionsIn,
             sectionsEx : settings.processes[id].createSectionsEx,
             fieldsIn   : settings.processes[id].createFieldsIn,
-            fieldsEx   : settings.processes[id].createFieldsEx
+            fieldsEx   : settings.processes[id].createFieldsEx,
+            context    : settings.processes[id].context
         });
 
     } else {
@@ -5028,6 +5079,8 @@ function submitProcessCreateForm(id) {
     viewerCaptureScreenshot(null, function() {
 
         submitCreateForm(settings.processes[id].createWSID, $('#' + id + '-sections'), 'viewer-markup-image', function(response) {
+
+            console.log(response);
                
             let link    = $('#' + id + '-list').attr('data-link');
             let newLink = response.data.split('.autodeskplm360.net')[1];
