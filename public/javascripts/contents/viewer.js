@@ -245,11 +245,11 @@ function setViewerFeatures() {
             switch(applicationFeature) {
                 
                 case 'markup'    : viewerAddMarkupControls();  break;
-                case 'reset'     : viewerAddResetButton();     break;
                 case 'ghosting'  : viewerAddGhostingToggle();  break;
                 case 'highlight' : viewerAddHighlightToggle(); break;
-                case 'fitToView' : viewerAddFitToView();       break;
                 case 'single'    : viewerAddFitFirstInstance();break;
+                case 'fitToView' : viewerAddFitToView();       break;
+                case 'reset'     : viewerAddResetButton();     break;
                 case 'views'     : viewerAddViewsToolbar();    break;
 
             }
@@ -409,7 +409,7 @@ function viewerSelectModels(partNumbers, params) {
 
     let toolbar = $('#my-custom-toolbar-highlight');
     if(toolbar.length > 0) {
-        if(toolbar.hasClass('highlight-on')) highlight = true;
+        highlight = toolbar.hasClass('highlight-on');
     }
 
     for(let dataInstance of dataInstances) {
