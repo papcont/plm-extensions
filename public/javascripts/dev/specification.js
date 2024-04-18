@@ -724,7 +724,7 @@ function insertApplicationDataTable(id, component) {
     
                             }
     
-                            // isEditable = true;
+                            isEditable = true;
                         }
 
                     }
