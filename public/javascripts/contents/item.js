@@ -1390,15 +1390,11 @@ function insertDetailsData(id) {
 
                 cacheSections = [];
 
-                console.log(sectionsEx);
-
                 for(let section of sections) {
 
                     let sectionId   = section.__self__.split('/')[6];
                     let isNew       = true;
                     let className   = 'expanded'
-
-                    console.log(section.name);
 
                     if(sectionsIn.length === 0 || sectionsIn.includes(section.name)) {
                         if(sectionsEx.length === 0 || !sectionsEx.includes(section.name)) {
@@ -1823,6 +1819,7 @@ function insertAttachments(link, params) {
     let layout       = 'tiles';          // Content layout (tiles, list or table)
     let inline       = false;            // Display the attachments inline with other elements
     let size         = 'm';              // layout size (xxs, xs, s, m, l, xl, xxl)
+    let folders      = false;            // Display folders
     let fileVersion  = true;             // Display version of each attachment
     let fileSize     = true;             // Display size of each attachment
     let extensionsIn = '';               // Defines list of file extensions to be included ('.pdf,.doc')
@@ -1840,6 +1837,7 @@ function insertAttachments(link, params) {
     if(!isBlank(params.layout)      )       layout = params.layout;
     if(!isBlank(params.inline)      )       inline = params.inline;
     if(!isBlank(params.size)        )         size = params.size;
+    if(!isBlank(params.folders)     )      folders = params.folders;
     if(!isBlank(params.fileVersion) )  fileVersion = params.fileVersion;
     if(!isBlank(params.fileSize)    )     fileSize = params.fileSize;
     if(!isBlank(params.extensionsIn)) extensionsIn = params.extensionsIn;
@@ -1860,6 +1858,7 @@ function insertAttachments(link, params) {
     settings.attachments[id].fileVersion  = fileVersion;
     settings.attachments[id].fileSize     = fileSize;
     settings.attachments[id].split        = split;
+    settings.attachments[id].folders      = folders;
     settings.attachments[id].download     = download;
     settings.attachments[id].extensionsIn = (extensionsIn === '') ? [] : extensionsIn.split(',');
     settings.attachments[id].extensionsEx = (extensionsEx === '') ? [] : extensionsEx.split(',');
@@ -2192,6 +2191,7 @@ function insertAttachmentsData(id, timestamp, link, update) {
 
                 let attachments = responses[0].data;
                 let currentIDs  = [];
+                let folders     = [];
 
                 elemList.find('.attachment').each(function() {
 
@@ -2227,12 +2227,29 @@ function insertAttachmentsData(id, timestamp, link, update) {
 
                     if(!included) continue;
 
+                    let attFolder    = attachment.folder;
+                    let folderId     = '';
+
+                    if(attFolder !== null) {
+                        let isNewFolder = true;
+                        folderId = attFolder.id;
+                        for (let folder of folders) {
+                            if(folder.name === attFolder.name) {
+                                isNewFolder = false;
+                            }
+                        }
+                        if(isNewFolder) folders.push(attFolder);
+                    }
+
+                    sortArray(folders, 'name');
+
                     let date = new Date(attachment.created.timeStamp);
 
                     let elemAttachment = $('<div></div>').appendTo(elemList)
                         .addClass('attachment')
                         .addClass('tile')
                         .attr('data-file-id', attachment.id)
+                        .attr('data-folder-id', folderId)
                         .attr('data-url', attachment.url)
                         .attr('data-file-link', attachment.selfLink)
                         .attr('data-extension', attachment.type.extension);
@@ -2323,7 +2340,55 @@ function insertAttachmentsData(id, timestamp, link, update) {
 
                 }
 
-                if(elemList.children('.attachment').length === 0) $('#' + id + '-no-data').css('display', 'flex');
+                if(settings.attachments[id].folders) {
+
+                    for(let folder of folders) {
+
+                        let elemFolder = $('<div></div>').appendTo(elemList)
+                            .addClass('folder')
+                            .attr('data-folder-id', folder.id);
+                            
+                        let elemFolderHeader = $('<div></div>').appendTo(elemFolder)
+                            .addClass('folder-header')
+                            .click(function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                clickFolderToggle($(this), e);
+                            })
+
+                        $('<div></div>').appendTo(elemFolderHeader)
+                            .addClass('folder-toggle')
+                            .addClass('icon');
+                            // .addClass('icon-collapse')
+                            
+
+                        $('<div></div>').appendTo(elemFolderHeader)
+                            .addClass('folder-icon')
+                            .addClass('icon')
+                            .addClass('icon-folder');
+
+                        $('<div></div>').appendTo(elemFolderHeader)
+                            .addClass('folder-name')
+                            .html(folder.name);
+
+                        let elemFolderAttachments = $('<div></div>').appendTo(elemFolder)
+                            .addClass('folder-attachments');
+
+                        elemList.children('.attachment').each(function() {
+                            if($(this).attr('data-folder-id') === folder.id.toString()) {
+                                $(this).appendTo(elemFolderAttachments);
+                            }
+                        });
+
+                    }
+
+                    elemList.children('.attachment').each(function() {
+                        $(this).appendTo(elemList);
+                    });
+
+                }
+
+                if(elemList.find('.attachment').length === 0) $('#' + id + '-no-data').css('display', 'flex');
                                                              else $('#' + id + '-no-data').hide();
 
                 if(hasPermission(responses[1].data, 'add_attachments')) {
@@ -2348,6 +2413,15 @@ function insertAttachmentsData(id, timestamp, link, update) {
 
 }
 function insertAttachmentsDone(id, data, update) {}
+function clickFolderToggle(elemClicked, e) {
+
+    let elemFolder = elemClicked.closest('.folder');
+        elemFolder.toggleClass('collapsed');
+
+    let elemFolderAttachments = elemFolder.find('.folder-attachments');
+    elemFolderAttachments.toggle();
+
+}
 function clickAttachmentsUpload(elemClicked) {
 
     if(elemClicked.hasClass('disabled')) return;
@@ -2931,7 +3005,7 @@ function insertNextBOMLevel(id, elemTable, bom, parent, parentQuantity, selected
                     .click(function (e) {
                         e.preventDefault();
                         e.stopPropagation();
-                        clickBOMItem(e, $(this));
+                        clickBOMItem($(this), e);
                         toggleBOMItemActions($(this));
                     })
         
@@ -3335,7 +3409,7 @@ function clickBOMGoThere(elemClicked) {
     } 
 
 }
-function clickBOMItem(e, elemClicked) {
+function clickBOMItem(elemClicked, e) {
     
     let elemBOM    = elemClicked.closest('.bom');
     let selectMode = elemBOM.attr('data-select-mode');
@@ -3344,11 +3418,11 @@ function clickBOMItem(e, elemClicked) {
 
     elemClicked.toggleClass('selected');
 
-    clickBOMItemDone(e, elemClicked);
+    clickBOMItemDone(elemClicked, e);
     updateBOMCounters(elemBOM.attr('id'));
     
 }
-function clickBOMItemDone(e, elemClicked) {}
+function clickBOMItemDone(elemClicked, e) {}
 function getBOMItemChhildren(elemClicked) {
 
 
@@ -3493,22 +3567,18 @@ function insertFlatBOM(link , params) {
 
     if(!isBlank(classNames)) elemBOM.attr('data-class-names', classNames);
 
-    let elemHeader = $('<div></div>');
-        elemHeader.addClass('panel-header');
-        elemHeader.attr('id', id + '-header');
-        elemHeader.appendTo(elemBOM);
+    let elemHeader = $('<div></div>').appendTo(elemBOM)
+        .addClass('panel-header')
+        .attr('id', id + '-header');
 
-    let elemTitle = $('<div></div>');
-        elemTitle.addClass('panel-title');
-        elemTitle.attr('id', id + '-title');
-        elemTitle.html(title);
-        elemTitle.appendTo(elemHeader);
+    $('<div></div>').appendTo(elemHeader)
+        .addClass('panel-title')
+        .attr('id', id + '-title')
+        .html(title);
 
-    let elemToolbar = $('<div></div>');
-        elemToolbar.addClass('panel-toolbar');
-        elemToolbar.attr('id', id + '-toolbar');
-        elemToolbar.appendTo(elemHeader);
-
+    let elemToolbar = $('<div></div>').appendTo(elemHeader)
+        .addClass('panel-toolbar')
+        .attr('id', id + '-toolbar');
 
     $('<div></div>').appendTo(elemToolbar)
         .addClass('button') 

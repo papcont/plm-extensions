@@ -27,7 +27,7 @@ h2 {
     font-weight     : bold;
     line-height     : 18px;
     padding         : 20px;
-    margin          : 40px 0px 0px;
+    margin          : 20px 0px 30px;
 }
 .split-left > p {
     line-height : 18px;
@@ -38,6 +38,7 @@ h2 {
 #themes {
     display         : flex;
     justify-content : space-between;
+    margin-bottom   : 20px;
     padding-top     : 20px;
 }
 #themes span {
@@ -255,6 +256,13 @@ a:hover {
 }
 
 
+/*  DOCS */
+/* ----------------------------------------------------------------------------- */
+#docs-name {
+    color       : var(--color-blue-500);
+}
+
+
 
 /*  CHANGE LOG */
 /* ----------------------------------------------------------------------------- */
@@ -295,6 +303,9 @@ a:hover {
 }
 .tile.max.with-log .log {
     display : block;
+    top     : 300px;
+    right   : 0px;
+    bottom  : 0px;
 }
 .tile.max .button.change-log {
     display  : block;

@@ -111,10 +111,9 @@ function insertMOW(params) {
 
     $('<div></div>').appendTo(elemParent)
         .attr('id', id + '-list')
+        .addClass('panel-content')
         .addClass('mow-list')
         .addClass('no-scrollbar')
-        .addClass('tiles')
-        .addClass('list')
         .addClass(size);
 
     insertMOWData(id);
@@ -125,9 +124,12 @@ function insertMOWData(id) {
     let timestamp  = new Date().getTime();
     let elemParent = $('#' + id)
     let elemList   = $('#' + id + '-list');  
+    let elemSearch = $('#' + id + '-search-input')
 
     elemParent.attr('data-timestamp', timestamp);
     elemList.hide();
+
+    if(elemSearch.length > 0) elemSearch.val('');
 
     $('#' + id + '-processing').show();
 
@@ -136,6 +138,10 @@ function insertMOWData(id) {
         if(response.params.timestamp === $('#' + id).attr('data-timestamp')) {
 
             elemList.html('');
+            
+            let elemTable = $('<div></div>').appendTo(elemList) 
+                .attr('id', id + '-table')
+                .addClass('mow-table');
 
             let counter = 0;
 
@@ -160,7 +166,7 @@ function insertMOWData(id) {
                             if(item.milestoneStatus === 'CRITICAL') dateClass = 'late';
                         }
 
-                        let elemItem = $('<div></div>').appendTo(elemList)
+                        let elemItem = $('<div></div>').appendTo(elemTable)
                             .addClass('mow-row')
                             .attr('data-link', item.item.link)
                             .attr('data-title', item.item.title)
@@ -218,18 +224,18 @@ function clickMOWItem(elemClicked, e) {
 }
 function searchInMOW(id, elemInput) {
 
-    let elemList   = $('#' + id + '-list');
+    let elemTable   = $('#' + id + '-table');
     let filterValue = elemInput.val().toLowerCase();
 
     if(filterValue === '') {
        
-        elemList.children().show();
+        elemTable.children().show();
 
     } else {
 
-        elemList.children().hide();
+        elemTable.children().hide();
 
-        elemList.children().each(function() {
+        elemTable.children().each(function() {
 
             let elemRow = $(this);
             let unhide  = false;
@@ -260,6 +266,7 @@ function insertRecentItems(params) {
     let headerToggle = false;                   // Enable header toggles
     let reload       = true;                    // Enable reload button for the list
     let icon         = 'icon-history';          // Sets the icon to be displayed for each tile
+    let images       = true;                    // Display first image field as tile image
     let size         = 'xs';                    // layout size (xxs, xs, s, m, l, xl, xxl)
     let workspacesIn = [];                      // List of workspace IDs to be included. Items from other workspaces will not be shown.
     let workspacesEx = [];                      // List of workspace IDs to be excluded. Items of these workspaces will not be shown.
@@ -271,12 +278,14 @@ function insertRecentItems(params) {
     if(!isBlank(params.headerToggle)) headerToggle = params.headerToggle;
     if(!isBlank(params.reload)      )       reload = params.reload;
     if(!isBlank(params.icon)        )         icon = params.icon;
+    if(!isBlank(params.images)      )       images = params.images;
     if(!isBlank(params.size)        )         size = params.size;
     if(!isBlank(params.workspacesIn)) workspacesIn = params.workspacesIn;
     if(!isBlank(params.workspacesEx)) workspacesEx = params.workspacesEx;
 
     settings.recents[id]              = {};
     settings.recents[id].icon         = icon;
+    settings.recents[id].images       = images;
     settings.recents[id].workspacesIn = workspacesIn;
     settings.recents[id].workspacesEx = workspacesEx;
 
@@ -343,6 +352,7 @@ function insertRecentItems(params) {
         .attr('id', id + '-list')
         .addClass('recents-list')
         .addClass('no-scrollbar')
+        .addClass('panel-content')
         .addClass('tiles')
         .addClass('list')
         .addClass(size);
@@ -360,6 +370,7 @@ function insertRecentItemsData(id) {
     elemList.hide();
 
     $('#' + id + '-processing').show();
+    $('#' + id + '-no-data').hide();
 
     $.get('/plm/recent', { 'timestamp' : timestamp }, function(response) {
 
@@ -371,7 +382,7 @@ function insertRecentItemsData(id) {
 
             for(recent of response.data.recentlyViewedItems) {
 
-                let workspaceId = recent.item.link.split('/')[4];
+                let workspaceId = Number(recent.item.link.split('/')[4]);
 
                 if((settings.recents[id].workspacesIn.length === 0) || ( settings.recents[id].workspacesIn.includes(workspaceId))) {
                     if((settings.recents[id].workspacesEx.length === 0) || (!settings.recents[id].workspacesEx.includes(workspaceId))) {
@@ -383,8 +394,10 @@ function insertRecentItemsData(id) {
                             elemTile.click(function(e) {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                clickRecentItem($(this));
+                                clickRecentItem($(this), e);
                             });
+
+                        if(settings.recents[id].images) getTileImage(elemTile, settings.recents[id].icon);
 
                     }
                 }
@@ -402,8 +415,26 @@ function insertRecentItemsData(id) {
     });
 
 }
+function getTileImage(elemTile, icon) {
+
+    let linkTile = elemTile.attr('data-link');
+
+    if(isBlank(linkTile)) return;
+
+    $.get('/plm/details', { 'link' : linkTile}, function(response) {
+
+        let linkImage  = getFirstImageFieldValue(response.data.sections);
+
+        if(isBlank(linkImage)) return;
+
+        let elemTileImage = elemTile.find('.tile-image').first();
+        getImageFromCache(elemTileImage, { 'link' : linkImage }, icon, function() {});
+
+    });
+    
+}
 function insertRecentItemsDone(id, data) {}
-function clickRecentItem(elemClicked, e) {
+function clickRecentItem(elemClicked) {
     openItemByLink(elemClicked.attr('data-link'));
 }
 
@@ -420,6 +451,7 @@ function insertBookmarks(params) {
     let headerToggle = false;               // Enable header toggles
     let reload       = true;                // Enable reload button for the list
     let icon         = 'icon-bookmark';     // Sets the icon to be displayed for each tile
+    let images       = false;               // Display first image field as tile image
     let size         = 'm';                 // layout size (xxs, xs, s, m, l, xl, xxl)
     let workspacesIn = [];                  // List of workspace IDs to be included. Items from other workspaces will not be shown.
     let workspacesEx = [];                  // List of workspace IDs to be excluded. Items of these workspaces will not be shown.
@@ -431,12 +463,14 @@ function insertBookmarks(params) {
     if(!isBlank(params.headerToggle)) headerToggle = params.headerToggle;
     if(!isBlank(params.reload)      )       reload = params.reload;
     if(!isBlank(params.icon)        )         icon = params.icon;
+    if(!isBlank(params.images)      )       images = params.images;
     if(!isBlank(params.size)        )         size = params.size;
     if(!isBlank(params.workspacesIn)) workspacesIn = params.workspacesIn;
     if(!isBlank(params.workspacesEx)) workspacesEx = params.workspacesEx;
 
     settings.bookmarks[id]              = {};
     settings.bookmarks[id].icon         = icon;
+    settings.bookmarks[id].images         = images;
     settings.bookmarks[id].workspacesIn = workspacesIn;
     settings.bookmarks[id].workspacesEx = workspacesEx;    
 
@@ -500,9 +534,10 @@ function insertBookmarks(params) {
     $('#' + id + '-no-data').hide();
 
     $('<div></div>').appendTo(elemParent)
-    .attr('id', id + '-list')
+        .attr('id', id + '-list')
         .addClass('bookmarks-list')
         .addClass('no-scrollbar')
+        .addClass('panel-content')
         .addClass('tiles')
         .addClass('list')
         .addClass(size);
@@ -530,7 +565,7 @@ function insertBookmarksData(id) {
 
             for(bookmark of response.data.bookmarks) {
 
-                let workspaceId = bookmark.item.link.split('/')[4];
+                let workspaceId = Number(bookmark.item.link.split('/')[4]);
 
                 if((settings.bookmarks[id].workspacesIn.length === 0) || ( settings.bookmarks[id].workspacesIn.includes(workspaceId))) {
                     if((settings.bookmarks[id].workspacesEx.length === 0) || (!settings.bookmarks[id].workspacesEx.includes(workspaceId))) {
@@ -542,8 +577,10 @@ function insertBookmarksData(id) {
                             elemTile.click(function(e) {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                clickBookmarkItem($(this));
+                                clickBookmarkItem($(this), e);
                             });
+
+                        if(settings.bookmarks[id].images) getTileImage(elemTile, settings.bookmarks[id].icon);
 
                     }
                 }
@@ -864,7 +901,6 @@ function clickWorkspaceItem(elemClicked, e) {
 
 
 
-
 // Insert user's WORKSPACE VIEWS for given workspace (optionally add BOOKMARKS & RECENTS in same control)
 function insertWorkspaceViews(wsId, params) {
 
@@ -923,7 +959,7 @@ function insertWorkspaceViews(wsId, params) {
         .html('');
 
     if(elemParent.length === 0) {
-        showErrorMessage('View Definition Error', 'Could not find view element with id "' + id + '" in page. Please contact your administrator');
+        showErrorMessage('View Definition Error', 'Could not find html element with id "' + id + '" in page. Please contact your administrator');
         return;
     }
 
@@ -1309,6 +1345,8 @@ function setWorkspaceViewRows(id, elemTBody, rows) {
 
         for(let field of row.fields) {
 
+            if(field.id === 'DESCRIPTOR') elemRow.attr('data-title', field.value);
+
             let elemCell = $('<td></td>').html($('<div></div>').html(field.value).text());
 
             if(index < settings.workspaceViews[id].columnLimit) elemCell.appendTo(elemRow);
@@ -1401,4 +1439,253 @@ function clickWorkspaceViewItem(elemClicked, e) {
 
     openItemByLink(elemClicked.attr('data-link'));
 
+}
+
+
+
+// Insert basic SEARCH capability
+function insertSearch(params) {
+
+    //  Set defaults for optional parameters
+    // --------------------------------------
+    let id           = 'search';            // id of DOM element where the list will be inseerted
+    let header       = true;                // Hide header with setting this to false
+    let headerLabel  = 'Search';            // Set the header text
+    let headerToggle = false;               // Enable header toggles
+    let placeholder  = 'Enter search critieria'; // Provide placeholder text for search input
+    let buttonLabel  = 'Submit';            // Set the search button text
+    let reset        = true;                // Enable reset button
+    let tileCounter  = false;               // When enabled, a counter will be displayed instead of the icon
+    let icon         = 'icon-checkmark';    // Sets the icon to be displayed for each tile
+    let images       = false;               // Display first image field as tile image
+    let size         = 'm';                 // layout size (xxs, xs, s, m, l, xl, xxl)
+    let limit        = 50;                  // Set maximum limit of search results
+    let workspace    = '';                  // Set workspace for the search
+    let baseQuery    = '';                  // Set base query string to be appended
+    let exactMatch   = false;               // If set to true, no wildcards will be added
+    let autoClick    = false;               // Trigger click on first result in case of one single hit only
+
+    if( isBlank(params)             )       params = {};
+    if(!isBlank(params.id)          )           id = params.id;
+    if(!isBlank(params.header)      )       header = params.header;
+    if(!isBlank(params.headerLabel) )  headerLabel = params.headerLabel;
+    if(!isBlank(params.headerToggle)) headerToggle = params.headerToggle;
+    if(!isBlank(params.placeholder) )  placeholder = params.placeholder;
+    if(!isBlank(params.buttonLabel) )  buttonLabel = params.buttonLabel;
+    if(!isBlank(params.reset)       )        reset = params.reset;
+    if(!isBlank(params.tileCounter) )  tileCounter = params.tileCounter;
+    if(!isBlank(params.icon)        )         icon = params.icon;
+    if(!isBlank(params.images)      )       images = params.images;
+    if(!isBlank(params.size)        )         size = params.size;
+    if(!isBlank(params.limit)       )        limit = params.limit;
+    if(!isBlank(params.workspace)   )    workspace = params.workspace;
+    if(!isBlank(params.baseQuery)   )    baseQuery = params.baseQuery;
+    if(!isBlank(params.exactMatch)  )   exactMatch = params.exactMatch;
+    if(!isBlank(params.autoClick)   )    autoClick = params.autoClick;
+
+    settings.search[id]             = {};
+    settings.search[id].tileCounter = tileCounter;
+    settings.search[id].icon        = icon;
+    settings.search[id].images      = images;
+    settings.search[id].limit       = limit;
+    settings.search[id].workspace   = workspace;    
+    settings.search[id].baseQuery   = baseQuery;    
+    settings.search[id].exactMatch  = exactMatch;    
+    settings.search[id].autoClick   = autoClick;    
+
+    let elemParent = $('#' + id)
+        .addClass('search')
+        .html('')
+        .show();
+
+    if(header) {
+
+        let elemHeader = $('<div></div>', {
+            id : id + '-header'
+        }).appendTo(elemParent).addClass('panel-header');
+    
+        if(headerToggle) {
+    
+            $('<div></div>').appendTo(elemHeader)
+                .addClass('panel-header-toggle')
+                .addClass('icon')
+                .addClass('icon-collapse');
+    
+            elemHeader.addClass('with-toggle');
+            elemHeader.click(function() {
+                togglePanelHeader($(this));
+            });
+    
+        }
+    
+        $('<div></div>').appendTo(elemHeader)
+            .addClass('panel-title')
+            .attr('id', id + '-title')
+            .html(headerLabel);
+    
+        let elemToolbar = $('<div></div>')
+            .addClass('panel-toolbar')
+            .attr('id', id + '-toolbar');
+    
+        if(reset) {
+
+            elemToolbar.appendTo(elemHeader);
+            $('<div></div>').appendTo(elemToolbar)
+                .addClass('button')
+                .addClass('icon')
+                .addClass('icon-refresh')
+                .attr('id', id + '-reset')
+                .attr('title', 'Reset the search panel')
+                .click(function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    resetSearch(id);
+                });
+
+        }
+    
+    } else { elemParent.addClass('no-header'); }
+
+
+    $('#' + id + '-no-data').hide();
+
+    let elemListToolbar = $('<div></div>').appendTo(elemParent)
+        .attr('id', id + '-list-toolbar')
+        .addClass('search-list-toolbar');
+
+    $('<input></input>').appendTo(elemListToolbar)
+        .attr('placeholder', placeholder)
+        .attr('id', id + '-search-list-input')
+        .addClass('search-list-input')
+        .click(function(e){
+            e.preventDefault();
+            e.stopPropagation();
+        })
+        .keypress(function(e) {
+            if(e.which == 13) {
+                insertSearchData(id);
+            }
+        });
+
+    $('<div></div>').appendTo(elemListToolbar)
+        .attr('id', id + '-search-list-button')
+        .addClass('search-list-button')
+        .addClass('button')
+        .addClass('default')
+        .html(buttonLabel)
+        .click(function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            insertSearchData(id);
+        });
+
+    $('<div></div>').appendTo(elemParent)
+        .attr('id', id + '-list')
+        .addClass('search-list')
+        .addClass('no-scrollbar')
+        .addClass('panel-content')
+        .addClass('tiles')
+        .addClass('list')
+        .addClass(size);
+
+    appendProcessing(id, true);
+    appendNoDataFound(id, 'icon-no-data', 'No Search Results');
+
+    insertSearchDone(id);
+
+}
+function insertSearchDone(id) {}
+function resetSearch(id) {
+
+    $('#' + id + '-search-list-input').val('').focus();
+    $('#' + id + '-list').hide();
+    $('#' + id + '-processing').hide();
+    $('#' + id + '-no-data').hide();
+
+}
+function insertSearchData(id) {
+
+    let timestamp  = new Date().getTime();
+    let elemParent = $('#' + id)
+    let elemList   = $('#' + id + '-list');  
+
+    elemParent.attr('data-timestamp', timestamp);
+    elemList.hide();
+
+    $('#' + id + '-no-data').hide();
+    $('#' + id + '-processing').show();
+
+    let params = {
+        'query'     : $('#' + id + '-search-list-input').val(),
+        'limit'     : settings.search[id].limit,
+        'timestamp' : timestamp
+    }
+
+
+    if(!isBlank(settings.search[id].baseQuery)) params.query += '+AND+' + settings.search[id].baseQuery;
+    if(!isBlank(settings.search[id].workspace)) params.wsId = settings.search[id].workspace;
+    if(settings.search[id].exactMatch) params.wildcard = false;
+
+    $.get('/plm/search-descriptor', params, function(response) {
+
+        if(response.params.timestamp === $('#' + id).attr('data-timestamp')) {
+
+            elemList.html('').show();
+
+            $('#' + id + '-processing').hide();
+            
+            if((typeof response.data.items === 'undefined') || (response.data.items.length === 0)) {
+
+                $('#' + id + '-no-data').show();
+            
+            } else {
+
+                elemList.show();
+
+                let counter = 1;
+
+                for(record of response.data.items) {
+
+                    let elemTile = genTile(record.__self__, '', '',  settings.search[id].icon, record.descriptor, record.workspaceLongName);
+                        elemTile.appendTo(elemList);
+                        elemTile.click(function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            clickSearchResult($(this), e);
+                        });
+
+                    if(settings.search[id].tileCounter) {
+                        let elemImage = elemTile.find('.tile-image');
+                        elemImage.html('');
+
+                        $('<div></div>').appendTo(elemImage)
+                            .addClass('tile-counter')
+                            .html(counter++);
+                    }
+                
+                    if((response.data.items.length === 1) && (settings.search[id].autoClick)) {
+                        elemTile.click();
+                    } else if(settings.search[id].images) getTileImage(elemTile, settings.search[id].icon);
+
+                }
+
+                if(response.data.items.length < response.data.totalCount) {
+
+                    $('<div></div>').appendTo(elemList)
+                        .addClass('search-list-status')
+                        .html('Showing ' + response.data.items.length + ' out of ' + response.data.totalCount + ' total matches');
+
+                }
+            }
+
+            insertSearchDataDone(id, response);
+
+        }
+
+    });
+
+}
+function insertSearchDataDone(id, data) {}
+function clickSearchResult(elemClicked, e) {
+    openItemByLink(elemClicked.attr('data-link'));
 }
