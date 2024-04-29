@@ -5,6 +5,7 @@ let ghosting                    = true;
 let disableViewerSelectionEvent = false;
 let viewerDone                  = false;
 let dataInstances               = [];
+let hiddenInstances             = [];
 let markupStyle                 = {};
 
 let viewer, markup, markupsvg, curViewerState, restoreMarkupSVG, restoreMarkupState, baseStrokeWidth;
@@ -245,6 +246,7 @@ function setViewerFeatures() {
             switch(applicationFeature) {
                 
                 case 'markup'    : viewerAddMarkupControls();  break;
+                case 'hide'      : viewerAddHideSelected();    break;
                 case 'ghosting'  : viewerAddGhostingToggle();  break;
                 case 'highlight' : viewerAddHighlightToggle(); break;
                 case 'single'    : viewerAddFitFirstInstance();break;
@@ -364,6 +366,7 @@ function onViewerSelectionChanged(event) {
         }
     }
 
+    viewerHideSelected(event);
     onViewerSelectionChangedDone(partNumbers, event);
 
 }
@@ -389,6 +392,7 @@ function viewerSelectModels(partNumbers, params) {
     let fitToView   = true;    // Zoom in / out to fit selection into view 
     let highlight   = true;    // Highlight given partNumber(s) by defined color (colorModelSelected)
     let resetColors = true;    // Reset colors of all componente before highlighting the partNumber(s)
+    let keepHidden  = true;    // Keep selectively hidden components hidden
     let color       = colorModelSelected; 
 
 
@@ -398,10 +402,16 @@ function viewerSelectModels(partNumbers, params) {
     if(!isBlank(params.fitToView)  )   fitToView = params.fitToView;
     if(!isBlank(params.highlight)  )   highlight = params.highlight;
     if(!isBlank(params.resetColors)) resetColors = params.resetColors;
+    if(!isBlank(params.keepHidden) )  keepHidden = params.keepHidden;
     if(!isBlank(params.color)      )       color = params.color;
 
     disableViewerSelectionEvent = true;
-    
+
+    if(!keepHidden) {
+        hiddenInstances = [];
+        if($('#counter-hidden-selection').length > 0) $('#counter-hidden-selection').hide();
+    }
+
     let dbIds = [];
     
     if(isolate)     viewer.hideAll();
@@ -425,7 +435,9 @@ function viewerSelectModels(partNumbers, params) {
         dataInstance.selected = isSelected;
     }
 
-    if(ghosting)  viewer.setGhosting(true);
+    for(instance of hiddenInstances) viewer.hide(instance);
+
+    viewerSetGhosting(ghosting);
     if(fitToView) viewer.fitToView(dbIds);
 
     disableViewerSelectionEvent = false;
@@ -440,16 +452,23 @@ function viewerSelectAll(params) {
     let fitToView   = true;     // Zoom in / out to fit selection into view 
     let highlight   = true;     // Highlight given partNumber(s) by defined color (colorModelSelected)
     let resetColors = true;     // Reset colors of all componente before highlighting the partNumber(s)
+    let keepHidden  = true;     // Keep selectively hidden components hidden
     let color       = colorModelSelected; 
 
     if( isBlank(params)            )      params = {};
     if(!isBlank(params.fitToView)  )   fitToView = params.fitToView;
     if(!isBlank(params.highlight)  )   highlight = params.highlight;
     if(!isBlank(params.resetColors)) resetColors = params.resetColors;
+    if(!isBlank(params.keepHidden) )  keepHidden = params.keepHidden;
     if(!isBlank(params.color)      )       color = params.color;
 
     disableViewerSelectionEvent = true;
     viewer.showAll();
+
+    if(!keepHidden) {
+        hiddenInstances = [];
+        if($('#counter-hidden-selection').length > 0) $('#counter-hidden-selection').hide();
+    }
     
     if(resetColors) viewer.clearThemingColors();
 
@@ -458,6 +477,8 @@ function viewerSelectAll(params) {
             viewer.setThemingColor(dataInstance.dbId, color, null, true );
         }
     }
+
+    for(instance of hiddenInstances) viewer.hide(instance);
 
     if(fitToView) viewer.setViewFromFile();
 
@@ -475,6 +496,7 @@ function viewerSelectInstances(dbIds, params) {
     let fitToView   = true;    // Zoom in / out to fit selection into view 
     let highlight   = true;    // Highlight given partNumber(s) by defined color (colorModelSelected)
     let resetColors = true;    // Reset colors of all componente before highlighting the partNumber(s)
+    let keepHidden  = true;    // Keep selectively hidden components hidden
     let color       = colorModelSelected; 
 
     if( isBlank(params)            )      params = {};
@@ -483,20 +505,28 @@ function viewerSelectInstances(dbIds, params) {
     if(!isBlank(params.fitToView)  )   fitToView = params.fitToView;
     if(!isBlank(params.highlight)  )   highlight = params.highlight;
     if(!isBlank(params.resetColors)) resetColors = params.resetColors;
+    if(!isBlank(params.keepHidden) )  keepHidden = params.keepHidden;
     if(!isBlank(params.color)      )       color = params.color;
 
     disableViewerSelectionEvent = true;
+
+    if(!keepHidden) {
+        hiddenInstances = [];
+        if($('#counter-hidden-selection').length > 0) $('#counter-hidden-selection').hide();
+    }    
 
     if(isolate)     viewer.hideAll();
     if(resetColors) viewer.clearThemingColors();
     
     for(let dbId of dbIds) {
         dbId = Number(dbId);
-        viewer.show(dbId);
-        if(highlight) viewer.setThemingColor(dbId, color, null, true );
+        if(hiddenInstances.indexOf(dbId < 0)) {
+            viewer.show(dbId);
+            if(highlight) viewer.setThemingColor(dbId, color, null, true );
+        }
     }
     
-    if(ghosting)  viewer.setGhosting(true);
+    viewerSetGhosting(ghosting);
     if(fitToView) viewer.fitToView(dbIds);
 
     disableViewerSelectionEvent = false;
@@ -516,7 +546,8 @@ function viewerHighlightInstances(partNumber, ids, params) {
     let isolate         = true;    // Enable isolation of selected component(s)
     let ghosting        = false;   // Enforce ghosting of hidden components
     let fitToView       = true;    // Zoom in / out to fit selection into view 
-    let resetColors     = true;     // Reset colors of all componente before highlighting the partNumber(s)
+    let resetColors     = true;    // Reset colors of all componente before highlighting the partNumber(s)
+    let keepHidden      = true;    // Keep selectively hidden components hidden
     let color           = colorModelSelected; 
     let colorHighlight  = colorModelHighlighted; 
 
@@ -526,11 +557,16 @@ function viewerHighlightInstances(partNumber, ids, params) {
     if(!isBlank(params.ghosting)      )       ghosting = params.ghosting;
     if(!isBlank(params.fitToView)     )      fitToView = params.fitToView;
     if(!isBlank(params.resetColors)   )    resetColors = params.resetColors;
+    if(!isBlank(params.keepHidden)    )     keepHidden = params.keepHidden;
     if(!isBlank(params.color)         )          color = params.color;
     if(!isBlank(params.colorHighlight)) colorHighlight = params.colorHighlight;
 
     disableViewerSelectionEvent = true;
-    ghosting = getToolbarGhostingToggle(ghosting);
+
+    if(!keepHidden) {
+        hiddenInstances = [];
+        if($('#counter-hidden-selection').length > 0) $('#counter-hidden-selection').hide();
+    }    
     
     let dbIds   = [];
 
@@ -539,8 +575,10 @@ function viewerHighlightInstances(partNumber, ids, params) {
 
     for(let dataInstance of dataInstances) {
         if(dataInstance.partNumber === partNumber) {
-            dbIds.push(dataInstance.dbId);
-            viewer.show(dataInstance.dbId);
+            if(hiddenInstances.indexOf(dbId < 0)) {
+                dbIds.push(dataInstance.dbId);
+                viewer.show(dataInstance.dbId);
+            }
         }
     }
 
@@ -551,7 +589,7 @@ function viewerHighlightInstances(partNumber, ids, params) {
         viewer.setThemingColor(Number(dbIdHighlight), colorModelHighlighted, null, true );
     }
      
-    if(ghosting)  viewer.setGhosting(false);
+    viewerSetGhosting(ghosting);
     if(fitToView) viewer.fitToView(dbIds);
     
     disableViewerSelectionEvent = false;
@@ -568,15 +606,26 @@ function viewerResetSelection(params) {
     let fitToView   = true;     // Zoom in / out to fit all into view
     let resetView   = false;    // Reset view to initial view from file
     let resetColors = true;     // Highlight given partNumber(s) by defined color (colorModelSelected)
+    let keepHidden  = true;     // Keep selectively hidden components hidden
 
     if( isBlank(params)            )      params = {};
     if(!isBlank(params.fitToView)  )   fitToView = params.fitToView;
     if(!isBlank(params.resetView)  )   resetView = params.resetView;
     if(!isBlank(params.resetColors)) resetColors = params.resetColors;
+    if(!isBlank(params.keepHidden) )  keepHidden = params.keepHidden;
 
     viewer.showAll();
     viewer.clearSelection();
 
+    if(keepHidden) {
+        for(let instance of hiddenInstances) {
+            viewer.hide(instance);
+        }
+    } else { 
+        hiddenInstances = [];
+        if($('#counter-hidden-selection').length > 0) $('#counter-hidden-selection').hide();
+    }
+    
          if(resetColors) viewer.clearThemingColors();
          if(resetView  ) viewer.setViewFromFile();
     else if(fitToView  ) viewer.fitToView();
@@ -603,6 +652,7 @@ function viewerSetColors(partNumbers, params) {
     let ghosting    = false;   // Enforce ghosting of hidden components
     let fitToView   = false;   // Zoom in / out to fit selection into view 
     let resetColors = true;    // Reset colors of all componente before highlighting the partNumber(s)
+    let keepHidden  = true;    // Keep selectively hidden components hidden
     let unhide      = true;    // Unhide component if it is currently hidden
     let color       = colorModelSelected; 
 
@@ -612,26 +662,33 @@ function viewerSetColors(partNumbers, params) {
     if(!isBlank(params.ghosting)   )    ghosting = params.ghosting;
     if(!isBlank(params.fitToView)  )   fitToView = params.fitToView;
     if(!isBlank(params.resetColors)) resetColors = params.resetColors;
-    if(!isBlank(params.highlight)  )   highlight = params.highlight;
-    if(!isBlank(params.color)      )   color = new THREE.Vector4(params.color[0], params.color[1], params.color[2], params.color[3]);
-
+    if(!isBlank(params.keepHidden) )  keepHidden = params.keepHidden;
+    if(!isBlank(params.unhide)     )      unhide = params.unhide;
+    if(!isBlank(params.color)      )       color = new THREE.Vector4(params.color[0], params.color[1], params.color[2], params.color[3]);
 
     let dbIds  = [];
 
     if(isolate)     viewer.hideAll();
     if(resetColors) viewer.clearThemingColors();
 
+    if(!keepHidden) {
+        hiddenInstances = [];
+        if($('#counter-hidden-selection').length > 0) $('#counter-hidden-selection').hide();
+    }
+
     for(let dataInstance of dataInstances) {
         for(let partNumber of partNumbers) {
             if(dataInstance.partNumber === partNumber) {
-                dbIds.push(dataInstance.dbId);
-                if(unhide) viewer.show(dataInstance.dbId);
-                viewer.setThemingColor(dataInstance.dbId, color, null, true );
+                if(hiddenInstances.indexOf(dbId < 0)) {
+                    dbIds.push(dataInstance.dbId);
+                    if(unhide) viewer.show(dataInstance.dbId);
+                    viewer.setThemingColor(dataInstance.dbId, color, null, true );
+                }
             }
         }
     }
 
-    if(ghosting)  viewer.setGhosting(true);
+    viewerSetGhosting(ghosting);
     if(fitToView) viewer.fitToView(dbIds);
 
 }
@@ -726,15 +783,24 @@ function viewerUnhideAll(params) {
     // --------------------------------------
     let fitToView   = true;    // Zoom in / out to fit selection into view 
     let resetColors = true;    // Reset colors of all componente before highlighting the partNumber(s)
+    let keepHidden  = true;    // Keep selectively hidden components hidden
 
 
     if( isBlank(params)            )      params = {};
     if(!isBlank(params.fitToView)  )   fitToView = params.fitToView;
     if(!isBlank(params.resetColors)) resetColors = params.resetColors;
+    if(!isBlank(params.keepHidden) )  keepHidden = params.keepHidden;
+
+    if(!keepHidden) {
+        hiddenInstances = [];
+        if($('#counter-hidden-selection').length > 0) $('#counter-hidden-selection').hide();
+    }
 
     if(resetColors) viewer.clearThemingColors();
 
     viewer.showAll();
+
+    for(let instance of hiddenInstances) viewer.hide(instance);
 
     if(fitToView) viewer.setViewFromFile();
 }
@@ -987,6 +1053,8 @@ function viewerAddResetButton() {
         
 }
 function viewerClickReset() {
+    hiddenInstances = [];
+    if($('#counter-hidden-selection').length > 0) $('#counter-hidden-selection').hide();
     viewer.showAll();
     viewerResetColors();
     viewerClickResetDone();
@@ -999,27 +1067,90 @@ function viewerClickResetDone() {
 }
 
 
-// Custom Controls : Ghosting Toggle
-function viewerAddGhostingToggle() {
-   
+// Custom Controls : Controls to hide selected components
+function viewerAddHideSelected() {
 
     let toolbar = getCustomSelectionToolbar();
 
-    let buttonOff = addCustomControl(toolbar, 'button-toggle-ghosting-off', 'icon-hide', 'Enable ghosting mode');
-        buttonOff.onClick = function(e) { 
-            viewer.setGhosting(true);
-            $('#customSelectionToolbar').addClass('no-ghosting');
-            $('#customSelectionToolbar').removeClass('ghosting');
+    let buttonHide = addCustomControl(toolbar, 'button-toggle-hide-selected', 'icon-remove', 'Hide selected components');
+        buttonHide.onClick = function(e) { 
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            let enabled     = $('#customSelectionToolbar').hasClass('hide-selectd');
+            let selected    = viewer.getSelection().length;
+            let elemCounter = $('#counter-hidden-selection');
+
+            if(!enabled && selected > 0) {
+                for(let dbId of viewer.getSelection()) {
+                    viewer.hide(dbId);
+                    hiddenInstances.push(dbId);
+                }
+            } else if(enabled) {
+                $('#customSelectionToolbar').toggleClass('hide-selectd');
+            } else if(selected === 0) {
+                $('#customSelectionToolbar').toggleClass('hide-selectd');
+            }
+
+            elemCounter.html(hiddenInstances.length);
+
+            if(hiddenInstances.length === 0) {
+                elemCounter.hide();
+            } else {
+                elemCounter.show().html('Click to unhide ' + hiddenInstances.length + ' components');
+            }
+
         };
 
-    let buttonOn = addCustomControl(toolbar, 'button-toggle-ghosting-on', 'icon-show', 'Disable ghosting mode');
-        buttonOn.onClick = function(e) { 
-            viewer.setGhosting(false);
-            $('#customSelectionToolbar').removeClass('no-ghosting');
+    $('<div></div>').appendTo($('#viewer'))
+        .attr('id', 'counter-hidden-selection')
+        .hide()
+        .click(function() {
+            for(let instance of hiddenInstances) viewer.show(instance);
+            hiddenInstances = [];
+            $(this).html('').hide();
+        });
+
+}
+function viewerHideSelected(event) {
+
+    let toolbar = $('#customSelectionToolbar');
+
+    if(toolbar.length > 0) {
+        if(toolbar.hasClass('hide-selectd')) {
+            for(let dbId of event.dbIdArray) {
+                viewer.hide(dbId);
+                hiddenInstances.push(dbId);
+                $('#counter-hidden-selection').html('Click to unhide ' + hiddenInstances.length + ' components').show();
+            
+            }
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+
+// Custom Controls : Ghosting Toggle
+function viewerAddGhostingToggle() {
+
+    let toolbar = getCustomSelectionToolbar();
+
+    let buttonEnableGosting = addCustomControl(toolbar, 'button-toggle-ghosting-enable', 'icon-hide', 'Click to enable ghosting mode');
+        buttonEnableGosting.onClick = function(e) { 
+            viewer.setGhosting(true);
             $('#customSelectionToolbar').addClass('ghosting');
         };
 
-    toolbar.addClass('no-ghosting');
+    let buttonDisableGosting = addCustomControl(toolbar, 'button-toggle-ghosting-disable', 'icon-show', 'Click to disable ghosting mode');
+        buttonDisableGosting.onClick = function(e) { 
+            viewer.setGhosting(false);
+            $('#customSelectionToolbar').removeClass('ghosting');
+        };
+
+    toolbar.addClass('ghosting');
 
 }
 function addCustomControl(toolbar, id, icon, tooltip) {
@@ -1034,15 +1165,16 @@ function addCustomControl(toolbar, id, icon, tooltip) {
     return newButton;
 
 }
-function getToolbarGhostingToggle(value) {
+function viewerSetGhosting(value) {
 
-    let toolbar = $('#customSelectionToolbar');
+    let ghosting = value;
+    let toolbar  = $('#customSelectionToolbar');
+
     if(toolbar.length > 0) {
-        if(toolbar.hasClass('ghosting')) return true;
-        else return false;
-    } else {
-        return value;
+        ghosting = (toolbar.hasClass('ghosting'));
     }
+
+    viewer.setGhosting(ghosting);
 
 }
 

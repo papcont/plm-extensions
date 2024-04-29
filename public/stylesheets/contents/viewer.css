@@ -41,6 +41,7 @@
 }
 .adsk-toolbar .adsk-control-group { margin : 0px !important; }
 .adsk-viewing-viewer.dark-theme .adsk-control-tooltip { background : black !important; }
+.adsk-viewing-viewer .adsk-button { margin : 2px ! important; }
 
 
 /* #my-custom-toolbar-views{ margin-left : 20px !important; } */
@@ -51,13 +52,42 @@
 
 /*  APS VIEWER CUSTOM TOOLBARS */
 /* ----------------------------------------------------------------------------- */
-#button-toggle-ghosting-off { 
+#customSelectionToolbar.hide-selectd  #button-toggle-hide-selected  { 
+    background   : var(--color-blue-500) !important; 
+    border-color : var(--color-blue-500) !important; 
+}
+#counter-hidden-selection {
+    font-family     : 'ArtifaktElement';
+    background      : var(--color-yellow-500);
+    border-radius   : 3px;
+    cursor          : pointer;
+    font-size       : 14px;
+    height          : 20px;
+    line-height     : 20px;
+    margin          : auto;
+    max-width       : 240px;
+    overflow        : hidden;
+    position        : relative;
+    padding         : 8px 24px;
+    text-align      : center;
+    text-overflow   : ellipsis;
+    top             : 10px;
+    white-space     : nowrap;
+    z-index         : 2;
+}
+#counter-hidden-selection:hover {
+    background : var(--color-yellow-600);
+}
+
+#button-toggle-ghosting-enable { 
     background : var(--color-blue-500) !important; 
     border-color : var(--color-blue-500) !important; 
 }
-#button-toggle-ghosting-off .icon-hide::before { color : white !important; }
-#customSelectionToolbar.ghosting    #button-toggle-ghosting-on  { display : none; }
-#customSelectionToolbar.no-ghosting #button-toggle-ghosting-off { display : none; }
+#button-toggle-ghosting-eanble .icon-hide::before { color : white !important; }
+#button-toggle-ghosting-disable  { display : none; }
+#customSelectionToolbar.ghosting #button-toggle-ghosting-disable  { display : block; }
+#customSelectionToolbar.ghosting #button-toggle-ghosting-enable  { display : none; }
+
 #button-toggle-highlight-on { 
     background   : var(--color-blue-500) !important; 
     border-color : var(--color-blue-500) !important; 
