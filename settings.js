@@ -93,8 +93,8 @@ exports.config = {
     // Set default settings for all viewer instances
     viewer  : {
         preferredFileSuffixes   : ['.ipt.dwf', '.iam.dwf'],   // case does not matter
-        numberProperties        : ['Part Number', 'Name', 'label', 'Artikelnummer', 'Bauteilnummer'],
-        splitPartNumberBy       : ' v',
+        numberProperties        : ['Bauteilnummer','Part Number', 'Name', 'label', 'Artikelnummer'],
+        splitPartNumberBy       : '',
         splitPartNumberIndexes  : [0],
         splitPartNumberSpacer   : '',
         backgroundColor         : [255, 255, 255, 255, 255, 255],
@@ -796,7 +796,7 @@ exports.config = {
             fieldIdImage : 'IMAGE_1'
         },
         sparePartsRequests : {
-            workspaceId         : 241,
+            workspaceId         : 208,
             sectionsExpanded    : [ 'Requestor Contact Details', 'Request Details' ],
             sectionsExcluded    : [ 'Planning & Tracking', 'Request Confirmation', 'Quote Submission & Response', 'Real Time KPIs', 'Workflow Activity', 'Quote Summary', 'Order Processing', 'Related Processes' ],
             gridColumnsExcluded : [ 'Line Item Cost', 'Availability [%]', 'Manufacturer', 'Manufacturer P/N', 'Unit Cost', 'Total Cost', 'Make or Buy', 'Lead Time (w)', 'Long Lead Time'],
@@ -831,7 +831,7 @@ exports.config = {
             bomViewName : 'Basic'
         },
         workspaceItemVariants : {
-            workspaceId       : 571,
+            workspaceId       : 241,
             sectionLabel      : 'Variant Definition',
             fieldIds          : {
                 baseItem      : 'BASE_ITEM',
@@ -881,7 +881,7 @@ exports.config = {
 
         projects : {
 
-            workspaceId                  : 213,
+            workspaceId                  : 573,
             stateCompleted               : 'Completed',
             headerLabelProjects          : 'Engineering Projects',
             fieldIdBOM                   : 'DELIVERABLE_4',
