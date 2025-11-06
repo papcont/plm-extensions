@@ -7,7 +7,7 @@
 // The 'defaultThene' setting can be overwritten with each request if needed. Simply add the parameter 'theme' to your request (ie &theme=dark or &theme=light)
 // With 'enableCache' you can let the server cache defined data which does not change frequently (workspace configuration for example). This will improve performance of some interactions. However, the cache can only be cleared by restarting the server.
 let clientId        = '';
-let redirectUri     = 'http://localhost:8080/callback';
+let redirectUri     = '';
 let tenant          = '';
 let defaultTheme    = 'dark';   // Set the standard theme to dark or light
 let enableCache     = false;    
