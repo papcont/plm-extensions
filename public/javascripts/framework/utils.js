@@ -413,10 +413,11 @@ function reloadPage(ret) {
 function getURLParameters() {
 
     let result = {
-        link        : '',
-        wsId        : wsId,
-        dmsId       : dmsId,
-        descriptor  : descriptor || ''
+        link       : '',
+        wsId       : wsId,
+        dmsId      : dmsId,
+        descriptor : descriptor || '',
+        type       : type || ''
     };
 
     if(!isBlank(wsId)) {
@@ -431,6 +432,23 @@ function getURLParameters() {
         let key   = split[0].toLowerCase();
 
         if(key !== '') result[key] = split[1];
+
+    }
+
+    let params = document.location.href.split('?');
+
+    if(params.length > 1) {
+
+        params = params[1].split('&');
+
+        for(let param of params) {
+
+            let split = param.split('=');
+            let key   = split[0].toLowerCase();
+
+            if(key !== 'options') result[key] = split[1];
+
+        }
 
     }
 
@@ -4872,6 +4890,55 @@ function getBOMParts(settings, parts, parent, edges, nodes, quantity, level, num
     return result;
 
 }
+function extendBOMPartsList(settings, items) {
+
+    let fields = settings.viewFields || settings.columns;
+    let result = [];
+
+    for (let item of items) {
+
+        let node = {
+            link          : item.node.item.link,
+            root          : item.node.rootItem.link,
+            title         : item.node.item.title,
+            partNumber    : item.node.partNumber,
+            totalQuantity : item.node.totalQuantity,
+            edge          : item.edge,
+            node          : item.node,
+            fields        : [],
+            details       : {}
+        }
+
+        for(let field of fields) {
+
+            let fieldData = {
+                fieldId     : field.fieldId,
+                name        : field.name,
+                displayName : field.displayName,
+                urn         : field.__self__.urn,
+                value       : ''
+            }
+            
+            node.details[field.fieldId] = null;
+
+            for(let nodeField of item.node.fields) {
+                if(nodeField.metaData.urn === fieldData.urn) {
+                    fieldData.value = nodeField.value;
+                    node.details[field.fieldId] = nodeField.value;
+                }
+            }
+            
+            node.fields.push(fieldData);
+
+        }
+
+        result.push(node);
+
+    }
+
+    return result;
+
+}
 function getBOMRollUpValues(bom, rollUps, nodeId, edge) {
 
     let result = [];
@@ -4948,19 +5015,6 @@ function getBOMPartsListChildren(bomPartsList, partNumber, edgeId, levels, inclu
     }
 
     return result;
-
-}
-
-
-
-function onSerialNumberClick(elemClicked) {
-
-    if(elemClicked.hasClass('selected')) {
-        let partNumber = elemClicked.attr('data-part-number');
-        viewerSelectModel(partNumber);
-    } else {
-        viewerResetSelection();
-    }
 
 }
 
