@@ -650,7 +650,6 @@ function appendNoDataFound(id, icon, text) {
 }
 
 
-
 // Display Error & Success Message
 function showErrorMessage(title, message) {
 
@@ -702,6 +701,31 @@ function showMessage(type, title, message) {
 function hideMessage() {
 
     $('#message').remove();
+
+}
+
+
+// Browse responses for errors and print given details to the browser console
+function printResponsesErrorMessagesToConsole(responses) {
+
+    let error = false;
+
+    for(let response of responses) {
+        if(printResponseErrorMessagesToConsole(response)) {
+            error = true;
+        }
+    }
+
+    return error;
+}
+function printResponseErrorMessagesToConsole(response) {
+
+    if(!response.error) false;
+
+    console.log('!! Error when accessing ' + response.url + '. See request response details below.');
+    console.log(response);
+
+    return true;
 
 }
 
@@ -933,7 +957,6 @@ function setFormEvents() {
 }
 
 
-
 // Insert Calendar Controls
 function insertCalendarMonth(id, currentDate) {
     
@@ -1055,7 +1078,7 @@ function getPanelSettings(link, params, defaults, additional) {
     if(isBlank(defaults.headerSubLabel)         ) defaults.headerSubLabel           = '';
     if(isBlank(defaults.openInPLM)              ) defaults.openInPLM                = false;
     if(isBlank(defaults.openOnDblClick)         ) defaults.openOnDblClick           = false;
-    if(isBlank(defaults.placeholder)            ) defaults.placeholder              = 'Type to search';
+    if(isBlank(defaults.placeholder)            ) defaults.placeholder              = 'Search';
     if(isBlank(defaults.reload)                 ) defaults.reload                   = false;
     if(isBlank(defaults.reset)                  ) defaults.reset                    = false;
     if(isBlank(defaults.search)                 ) defaults.search                   = false;
@@ -2751,7 +2774,7 @@ function panelDeselectAll(id, elemClicked) {
     let elemContent        = $('#' + id + '-content');
     let elemFilterSelected = $('#' + id + '-filter-selected-only');
 
-    elemContent.find('.content-item').removeClass('selected').removeClass('checked');
+    elemContent.find('.content-item').removeClass('selected').removeClass('checked').removeClass('highlighted');
     elemContent.find('.content-select-all').removeClass('icon-check-box-checked').addClass('icon-check-box');
 
     if(elemFilterSelected.length > 0) elemFilterSelected.removeClass('icon-toggle-on').addClass('icon-toggle-off').removeClass('filled');
