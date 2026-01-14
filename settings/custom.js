@@ -29,7 +29,7 @@ exports.common = {
         changeTasks            : 80,
         designReviews          : 76,
         designReviewTasks      : 77,
-        engineeringProjects    : 213,
+        engineeringProjects    : 573,
         items                  : 57,
         nonConformances        : 98,
         problemReports         : 82,
@@ -40,7 +40,7 @@ exports.common = {
         projectTasks           : 90,
 
         // Supplier Collaboration Workspaces
-        sparePartsRequests     : 241,
+        sparePartsRequests     : 208,
         supplierPackages       : 147,
 
         // Asset Management Workspaces
@@ -61,7 +61,7 @@ exports.common = {
     },
 
     viewer : {
-        numberProperties   : ['Part Number', 'Name', 'label', 'Artikelnummer', 'Bauteilnummer'],
+        numberProperties   : ['Bauteilnummer','Part Number', 'Name', 'label', 'Artikelnummer'],
         suffixPrimaryFile  : ['.iam.dwf', '.iam.dwfx', '.ipt.dwf', '.ipt.dwfx'],
         extensionsIncluded : ['dwf', 'dwfx', 'nwd', 'ipt', 'stp', 'step', 'sldprt', 'pdf'],
     }
