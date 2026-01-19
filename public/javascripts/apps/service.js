@@ -24,7 +24,7 @@ let paramsProcesses       = {
     createWSID          : '',
     createHeaderLabel       : 'Create Problem Report',
     createContextItemFields : ['AFFECTED_ITEM'],
-    createViewerImageFields : ['IMAGE_1'],
+    createViewerImageFields : [],
     editable            : true,
     fieldIdMarkup       : '',
     openInPLM           : true,
@@ -70,13 +70,14 @@ $(document).ready(function() {
         $('#request-postal' ).val(user.postal      || '');
         $('#request-country').val(user.country     || '');  
 
+        paramsProcesses.createViewerImageFields.push(config.problemReports.fieldIdImage);
+
         paramsProcesses.createWSID    = workspaceIds.problemReports;
         paramsProcesses.workspacesIn  = [workspaceIds.problemReports.toString()];
-        paramsProcesses.fieldIdMarkup = config.problemReports.fieldIdImage;
         wsProblemReports.id           = workspaceIds.problemReports;
         wsSparePartsRequests.id       = workspaceIds.sparePartsRequests;       
-        wsSparePartsRequests.sections = responses[1].data;       
-        
+        wsSparePartsRequests.sections = responses[1].data;
+
         paramsItemDetails        = config.paramsItemDetails;
         paramsItemDetails.id     = 'details-top';
         paramsItemAttachments    = config.paramsItemAttachments;
@@ -718,9 +719,6 @@ function openItem() {
     
     } else {
 
-        console.log(config.serialNumbers.fieldIDs.partNumber);
-        console.log(config.serialNumbers.fieldIDs.instanceId);
-
         $('body').removeClass('no-snl');
         $('#toggle-snl').removeClass('hidden');
         insertGrid(links.snl, { 
@@ -1139,8 +1137,6 @@ function insertSparePart(elemParent, bomPart, type) {
 
     listServiceItems.spareParts.push(bomPart.root);
 
-    let addToCart = (elemParent.attr('id') === 'cart-list');
-
     let elemSparePart = $('<div></div>').appendTo(elemParent)
         .addClass('tile')
         .addClass('spare-part')
@@ -1158,36 +1154,24 @@ function insertSparePart(elemParent, bomPart, type) {
         .addClass('spare-part-image')
         .addClass('tile-image');
 
-    let elemSparePartIcon = $('<span></span>').appendTo(elemSparePartImage)
-            .addClass('icon')
-            .addClass('filled')
-            .addClass(config.serviceBOMTypes[type].icon);
-         
-    if(addToCart) {
-
-        if(!isBlank(bomPart.image)) {
-
-            elemSparePartIcon.remove();
-            $('<img>').attr('src', bomPart.image).appendTo(elemSparePartImage);
-
-        }
-
-    } else {
+    $('<span></span>').appendTo(elemSparePartImage)
+        .addClass('icon')
+        .addClass('filled')
+        .addClass(config.serviceBOMTypes[type].icon);
     
-        $.get('/plm/details', { link : bomPart.link }, function(response) {
-            let params = {
-                replace   : true,
-                icon      : config.serviceBOMTypes[type].icon,
-                imageLink : getFirstImageFieldValue(response.data.sections)
+    $.get('/plm/details', { link : bomPart.link }, function(response) {
+        let params = {
+            replace   : true,
+            icon      : config.serviceBOMTypes[type].icon,
+            imageLink : getFirstImageFieldValue(response.data.sections)
+        }
+        $('.spare-part').each(function() {
+            if($(this).attr('data-link') === response.params.link) {
+                let elemImage = $(this).find('.spare-part-image').first();
+                appendImageFromCache(elemImage, {}, params, function() {});
             }
-            $('.spare-part').each(function() {
-                if($(this).attr('data-link') === response.params.link) {
-                    let elemImage = $(this).find('.spare-part-image').first();
-                    appendImageFromCache(elemImage, {}, params, function() {});
-                }
-            });
         });
-    }
+    });
                 
     let elemSparePartDetails = $('<div></div>').appendTo(elemSparePart)
         .addClass('spare-part-details')
@@ -1209,84 +1193,28 @@ function insertSparePart(elemParent, bomPart, type) {
         .addClass('spare-part-title')
         .html(bomPart.details[config.items.sparePartTileSubtitle]);  
 
-    // $('<div></div>').appendTo(elemSparePartDetails)
-    //     .addClass('spare-part-material')
-    //     .addClass('with-icon')
-    //     .addClass('icon-product')
-    //     .addClass('filled');
-    //     // .html(getBOMNodeValue(selectedItem.node, urnsSpareParts.material));
-        
-    // let partSpec        = '';
-    // // let partWeight      = getBOMNodeValue(selectedItem.node, urnsSpareParts.weight);
-    // // let partDimensions  = getBOMNodeValue(selectedItem.node, urnsSpareParts.dimensions);
-            
-    // // if(partWeight !== '') {
-    // //     partSpec = partWeight;
-    // //     if(partWeight !== '') partSpec = partWeight + ' / ' + partDimensions;
-    // // } else partSpec = partDimensions
-
-    // $('<div></div>').appendTo(elemSparePartDetails)
-    //     .addClass('spare-part-dimensions')
-    //     .addClass('with-icon')
-    //     .addClass('icon-width')
-    //     .html(partSpec);
-
     let elemSparePartSide = $('<div></div>').appendTo(elemSparePart)
         .addClass('spare-part-side');
 
+    let elemCartAdd = $('<div></div>').appendTo(elemSparePartSide)
+        .addClass('button')
+        .addClass('cart-add')
+        .click(function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            addCartItem($(this));
+        });  
+            
+    $('<div></div>').appendTo(elemCartAdd)
+        .addClass('icon')
+        .addClass('icon-cart-add');
 
-    if(addToCart) {
-
-        let elemCartQuantity = $('<div></div>').appendTo(elemSparePartSide)
-            .addClass('cart-quantity')
-            .click(function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-            });
-
-        $('<div></div>').appendTo(elemCartQuantity)
-            .addClass('cart-quantity-label')
-            .html('Qty');
-
-        $('<input></input>').appendTo(elemCartQuantity)
-            .addClass('cart-quantity-input')
-            .val('1');
-
-        $('<div></div>').appendTo(elemSparePartSide)
-            .addClass('button')
-            .addClass('icon')
-            .addClass('icon-delete')
-            .addClass('cart-remove')
-            .click(function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                removeCartItem($(this));
-            });             
-
-    } else {
-
-        let elemCartAdd = $('<div></div>').appendTo(elemSparePartSide)
-            .addClass('button')
-            .addClass('cart-add')
-            .click(function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                addCartItem($(this));
-            });  
-                
-        $('<div></div>').appendTo(elemCartAdd)
-            .addClass('icon')
-            .addClass('icon-cart-add');
-
-        $('<div></div>').appendTo(elemCartAdd)
-            .html('Add to cart');
-
-    }
+    $('<div></div>').appendTo(elemCartAdd)
+        .html('Add to cart');
 
     if(applicationFeatures.showStock) {
         $('<div></div>').appendTo(elemSparePartSide).addClass('spare-part-stock');
     }
-
 
     return elemSparePart;
 
@@ -2156,22 +2084,56 @@ function addCartItem(elemClicked) {
 
     if(elemSparePart.hasClass('has-components')) elemSparePart.next().addClass('in-cart');
 
-    let item = {
-        link          : elemSparePart.attr('data-link'),
-        root          : elemSparePart.attr('data-root'),
-        title         : elemSparePart.find('.spare-part-title').html(),
-        type          : elemSparePart.attr('data-type'),
-        image         : elemSparePart.find('img').attr('src'),
-        partNumber    : elemSparePart.attr('data-part-number'),
-        totalQuantity : elemSparePart.attr('data-qty'),
-    }
+    let elemCartItem = $('<div></div>').appendTo($('#cart-list'))
+        .addClass('tile')
+        .addClass('spare-part')
+        .attr('data-link', elemSparePart.attr('data-link'))
+        .attr('data-root', elemSparePart.attr('data-root'))
+        .attr('data-title', elemSparePart.attr('data-title'))
+        .attr('data-type', elemSparePart.attr('data-type'))
+        .attr('data-part-number', elemSparePart.attr('data-part-number'))
+        .attr('data-qty', elemSparePart.attr('data-qty'));
 
-    let elemItem = insertSparePart($('#cart-list'), item, item.type);
-    
-    if(applicationFeatures.showStock) {
-        elemItem.addClass('spare-part-stock-' + elemSparePart.attr('data-stock'));
-        let elemStock = elemItem.find('.spare-part-stock');
-        $('<div></div>').appendTo(elemStock).addClass('spare-part-stock-icon');
+    elemSparePart.find('.spare-part-image'  ).clone().appendTo(elemCartItem);
+    elemSparePart.find('.spare-part-details').clone().appendTo(elemCartItem);        
+      
+
+    let elemCartItemSide = $('<div></div>').appendTo(elemCartItem).addClass('spare-part-side'); 
+
+    let elemCartItemQuantity = $('<div></div>').appendTo(elemCartItemSide)
+        .addClass('cart-quantity')
+        .click(function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+    $('<div></div>').appendTo(elemCartItemQuantity)
+        .addClass('cart-quantity-label')
+        .html('Qty');
+
+    $('<input></input>').appendTo(elemCartItemQuantity)
+        .addClass('cart-quantity-input')
+        .val('1');
+
+    $('<div></div>').appendTo(elemCartItemSide)
+        .addClass('button')
+        .addClass('icon')
+        .addClass('icon-delete')
+        .addClass('cart-remove')
+        .click(function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            removeCartItem($(this));
+        }); 
+
+     if(applicationFeatures.showStock) {
+
+        elemSparePart.find('.spare-part-stock').clone().appendTo(elemCartItemSide); 
+
+        if(elemSparePart.hasClass('spare-part-stock-none'  )) elemCartItem.addClass('spare-part-stock-none'  );
+        if(elemSparePart.hasClass('spare-part-stock-low'   )) elemCartItem.addClass('spare-part-stock-low'   );
+        if(elemSparePart.hasClass('spare-part-stock-normal')) elemCartItem.addClass('spare-part-stock-normal');
+
     }
 
     adjustCartHeight();
