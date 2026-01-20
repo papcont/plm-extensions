@@ -40,7 +40,7 @@ exports.common = {
         projectTasks           : 90,
 
         // Supplier Collaboration Workspaces
-        sparePartsRequests     : 209,
+        sparePartsRequests     : 241,
         supplierPackages       : 147,
 
         // Asset Management Workspaces
