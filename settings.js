@@ -62,13 +62,14 @@ exports.common = {
         sparePartsRequests     : 241,
         supplierPackages       : 147,
 
-        // Asset Management Workspaces
-        orderProjects          : 283,
-        orderProjectDeliveries : 279,
-        assets                 : 280,
-        assetItems             : 282,
-        assetServices          : 284,
-        serialNumbers          : 277,
+        
+         // Asset Management Workspaces
+        orderProjects          : 280,
+        orderProjectDeliveries : 276,
+        assets                 : 277,
+        assetItems             : 278,
+        assetServices          : 281,
+        serialNumbers          : 274,
 
     },
 
