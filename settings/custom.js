@@ -140,7 +140,7 @@ exports.menu = []
 // ---------------------------------------------------------------------------------------------------------------------------
 exports.server = {
     landingPage     : '',  // Set the default URL to be opened if no app URL is provided (default is '')
-    servicesEnabled : {"pdm-explorer":true}   // Defines the applications to enable. When an application is set to false, an error 404 page will be shown when users try accessing the given page.
+    servicesEnabled : {}   // Defines the applications to enable. When an application is set to false, an error 404 page will be shown when users try accessing the given page.
 }
 
 
