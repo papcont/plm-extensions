@@ -80,7 +80,7 @@ exports.common = {
     },
 
     viewer : {
-        numberProperties       : ['Bauteilnummer','Part Number', 'Name', 'label', 'Artikelnummer' ],
+        numberProperties       : ['Part Number', 'Name', 'label', 'Artikelnummer','Bauteilnummer' ],
         suffixPrimaryFile      : ['.iam.dwf', '.iam.dwfx', '.ipt.dwf', '.ipt.dwfx'],
         extensionsIncluded     : ['dwf', 'dwfx', 'nwd', 'ipt', 'stp', 'step', 'sldprt', 'pdf'],
         extensionsExcluded     : [],
