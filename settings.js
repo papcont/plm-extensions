@@ -80,11 +80,11 @@ exports.common = {
     },
 
     viewer : {
-        numberProperties       : ['Part Number', 'Name', 'label', 'Artikelnummer', 'Bauteilnummer'],
+        numberProperties       : ['Bauteilnummer','Part Number', 'Name', 'label', 'Artikelnummer' ],
         suffixPrimaryFile      : ['.iam.dwf', '.iam.dwfx', '.ipt.dwf', '.ipt.dwfx'],
         extensionsIncluded     : ['dwf', 'dwfx', 'nwd', 'ipt', 'stp', 'step', 'sldprt', 'pdf'],
         extensionsExcluded     : [],
-        splitPartNumberBy      : ' v',
+        splitPartNumberBy      : '',
         splitPartNumberIndexes : [0],
         splitPartNumberSpacer  : '',
         backgroundColor        : [255, 255, 255, 255, 255, 255],
