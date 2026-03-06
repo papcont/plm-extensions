@@ -509,81 +509,81 @@ exports.applications = {
                 fieldId : 'SERIAL_NUMBER',
                 value   : true
             }
-        // },{            
-        //     label       : 'Motors',
-        //     fieldId     : 'SERIAL_NUMBERS_LIST',
-        //     workspaceId : 276,
-        //     colorIndex  : 2,
-        //     bomIcon     : 'icon-item',
-        //     fieldsIn    : ['Supplier', 'Model', 'Serial #', 'Power Supply', 'Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
-        //     fieldsList  : {
-        //         partNumber   : 'NUMBER',
-        //         title        : 'ITEM_TITLE',
-        //         revision     : 'ITEM_REV',
-        //         path         : 'LOCATION',
-        //         instanceId   : 'INSTANCE_ID',
-        //         instancePath : 'INSTANCE_PATH',
-        //         boundingBox  : 'BOUNDING_BOX'
-        //     },
-        //     groupBy     : 'NUMBER',
-        //     sortOrder : [
-        //         { sortBy : 'INSTANCE_ID', sortType : 'integer', sortDirection : 'ascending' },
-        //         { sortBy : 'LOCATION'   , sortType : 'string' , sortDirection : 'ascending' }
-        //     ],
-        //     filter      : {
-        //         fieldId : 'MOTOR',
-        //         value   : true
-        //     }
-        // },{
-        //     label       : 'Sensors',
-        //     fieldId     : 'SERIAL_NUMBERS_LIST',
-        //     workspaceId : 277,
-        //     colorIndex  : 3,
-        //     bomIcon     : 'icon-highlight',
-        //     fieldsIn    : ['Serial #', 'Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
-        //     fieldsList  : {
-        //         partNumber   : 'NUMBER',
-        //         title        : 'ITEM_TITLE',
-        //         revision     : 'ITEM_REV',
-        //         path         : 'LOCATION',
-        //         instanceId   : 'INSTANCE_ID',
-        //         instancePath : 'INSTANCE_PATH',
-        //         boundingBox  : 'BOUNDING_BOX'
-        //     },
-        //     groupBy     : 'NUMBER',
-        //     sortOrder : [
-        //         { sortBy : 'INSTANCE_ID', sortType : 'integer', sortDirection : 'ascending' },
-        //         { sortBy : 'LOCATION'   , sortType : 'string' , sortDirection : 'ascending' }
-        //     ],
-        //     filter      : {
-        //         fieldId : 'SENSOR',
-        //         value   : true
-        //     }
-        // },{
-        //     label       : 'Control Elements',
-        //     fieldId     : 'SERIAL_NUMBERS_LIST',
-        //     workspaceId : 278,
-        //     colorIndex  : 4,
-        //     bomIcon     : 'icon-sliders',
-        //     fieldsIn    : ['Serial #', 'Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
-        //     fieldsList  : {
-        //         partNumber   : 'NUMBER',
-        //         title        : 'ITEM_TITLE',
-        //         revision     : 'ITEM_REV',
-        //         path         : 'LOCATION',
-        //         instanceId   : 'INSTANCE_ID',
-        //         instancePath : 'INSTANCE_PATH',
-        //         boundingBox  : 'BOUNDING_BOX'
-        //     },
-        //     groupBy     : 'NUMBER',
-        //     sortOrder : [
-        //         { sortBy : 'INSTANCE_ID', sortType : 'integer', sortDirection : 'ascending' },
-        //         { sortBy : 'LOCATION'   , sortType : 'string' , sortDirection : 'ascending' }
-        //     ],
-        //     filter      : {
-        //         fieldId : 'CONTROL_ELEMENT',
-        //         value   : true
-        //     }            
+        },{            
+            label       : 'Motors',
+            fieldId     : 'MOTORS_LIST',
+            workspaceId : 967,
+            colorIndex  : 2,
+            bomIcon     : 'icon-item',
+            fieldsIn    : ['Supplier', 'Model', 'Serial #', 'Power Supply', 'Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
+            fieldsList  : {
+                partNumber   : 'NUMBER',
+                title        : 'ITEM_TITLE',
+                revision     : 'ITEM_REV',
+                path         : 'LOCATION',
+                instanceId   : 'INSTANCE_ID',
+                instancePath : 'INSTANCE_PATH',
+                boundingBox  : 'BOUNDING_BOX'
+            },
+            groupBy     : 'NUMBER',
+            sortOrder : [
+                { sortBy : 'INSTANCE_ID', sortType : 'integer', sortDirection : 'ascending' },
+                { sortBy : 'LOCATION'   , sortType : 'string' , sortDirection : 'ascending' }
+            ],
+            filter      : {
+                fieldId : 'MOTOR',
+                value   : true
+            }
+        },{
+            label       : 'Sensors',
+            fieldId     : 'SENSORS_LIST',
+            workspaceId : 968,
+            colorIndex  : 3,
+            bomIcon     : 'icon-highlight',
+            fieldsIn    : ['Serial #', 'Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
+            fieldsList  : {
+                partNumber   : 'NUMBER',
+                title        : 'ITEM_TITLE',
+                revision     : 'ITEM_REV',
+                path         : 'LOCATION',
+                instanceId   : 'INSTANCE_ID',
+                instancePath : 'INSTANCE_PATH',
+                boundingBox  : 'BOUNDING_BOX'
+            },
+            groupBy     : 'NUMBER',
+            sortOrder : [
+                { sortBy : 'INSTANCE_ID', sortType : 'integer', sortDirection : 'ascending' },
+                { sortBy : 'LOCATION'   , sortType : 'string' , sortDirection : 'ascending' }
+            ],
+            filter      : {
+                fieldId : 'SENSOR',
+                value   : true
+            }
+        },{
+            label       : 'Control Elements',
+            fieldId     : 'CONTROL_ELEMENTS_LIST',
+            workspaceId : 969,
+            colorIndex  : 4,
+            bomIcon     : 'icon-sliders',
+            fieldsIn    : ['Serial #', 'Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
+            fieldsList  : {
+                partNumber   : 'NUMBER',
+                title        : 'ITEM_TITLE',
+                revision     : 'ITEM_REV',
+                path         : 'LOCATION',
+                instanceId   : 'INSTANCE_ID',
+                instancePath : 'INSTANCE_PATH',
+                boundingBox  : 'BOUNDING_BOX'
+            },
+            groupBy     : 'NUMBER',
+            sortOrder : [
+                { sortBy : 'INSTANCE_ID', sortType : 'integer', sortDirection : 'ascending' },
+                { sortBy : 'LOCATION'   , sortType : 'string' , sortDirection : 'ascending' }
+            ],
+            filter      : {
+                fieldId : 'CONTROL_ELEMENT',
+                value   : true
+            }            
         }],
         viewerFeatures : {
             contextMenu   : false,
