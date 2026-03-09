@@ -515,7 +515,7 @@ exports.applications = {
             workspaceId : 967,
             colorIndex  : 2,
             bomIcon     : 'icon-item',
-            fieldsIn    : ['Supplier', 'Model', 'Serial #', 'M_nenn gearb.', 'n_nenn gearb.', 'Output acceleration,''Power Supply', 'Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
+            fieldsIn    : ['Supplier', 'Model', 'Serial #', 'M_nenn gearb.', 'n_nenn gearb.', 'Output acceleration','Power Supply', 'Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
             fieldsList  : {
                 partNumber   : 'NUMBER',
                 title        : 'ITEM_TITLE',
