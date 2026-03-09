@@ -490,7 +490,7 @@ exports.applications = {
             workspaceId : null, // uses common.workspaceIds.serialNumbers per default
             colorIndex  : 1,
             bomIcon     : 'icon-tag',
-            fieldsIn    : ['Serial #', 'Installation Date', 'Item Title', 'Rev', '#', 'Instance Path'],
+            fieldsIn    : ['Serial #', 'Installation Date', 'Item Title', 'Rev', '#', 'Instance Path', 'Previous Serial #'],
             fieldsList  : {
                 partNumber   : 'NUMBER',
                 title        : 'ITEM_TITLE',
