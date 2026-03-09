@@ -515,7 +515,7 @@ exports.applications = {
             workspaceId : 967,
             colorIndex  : 2,
             bomIcon     : 'icon-item',
-            fieldsIn    : ['Supplier', 'Model', 'Serial #', 'Power Supply', 'Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
+            fieldsIn    : ['Supplier', 'Model', 'Serial #', 'M_nenn gearb.', 'n_nenn gearb.', 'Output acceleration,''Power Supply', 'Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
             fieldsList  : {
                 partNumber   : 'NUMBER',
                 title        : 'ITEM_TITLE',
@@ -540,7 +540,7 @@ exports.applications = {
             workspaceId : 968,
             colorIndex  : 3,
             bomIcon     : 'icon-highlight',
-            fieldsIn    : ['Serial #', 'Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
+            fieldsIn    : ['Serial #', 'Supplier', 'Installation Date', 'Function (engl.) high level signal', 'Flex Cable', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
             fieldsList  : {
                 partNumber   : 'NUMBER',
                 title        : 'ITEM_TITLE',
@@ -565,7 +565,7 @@ exports.applications = {
             workspaceId : 969,
             colorIndex  : 4,
             bomIcon     : 'icon-sliders',
-            fieldsIn    : ['Serial #', 'Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
+            fieldsIn    : ['Serial #', 'Supplier', 'Type', 'Function (ger.)','Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
             fieldsList  : {
                 partNumber   : 'NUMBER',
                 title        : 'ITEM_TITLE',
