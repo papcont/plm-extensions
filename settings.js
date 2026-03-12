@@ -560,12 +560,12 @@ exports.applications = {
                 value   : true
             }
         },{
-            label       : 'Control Elements',
+            label       : 'Smart Service',
             fieldId     : 'CONTROL_ELEMENTS_LIST',
             workspaceId : 969,
             colorIndex  : 4,
             bomIcon     : 'icon-sliders',
-            fieldsIn    : ['Serial #', 'Supplier', 'Type', 'Function (ger.)','Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
+            fieldsIn    : ['Serial #', 'Supplier', 'Reference Item', 'Type', 'Smart', 'Function (ger.)','Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
             fieldsList  : {
                 partNumber   : 'NUMBER',
                 title        : 'ITEM_TITLE',
