@@ -1135,7 +1135,7 @@ exports.applications = {
             bomViewName : null // uses common.workspaces.items.defaultBOMView per default
         },
         workspaceItemVariants : {
-            workspaceId       : 571,
+            workspaceId       : 241,
             sectionLabel      : 'Variant Definition',
             fieldIds          : {
                 baseItem      : 'BASE_ITEM',
