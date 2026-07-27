@@ -142,6 +142,9 @@ function setUIEvents() {
             fieldValues       : [{
                 fieldId : config.workspaceItemVariants.fieldIds.rootDMSId,
                 value   : urlParameters.root
+            },{
+               fieldId : config.workspaceItemVariants.fieldIds.baseItem,
+               value   : urlParameters.link                 
             }],
             hideSections      : true,
             afterCreation     : function(id, link, data, contextId) { addNewVariant(link); }
@@ -1162,17 +1165,24 @@ function createNewItems(action) {
                 })
 
                 for(let derived of derivedData) {
-                    if(derived.params.link === elemBaseItem.attr('data-link')) {
-                          for(let section of derived.data.sections) {
-                            for(let field of section.fields) {
-                                params.fields.push({
-                                    fieldId : field.__self__.split('/').pop(),
-                                    value : field.value,
-                                })
-                            }
+                if(derived.params.link === elemBaseItem.attr('data-link')) {
+                    for(let section of derived.data.sections) {
+                        for(let field of section.fields) {
+            
+                            let fieldId = field.__self__.split('/').pop();
+            
+                            // Diese Werte werden von uns explizit gesetzt
+                            if(fieldId === config.workspaceItemVariants.fieldIds.baseItem) continue;
+                            if(fieldId === config.workspaceItemVariants.fieldIds.rootDMSId) continue;
+            
+                            params.fields.push({
+                                fieldId : fieldId,
+                                value   : field.value
+                            });
                         }
                     }
                 }
+            }
 
                 requests.push($.post('/plm/create', params));
                 elements.push($(this));
