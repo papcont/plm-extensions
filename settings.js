@@ -1143,7 +1143,7 @@ exports.applications = {
                 rootDMSId     : 'BASE_ROOT_DMS_ID',
             },
             bomFieldIdBaseBOMPath : 'BASE_BOM_PATH',
-            bomViewName           : 'Variant Manager'
+            bomViewName           : 'Variant'
         },
         newItemVariantsTitle : {
             fieldsToConcatenate : ['COLOUR', 'MATERIAL'],
