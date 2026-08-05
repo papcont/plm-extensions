@@ -1,0 +1,16 @@
+{
+  "example-tenant": {
+    "tenant": "your-tenant-name",
+    "clientId": "APS_2LEGGED_CLIENT_ID",
+    "clientSecret": "APS_2LEGGED_CLIENT_SECRET",
+    "userId": "",
+    "note": "copy to tenants.json (gitignored) and fill in real values per alias"
+  },
+  "example-tenant-sandbox": {
+    "tenant": "your-tenant-name-sandbox",
+    "clientId": "APS_2LEGGED_CLIENT_ID",
+    "clientSecret": "APS_2LEGGED_CLIENT_SECRET",
+    "userId": "",
+    "note": "second alias, e.g. for fm_diff against a sandbox/other tenant"
+  }
+}
