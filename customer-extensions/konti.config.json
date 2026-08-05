@@ -1,0 +1,9 @@
+{
+  "customerSlug": "konti",
+  "tenant": "sbcmm",
+  "targetRepo": "TODO: real github.com/papcont/konti-extension URL not yet decided",
+  "includeCore": ["app.js", "bin", "routes", "views", "public", "settings.js", "package.json", "package-lock.json"],
+  "includeModules": [],
+  "excludeModules": [],
+  "customFiles": []
+}
