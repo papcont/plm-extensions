@@ -189,3 +189,28 @@ There is no test suite. The established loop for a live server you can't directl
 - Browser automation for tenant-changing actions (webhook registration, workflow transitions,
   data creation) needs the tenant, the exact action, and expected effect named explicitly before
   acting — prefer read/compare first, write second.
+
+## Git and customer extensions
+
+This directory is a git repo (`git init` 2026-08-05) with `origin` = this project's fork
+(`papcont/plm-extensions`) and `upstream` = the original project (`dickmans/plm-extensions`).
+Commits happen locally as normal; **never push without the user explicitly confirming it first**
+(same rule as any other action affecting a shared/remote system) - ask, show what would be pushed
+and where, then push.
+
+Developing a feature "for" a specific customer usually means just building it here like anything
+else - one shared codebase, tenant differences live in `environments/<tenant>.js` +
+`settings/<tenant>.js`. A separate customer-specific deliverable (ZIP or its own repo) is only
+assembled when that customer needs a standalone deployment - see
+`docs/CUSTOMER-EXTENSIONS-PLAN.md` for that model, `external/incoming/` for triaging material from
+existing/scattered customer projects, and `customer-extensions/<slug>/manifest.md` for what's been
+decided per customer. First customer set up this way: Conti Machinery (tenant `sbcmm`,
+`environments/conti.js` + `settings/conti.js`, both gitignored).
+
+`tools/fm-mcp/` is a small dependency-free MCP server (`fm_tenants`, `fm_get`, `fm_post`,
+`fm_workspaces`, `fm_fields`, `fm_diff`, `fm_snapshot`) for reading and diffing Fusion Manage
+tenant metadata across multiple tenants via 2-legged auth - useful for tenant-setup/discovery work
+that doesn't need a browser. Real tenant credentials go in `tools/fm-mcp/tenants.json`
+(gitignored); `tenants.example.json` is the tracked template. `.claude/skills/fm-admin-fields`
+documents the actual browser workflow for creating workspace fields, since Fusion Manage's REST
+API does not support that (`405` on `POST .../fields`).
