@@ -4,6 +4,10 @@
 /.claude/
 /.playwright-mcp/
 /ERP/CONTELOSUXDEMO*/
+/customer-extensions/*/build/
+/customer-extensions/*/*.zip
+/external/incoming/*
+!/external/incoming/.gitkeep
 /environments/*
 /uploads/*
 /settings/*

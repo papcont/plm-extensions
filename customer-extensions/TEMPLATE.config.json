@@ -1,0 +1,9 @@
+{
+  "customerSlug": "template",
+  "tenant": "template-tenant",
+  "targetRepo": "https://github.com/papcont/template-extension.git",
+  "includeCore": ["app.js", "bin", "routes", "views", "public", "settings.js", "package.json", "package-lock.json"],
+  "includeModules": [],
+  "excludeModules": [],
+  "customFiles": []
+}
