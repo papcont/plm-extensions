@@ -1,13 +1,15 @@
 /keys/*.pem
 /node_modules
 /environment.js
-/.claude/
+/.claude/*
+!/.claude/skills/
 /.playwright-mcp/
 /ERP/CONTELOSUXDEMO*/
 /customer-extensions/*/build/
 /customer-extensions/*/*.zip
 /external/incoming/*
 !/external/incoming/.gitkeep
+/tools/fm-mcp/tenants.json
 /environments/*
 /uploads/*
 /settings/*
