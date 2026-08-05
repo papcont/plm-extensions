@@ -1,0 +1,18 @@
+{
+  "callbackUrl": "https://inf-agreed-file-according.trycloudflare.com/erp/webhooks/lean-change-order",
+  "registrations": [
+    {
+      "transitionId": 1778,
+      "hookId": "f6bc7ccb-be83-4f72-97aa-5241bb4ffeb2"
+    },
+    {
+      "transitionId": 1787,
+      "hookId": "cfcc927c-ad50-4f56-8a52-207939f30b57"
+    },
+    {
+      "transitionId": 1789,
+      "hookId": "ef2100dc-085e-4ced-9fd0-638bf4385597"
+    }
+  ],
+  "updatedAt": "2026-08-04T15:47:15.642Z"
+}

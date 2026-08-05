@@ -1,0 +1,134 @@
+{
+  "tenant": "contelosuxdemo",
+  "source": "Workspace Manager screenshot provided in chat; Chrome browser read-only extraction on 2026-07-29",
+  "url": "https://contelosuxdemo.autodeskplm360.net/plm/admin/workspace-manager",
+  "workspaces": [
+    {
+      "category": "Instance Management",
+      "name": "Service",
+      "type": "Revision controlled"
+    },
+    {
+      "category": "Instance Management",
+      "name": "Serial Numbers",
+      "type": "Revision controlled"
+    },
+    {
+      "category": "Instance Management",
+      "name": "Motors",
+      "type": "Revision controlled"
+    },
+    {
+      "category": "Instance Management",
+      "name": "Sensors",
+      "type": "Revision controlled"
+    },
+    {
+      "category": "Instance Management",
+      "name": "Control Elements",
+      "type": "Revision controlled"
+    },
+    {
+      "category": "Product Development",
+      "name": "Items",
+      "type": "Revision controlled"
+    },
+    {
+      "category": "Product Development",
+      "name": "VIES Freigabe",
+      "type": "Revisioning"
+    },
+    {
+      "category": "Product Development",
+      "name": "Item Variants",
+      "type": "Revision controlled"
+    },
+    {
+      "category": "Product Development",
+      "name": "Documents",
+      "type": "Revision controlled"
+    },
+    {
+      "category": "Product Development",
+      "name": "Design Reviews_old",
+      "type": "Basic with workflow"
+    },
+    {
+      "category": "Product Development",
+      "name": "Design Reviews",
+      "type": "Basic with workflow"
+    },
+    {
+      "category": "Product Development",
+      "name": "Design Review Tasks_old",
+      "type": "Basic with workflow"
+    },
+    {
+      "category": "Product Development",
+      "name": "Design Review Tasks",
+      "type": "Basic with workflow"
+    },
+    {
+      "category": "Product Development",
+      "name": "Spare Parts Request",
+      "type": "Basic with workflow"
+    },
+    {
+      "category": "Asset Lifecycle & Projects",
+      "name": "Assets",
+      "description": "This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library",
+      "type": "Basic with workflow"
+    },
+    {
+      "category": "Asset Lifecycle & Projects",
+      "name": "Asset Items",
+      "description": "This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library",
+      "type": "Revision controlled"
+    },
+    {
+      "category": "Asset Lifecycle & Projects",
+      "name": "Asset Groups",
+      "description": "This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library",
+      "type": "Basic with workflow"
+    },
+    {
+      "category": "Asset Lifecycle & Projects",
+      "name": "Asset Services",
+      "description": "This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library",
+      "type": "Revisioning"
+    },
+    {
+      "category": "Asset Lifecycle & Projects",
+      "name": "Order Project Deliveries",
+      "description": "This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library",
+      "type": "Revisioning"
+    },
+    {
+      "category": "Asset Lifecycle & Projects",
+      "name": "Order Projects",
+      "description": "This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library",
+      "type": "Basic with workflow"
+    },
+    {
+      "category": "Asset Lifecycle & Projects",
+      "name": "Order Project Tasks",
+      "description": "This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library",
+      "type": "Basic with workflow"
+    },
+    {
+      "category": "Konifguratix",
+      "name": "Konfiguratix",
+      "type": "Basic with workflow"
+    },
+    {
+      "category": "VISI_TEST",
+      "name": "VisiTEST",
+      "type": "Basic with workflow"
+    },
+    {
+      "category": "VISI_TEST",
+      "name": "VisiTEST_Meeting",
+      "type": "Basic with workflow"
+    }
+  ]
+}

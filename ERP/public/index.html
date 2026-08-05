@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fusion Manage - Dolibarr BOM Sync</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            color: #34495e;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        #viewBomBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        #viewBomBtn:not(:disabled) {
+            opacity: 1;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #2980b9;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #7f8c8d;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #c0392b;
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: #229954;
+        }
+
+        .auth-status {
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        .auth-status.authenticated {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .auth-status.not-authenticated {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .history-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .history-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge.success {
+            background: #28a745;
+            color: white;
+        }
+
+        .badge.error {
+            background: #dc3545;
+            color: white;
+        }
+
+        .badge.dry-run {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .preview-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .preview-section h3 {
+            margin-bottom: 10px;
+            color: #17a2b8;
+        }
+
+        .preview-section ul {
+            margin-left: 20px;
+        }
+
+        .preview-section li {
+            margin: 5px 0;
+        }
+
+        #progressContainer {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #3498db;
+        }
+
+        #progressBar {
+            box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Fusion Manage → Dolibarr BOM Sync</h1>
+
+        <!-- Authentication Section -->
+        <div class="section" id="authSection">
+            <h2>🔐 Authentifizierung</h2>
+            <div id="authStatus" style="margin-bottom: 15px;">
+                <p style="color: #999;">Prüfe Authentifizierungsstatus...</p>
+            </div>
+            <div class="button-group">
+                <button class="btn-primary" id="loginBtn" onclick="loginToAutodesk()" style="display: none;">
+                    🔑 Bei Autodesk anmelden
+                </button>
+                <button class="btn-secondary" id="logoutBtn" onclick="logout()" style="display: none;">
+                    Abmelden
+                </button>
+            </div>
+        </div>
+
+        <!-- Sync Section -->
+        <div class="section">
+            <h2>BOM synchronisieren</h2>
+            <div class="form-group">
+                <label for="itemId">Fusion Manage Item ID:</label>
+                <input type="text" id="itemId" placeholder="z.B. 12345" />
+            </div>
+            <div class="button-group">
+                <button class="btn-primary" id="syncBtn" onclick="syncBOM()">
+                    BOM jetzt synchronisieren
+                </button>
+                <button class="btn-secondary" id="dryRunBtn" onclick="dryRun()">
+                    Dry-Run ausführen
+                </button>
+                <button class="btn-primary" id="loadHistoryBtn" onclick="loadHistory()">
+                    Historie laden
+                </button>
+                <button class="btn-success" id="viewBomBtn" onclick="viewBomInDolibarr()" disabled>
+                    📋 BOM in Dolibarr öffnen
+                </button>
+            </div>
+            <!-- Progress Bar -->
+            <div id="progressContainer" style="display: none; margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span id="progressMessage" style="font-weight: 600; color: #555;">Initialisiere...</span>
+                    <span id="progressPercent" style="font-weight: 600; color: #3498db;">0%</span>
+                </div>
+                <div style="width: 100%; height: 24px; background: #e0e0e0; border-radius: 12px; overflow: hidden; position: relative;">
+                    <div id="progressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3498db, #2980b9); transition: width 0.3s ease; border-radius: 12px;"></div>
+                    <div id="progressDetails" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 12px; color: #333; font-weight: 600; white-space: nowrap;">
+                        <span id="progressCurrent">0</span> / <span id="progressTotal">0</span>
+                    </div>
+                </div>
+            </div>
+            <div id="status" class="status"></div>
+        </div>
+
+        <!-- History Section -->
+        <div class="section">
+            <h2>Transfer-Historie</h2>
+            <div id="historyContainer">
+                <p style="color: #999;">Geben Sie eine Item ID ein und klicken Sie auf "Historie laden"</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
+

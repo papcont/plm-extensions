@@ -1,0 +1,33 @@
+doctype html
+html
+    head
+        meta(charset='utf-8')
+        meta(name='viewport', content='width=device-width, initial-scale=1')
+        title Signing in...
+        style.
+            body { align-items: center; display: flex; font-family: sans-serif; height: 100vh; justify-content: center; margin: 0; }
+            .box { text-align: center; }
+            button { background: #2a6ee0; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-size: 14px; margin-top: 12px; padding: 10px 20px; }
+    body
+        .box
+            p Signing in...
+        script.
+            var authUrl = !{JSON.stringify(redirectUri)};
+
+            if(window.self !== window.top) {
+                // Embedded (e.g. Microsoft Teams tab) - identity providers refuse to render
+                // inside an iframe, and browsers block window.open() outside a user gesture,
+                // so wait for an explicit click before opening the login popup.
+                document.querySelector('.box').innerHTML =
+                    '<p>Sign-in cannot happen inside this embedded view.</p>' +
+                    '<button id="signin-btn">Sign in</button>';
+                document.getElementById('signin-btn').onclick = function() {
+                    window.open(authUrl, '_blank');
+                    document.querySelector('.box').innerHTML =
+                        '<p>Please complete sign-in in the new window, then click Continue.</p>' +
+                        '<button id="continue-btn">Continue</button>';
+                    document.getElementById('continue-btn').onclick = function() { window.location.reload(); };
+                };
+            } else {
+                window.location.href = authUrl;
+            }

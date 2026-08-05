@@ -1,0 +1,39 @@
+extends ../framework/layout
+
+block head
+
+    link(rel='stylesheet', href='/stylesheets/apps/launch-readiness.css')
+    link(rel='stylesheet', href='/stylesheets/custom/launch-readiness.css')
+
+    script(src='/javascripts/apps/launch-readiness.js')
+    script(src='/javascripts/custom/launch-readiness.js')
+
+block body
+
+    body.surface-level-1
+
+        #header.dark
+            #header-logo
+            #header-title= title
+            #header-subtitle Project, delivery, task, and launch blocker readiness
+            #header-toolbar
+                #refresh.button.icon.icon-refresh(title='Refresh workspace counters')
+                #header-avatar
+
+        #launch-readiness
+            #summary.surface-level-2
+                .summary-tile
+                    .summary-label Workspaces
+                    .summary-value#workspace-count -
+                .summary-tile
+                    .summary-label Records
+                    .summary-value#record-count -
+                .summary-tile
+                    .summary-label Readiness
+                    .summary-value#readiness -
+
+            #workspace-grid
+
+            #next-slice.surface-level-2
+                .section-title Next read-only slice
+                .section-text Use these project workspaces to validate launch readiness signals before adding workflow or project write actions.

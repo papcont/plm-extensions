@@ -1,0 +1,118 @@
+extends ../framework/layout
+
+block head
+
+    link(rel='stylesheet', href='/stylesheets/apps/supplier-package-center.css')
+    link(rel='stylesheet', href='/stylesheets/custom/supplier-package-center.css')
+
+    script(src='/javascripts/apps/supplier-package-center.js')
+    script(src='/javascripts/custom/supplier-package-center.js')
+
+block body
+
+    body.surface-level-1
+
+        #header.dark
+            #header-logo
+            #header-title= title
+            #header-subtitle Browse supplier packages, their shared items, and export BOMs
+            #header-toolbar
+                #refresh.button.icon.icon-refresh(title='Reload supplier packages')
+                #header-avatar
+
+        #package-center-studio
+            #summary.surface-level-2
+                .summary-tile
+                    .summary-label Packages
+                    .summary-value#total-count -
+                .summary-tile
+                    .summary-label Shown
+                    .summary-value#shown-count -
+                #status-breakdown
+
+            #workspace.surface-level-2
+                #control-panel
+                    #new-package.button.with-icon.icon-add New Package
+
+                    .section-title Filter packages
+                    label.input-label(for='package-search') Search
+                    input#package-search(type='text', placeholder='Number, descriptor, type...')
+
+                    label.input-label(for='filter-type') Type
+                    select#filter-type
+                        option(value='') All types
+
+                    label.input-label(for='filter-status') Status
+                    select#filter-status
+                        option(value='') All statuses
+
+                    label.input-label(for='filter-supplier') Supplier
+                    select#filter-supplier
+                        option(value='') All suppliers
+
+                    label.input-label
+                        input#filter-has-items(type='checkbox')
+                        span Only packages with items
+
+                #package-list-panel
+                    .section-title Supplier Packages
+                    table#package-table
+                        thead
+                            tr
+                                th Number
+                                th Type
+                                th Status
+                                th Supplier
+                                th Items
+                                th Descriptor
+                        tbody#package-table-body
+                            tr
+                                td(colspan='6') Loading packages...
+
+                #package-detail-panel.hidden
+                    .section-title
+                        span Package details
+                        .section-title-actions
+                            select.button#workflow-actions
+                            #close-package-detail.button.icon.icon-close(title='Close package details')
+                    #package-details
+                    .section-title Attachments
+                    #attachments
+                    #item-viewer-panel.hidden
+                        .section-title Part preview
+                        .viewer#viewer.surface-level-1
+
+                    .section-title Shared items
+                    #shared-items-list
+                        .empty-note No shared items on this package.
+
+                    #bulk-export-panel.hidden
+                        .section-title Export all shared items
+                        .control-grid
+                            label
+                                span.input-label BOM view
+                                select#bulk-bom-view
+                            label
+                                span.input-label Depth
+                                input#bulk-depth(type='number', min='1', max='20', value='10')
+                            label
+                                span.input-label Revision bias
+                                select#bulk-revision-bias
+                                    option(value='release') release
+                                    option(value='working') working
+                                    option(value='latest') latest
+                        label.input-label
+                            input#bulk-zip-attachments(type='checkbox')
+                            span Include attachments (ZIP)
+                        .button-row
+                            #export-all-excel.button.with-icon.icon-download Export Excel
+                            #attach-all-excel.button.with-icon.icon-attachment Attach to Package
+                            #export-all-zip.button.with-icon.icon-download Export ZIP
+
+            #export-view.hidden
+                .section-title
+                    span BOM export
+                    #back-to-package.button.with-icon.icon-arrow-left Back to package
+                iframe#export-frame
+
+            #create-package.dialog

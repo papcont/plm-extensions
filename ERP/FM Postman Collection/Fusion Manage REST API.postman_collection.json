@@ -1,0 +1,3412 @@
+{
+	"info": {
+		"_postman_id": "6e574f66-3499-43bf-bde3-2d9f83e5d6f6",
+		"name": "Fusion Manage REST API",
+		"description": "_Disclaimer: This collection has been created for the training of technical sales teams, this is not the offcial API documentation of Fusion Manage. These examples help in learning and exploring the rich functionality of the Fusion Manage REST API, but do not cover all capabilities. Please see the online help for the full documentation - also because not all examples might be up-to-date anymore when you start using them._\n\n### Prerequisite #1 : Autodesk Platform Services Application\n\nBefore the Fusion Manage REST API can be used, an application must be created at [aps.autodesk.com](https://aps.autodesk.com): After logging in with an Autodesk account, click **Go to my apps** and create an application of default type. This application is for free and does not consume any tokens.\n\nOnce the application has been created, the application's settings will be shown, including its **Client ID** and **Client Secret** which you will need for later steps. Before proceeding, adjust the Callback URL of your new APS application. As this URL will be different when using Postman in the browser or when using the Postman app, it is recommended to set two callback URLs by using the Add URL command:\n\n> [https://www.getpostman.com/auth2/callback](https://www.getpostman.com/auth2/callback)  \n[https://oauth.pstmn.io/v1/browser-callback](https://oauth.pstmn.io/v1/browser-callback) \n  \n\n<img src=\"https://content.pstmn.io/8138ca9c-6225-4404-a094-b5bfc1b22689/U2NyZWVuc2hvdCAyMDI1LTA1LTIzIGF0IDEwLjA3LjM1LnBuZw==\">\n\nDo not forget to click **Save Changes** to apply these callback URLs**.** Next, copy the **Client ID** and whitelist this ID in the **General Settings** of your Fusion Manage tenant to grant API access (this requires admin permission).\n\n### Prerequiste #2 : Local Fork\n\nThis collection uses Collection Variables to define relevant settings for the requests (for instance the Fusion Manage tenant and workspace IDs). As you cannot modify these variables in this template collection, you have to create a fork of this collection in your local workspace first. Click the Fork button in top right corner of this screen to do so.\n\nThis will unlock the collection, its variables and request definitions. In the fork, you can modify the collection to your needs and still receive updates from the public collection.\n\nOnce the fork has been created, click the top node of this collection and click th tab **Variables**. In this tab, provide the **Client ID** and **Client Secret** of your APS Application and adjust the Fusion Manage tenant name. The tenant name must be defined in two variables, one of them must contain the name in uppercase on purpose.\n\nTo update your local fork later, click the menu of your forked collection and click **Pull Changes** to review and merge updates at any time.\n\n### Authorization\n\nFinally, click the tab **Authorization** of this collection to generate a new access token. Click the button **Get New Access Token** and the end of the Authorization page and login with your credentials. After successful login, confirm to use this new token. The token will be refresh automatically due to the settings in the Authorization tab.\n\n### Datasets\n\nPlesee note that these examples refer to demo datasets of the standard demo tenants. You may have to adjust the given Workspace IDs and DMS IDs in the variables tab.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "37195366",
+		"_collection_link": "https://www.postman.com/svendickmans/fusion-manage/collection/xyw79w2/fusion-manage-rest-api?action=share&source=collection_link&creator=37195366"
+	},
+	"item": [
+		{
+			"name": "Search & Browse",
+			"item": [
+				{
+					"name": "Search",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/search-results?limit=10&offset=0&query=*EMBER*",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"search-results"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Default is 100"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Default is 0"
+								},
+								{
+									"key": "query",
+									"value": "*EMBER*"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Bulk",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.autodesk.plm.items.bulk+json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/search-results?limit=10&offset=0&query=*EMBER*",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"search-results"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Default is 100"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Default is 0"
+								},
+								{
+									"key": "query",
+									"value": "*EMBER*"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Items Recently Changed (V1 Search)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"pageNo\" : 1,\n    \"pageSize\" : 100,\n\t\t\"logicClause\" : \"AND\",\n\t\t\"fields\" : [{ \n\t\t\t\"fieldID\" : \"DESCRIPTOR\",\n\t\t\t\"fieldTypeID\" : 15\n\t\t},{ \n\t\t\t\"fieldID\" : \"LAST_MODIFIED_ON\",\n\t\t\t\"fieldTypeID\" : 3\n\t\t}],\n\t\t\"filter\": [{\n\t\t\t\"fieldID\" : \"LAST_MODIFIED_ON\",\n\t\t\t\"fieldTypeID\" : 3,\n\t\t\t\"filterType\" : {\n\t\t\t\t\"filterID\" : 18\n\t\t\t},\n\t\t\t\"filterValue\" : \"2025/01/01\"\n\t\t}],\n\t\t\"sort\" : [{\n\t\t\t\"fieldID\" : \"DESCRIPTOR\",\n\t\t\t\"fieldTypeID\" : 15,\n\t\t\t\"sortAscending\" : true\n\t\t}]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/rest/v1/workspaces/{{Workspace ID Items}}/items/search",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"rest",
+								"v1",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"search"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Items w/o Description (V1 Search)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"pageNo\" : 1,\n    \"pageSize\" : 100,\n\t\t\"logicClause\" : \"AND\",\n\t\t\"fields\" : [{ \n\t\t\t\"fieldID\" : \"DESCRIPTOR\",\n\t\t\t\"fieldTypeID\" : 15\n\t\t},{ \n\t\t\t\"fieldID\" : \"LAST_MODIFIED_ON\",\n\t\t\t\"fieldTypeID\" : 3\n        },{ \n\t\t\t\"fieldID\" : \"DESCRIPTION\",\n\t\t\t\"fieldTypeID\" : 0\n\t\t}],\n\t\t\"filter\": [{\n\t\t\t\"fieldID\" : \"DESCRIPTION\",\n\t\t\t\"fieldTypeID\" : 0,\n\t\t\t\"filterType\" : {\n\t\t\t\t\"filterID\" : 20\n\t\t\t},\n\t\t\t\"filterValue\" : \"\"\n\t\t}],\n\t\t\"sort\" : [{\n\t\t\t\"fieldID\" : \"DESCRIPTOR\",\n\t\t\t\"fieldTypeID\" : 15,\n\t\t\t\"sortAscending\" : true\n\t\t}]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/rest/v1/workspaces/{{Workspace ID Items}}/items/search",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"rest",
+								"v1",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"search"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Items by status (V1 Search)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"pageNo\" : 1,\n    \"pageSize\" : 100,\n\t\t\"logicClause\" : \"AND\",\n\t\t\"fields\" : [{ \n\t\t\t\"fieldID\" : \"DESCRIPTOR\",\n\t\t\t\"fieldTypeID\" : 15\n\t\t},{ \n\t\t\t\"fieldID\" : \"WF_CURRENT_STATE\",\n\t\t\t\"fieldTypeID\" : 1\n\t\t}],\n\t\t\"filter\": [{\n\t\t\t\"fieldID\" : \"WF_CURRENT_STATE\",\n\t\t\t\"fieldTypeID\" : 1,\n\t\t\t\"filterType\" : {\n\t\t\t\t\"filterID\" : 15 // 'equals to is'\n\t\t\t},\n\t\t\t\"filterValue\" : \"Preparation\"\n\t\t}],\n\t\t\"sort\" : [{\n\t\t\t\"fieldID\" : \"DESCRIPTOR\",\n\t\t\t\"fieldTypeID\" : 15,\n\t\t\t\"sortAscending\" : true\n\t\t}]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/rest/v1/workspaces/{{Workspace ID Change Orders}}/items/search",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"rest",
+								"v1",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"search"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search returning Grid tab data (V1 search)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"pageNo\" : 1,\n    \"pageSize\" : 100,\n\t\t\"logicClause\" : \"AND\",\n\t\t\"fields\" : [{ \n\t\t\t\"fieldID\" : \"DESCRIPTOR\",\n\t\t\t\"fieldTypeID\" : 15\n\t\t},{ \n\t\t\t\"fieldID\" : \"WF_CURRENT_STATE\",\n\t\t\t\"fieldTypeID\" : 1\n        },{ \n\t\t\t\"fieldID\" : \"TITLE\",\n\t\t\t\"fieldTypeID\" : 2\n        },{ \n\t\t\t\"fieldID\" : \"PRIORITY\",\n\t\t\t\"fieldTypeID\" : 2\n        },{ \n\t\t\t\"fieldID\" : \"PLANNED_COMPLETION_DATE\",\n\t\t\t\"fieldTypeID\" : 2\n        },{ \n\t\t\t\"fieldID\" : \"PLANNED_DURATION\",\n\t\t\t\"fieldTypeID\" : 2\n\t\t}],\n\t\t\"filter\": [{\n\t\t\t\"fieldID\" : \"WF_CURRENT_STATE\",\n\t\t\t\"fieldTypeID\" : 1,\n\t\t\t\"filterType\" : {\n\t\t\t\t\"filterID\" : 15 // 'equals to is'\n\t\t\t},\n\t\t\t\"filterValue\" : \"Concept\"\n\t\t}],\n\t\t\"sort\" : [{\n\t\t\t\"fieldID\" : \"DESCRIPTOR\",\n\t\t\t\"fieldTypeID\" : 15,\n\t\t\t\"sortAscending\" : true\n\t\t}]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/rest/v1/workspaces/{{Workspace ID Projects}}/items/search",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"rest",
+								"v1",
+								"workspaces",
+								"{{Workspace ID Projects}}",
+								"items",
+								"search"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Recently Viewed Items",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/users/@me/recently-viewed",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"users",
+								"@me",
+								"recently-viewed"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Outstanding Work list",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/users/@me/outstanding-work",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"users",
+								"@me",
+								"outstanding-work"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Bookmarks",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/users/@me/bookmarks",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"users",
+								"@me",
+								"bookmarks"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Bookmark",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"dmsId\" : \"{{DMS ID Change Order}}\",\n    \"commment\" : \"Added by REST API\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/users/@me/bookmarks",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"users",
+								"@me",
+								"bookmarks"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Bookmark",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/users/@me/bookmarks/{{DMS ID Change Order}}",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"users",
+								"@me",
+								"bookmarks",
+								"{{DMS ID Change Order}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Tableaus",
+			"item": [
+				{
+					"name": "Get Tableaus",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/tableaus",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"tableaus"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tableau Columns",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.autodesk.plm.meta+json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/tableaus/87",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"tableaus",
+								"87"
+							]
+						},
+						"description": "Replace the workspaceId and tableauId to match your environment. Use the request **Get Workspace Tableaus** to get this data."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tableau Data",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/tableaus/87?page=1",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"tableaus",
+								"87"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Replace the workspaceId and tableauId to match your environment. Use the request **Get Workspace Tableaus** to get this data."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Tableau",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/vnd.autodesk.plm.meta+json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n        \"name\"          : \"New View\",\n        \"createdDate\"   : \"2024-01-01\",\n        \"isDefault\"     : false,\n        \"columns\"       : [{\n            \"displayOrder\" : 0,\n            \"field\": {\n                \"title\"     : \"Item Descriptor\",\n                \"__self__\"  : \"/api/v3/workspaces/84/views/0/fields/DESCRIPTOR\",\n                \"urn\"       : \"\",\n                \"type\"      : { \"link\" : \"/api/v3/field-types/4\" }\n            },\n            \"group\" : { \"label\" : \"ITEM_DESCRIPTOR_FIELD\" }\n        },{\n            \"displayOrder\" : 1,\n            \"field\": {\n                \"title\"     : \"Created on\",\n                \"__self__\"  : \"/api/v3/workspaces/84/views/0/fields/CREATED_ON\",\n                \"urn\"       : \"\",\n                \"type\"      : { \"link\" : \"/api/v3/field-types/3\" }\n            },\n            \"group\" : { \"label\" : \"LOG_FIELD\" }\n        },{\n            \"displayOrder\" : 2,\n            \"field\": {\n                \"title\"     : \"Created on\",\n                \"__self__\"  : \"/api/v3/workspaces/84/views/0/fields/LAST_MODIFIED_ON\",\n                \"urn\"       : \"\",\n                \"type\"      : { \"link\" : \"/api/v3/field-types/3\" }\n            },\n            \"group\" : { \"label\" : \"LOG_FIELD\" }\n        },{\n            \"displayOrder\" : 3,\n            \"field\": {\n                \"title\"     : \"Current State\",\n                \"__self__\"  : \"/api/v3/workspaces/84/views/0/fields/WF_CURRENT_STATE\",\n                \"urn\"       : \"\",\n                \"type\"      : { \"link\" : \"/api/v3/field-types/3\" }\n            },\n            \"group\" : { \"label\" : \"WORKFLOW_FIELD\" }\n        }]\n    }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/tableaus",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"tableaus"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Tableau",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/tableaus/1634",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"tableaus",
+								"1634"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Use Workspace Views for data access"
+		},
+		{
+			"name": "Item Details",
+			"item": [
+				{
+					"name": "Get Item Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Item Owners",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/owners",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}",
+								"owners"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Item Change Log",
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {
+							"accept": true
+						}
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/logs?offset=0&limit=100&desc=timeStamp",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}",
+								"logs"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "limit",
+									"value": "100"
+								},
+								{
+									"key": "desc",
+									"value": "timeStamp"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Item Revisions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/versions",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}",
+								"versions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Item Related Changes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/views/2",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}",
+								"views",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Item Field Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/views/1/fields/DESCRIPTION",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"views",
+								"1",
+								"fields",
+								"DESCRIPTION"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Item Tabs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/tabs",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}",
+								"tabs"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Lifecycle Transitions of Workspace",
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {
+							"content-type": true
+						}
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.autodesk.plm.transitions.bulk+json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/transitions",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"transitions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Lifecycle Transitions of Item",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/workflows/1/transitions",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}",
+								"workflows",
+								"1",
+								"transitions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create New Item",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sections\" : [{\n        \"link\" : \"/api/v3/workspaces/57/items/14669/views/1/sections/203\",\n        \"fields\": [{\n            \"__self__\": \"/api/v3/workspaces/57/items/14669/views/1/fields/TITLE\",\n            \"value\" : \"New Item\"\n        }]\n    }]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create New Item in Released status",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n   \"versionId\" : \"D\",\n   \"effectivity\" : \"2025-09-01T00:00:00+01:00\",\n   \"lifecycle\" : {\n        \"title\" : \"Production\"\n   },\n    \"sections\" : [{\n        \"link\" : \"/api/v3/workspaces/57/items/14669/views/1/sections/203\",\n        \"fields\": [{\n            \"__self__\": \"/api/v3/workspaces/57/items/14669/views/1/fields/TITLE\",\n            \"value\" : \"New Item\"\n        }]\n    }]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Item Property",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sections\" : [{\n        \"link\" : \"/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/views/1/sections/203\",\n        \"fields\": [{\n            \"__self__\": \"/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/views/1/fields/TITLE\",\n            \"value\" : \"ECO Exhaust Assembly\"\n        }]\n    }]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Item",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}?deleted=true",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}"
+							],
+							"query": [
+								{
+									"key": "deleted",
+									"value": "true"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Undelete Item",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}?deleted=false",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}"
+							],
+							"query": [
+								{
+									"key": "deleted",
+									"value": "false"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Perform Item Lifecycle Transition (V1)",
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {
+							"content-type": true
+						}
+					},
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/xml",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<dmsVersionItem>\n<release>\nG\n</release>\n</dmsVersionItem>",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/rest/v1/workspaces/{{Workspace ID Items}}/items/19432/lifecycles/transitions/6",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"rest",
+								"v1",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"19432",
+								"lifecycles",
+								"transitions",
+								"6"
+							]
+						},
+						"description": "This example uses the V1 REST API which is not recommended to use whenever a V3 replacement exists.  \nLifecycle transistions cannot be performed with the V3 API, hence this V1 example is provided."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Attachments Tab",
+			"item": [
+				{
+					"name": "Get Attachments",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.autodesk.plm.attachments.bulk+json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/attachments",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}",
+								"attachments"
+							]
+						},
+						"description": "### GET /api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/attachments\n\nThis endpoint retrieves the attachments associated with a specific item in a workspace.\n\n#### Request\n\nNo request body parameters are required for this endpoint.\n\n- `Base URL` (string) - The base URL for the API.\n    \n- `Workspace ID Items` (string) - The ID of the workspace.\n    \n- `DMS ID Item` (string) - The ID of the item.\n    \n\n#### Response\n\nThe response will be in JSON format with the following schema:\n\n``` json\n{\n  \"item\": {\n    \"link\": \"\",\n    \"urn\": \"\",\n    \"title\": \"\",\n    \"deleted\": true\n  },\n  \"attachments\": [\n    {\n      \"selfLink\": \"\",\n      \"urn\": \"\",\n      \"name\": \"\",\n      \"url\": \"\",\n      \"thumbnails\": {\n        \"small\": \"\",\n        \"medium\": \"\",\n        \"large\": \"\"\n      },\n      \"id\": 0,\n      \"description\": \"\",\n      \"size\": 0,\n      \"version\": 0,\n      \"status\": {\n        \"name\": \"\",\n        \"label\": \"\",\n        \"description\": \"\"\n      },\n      \"type\": {\n        \"id\": \"\",\n        \"fileType\": \"\",\n        \"iconImage\": \"\",\n        \"viewable\": true,\n        \"extension\": \"\"\n      },\n      \"resourceName\": \"\",\n      \"created\": {\n        \"user\": {\n          \"link\": \"\",\n          \"urn\": \"\",\n          \"title\": \"\",\n          \"status\": \"\",\n          \"email\": \"\",\n          \"image\": {\n            \"small\": \"\",\n            \"medium\": \"\",\n            \"large\": \"\"\n          }\n        },\n        \"timeStamp\": \"\"\n      },\n      \"folder\": null,\n      \"markups\": {\n        \"link\": \"\",\n        \"deleted\": true,\n        \"count\": 0\n      }\n    }\n  ]\n}\n\n ```"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Attachments",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[{\n\t\"op\"    : \"replace\",\n\t\"path\"  : \"/attachments/7866/status/name\",\n\t\"value\" : \"Delete\"\n},{\n\t\"op\"    : \"replace\",\n\t\"path\"  : \"/attachments/7867/status/name\",\n\t\"value\" : \"Delete\"\n}]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/attachments",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}",
+								"attachments"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Grid Tab",
+			"item": [
+				{
+					"name": "Get Grid Columns",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/views/13/fields",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"views",
+								"13",
+								"fields"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Grid Rows",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/13/rows",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"views",
+								"13",
+								"rows"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Grid Rows",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.autodesk.plm.grid.rows.bulk+json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[{\n\t\"rowData\" : [{\n\t\t\t\"__self__\"  : \"/api/v3/workspaces/{{Workspace ID Change Orders}}/views/13/fields/TITLE\",\n\t\t\t\"value\"     : \"REST API Test Entry #1\",\n\t\t\t\"title\"     : \"Integer\",\n\t\t\t\"type\"      : {\n\t\t\t\t\t\"deleted\"   : false,\n\t\t\t\t\t\"link\"      : \"/api/v3/field-types/4\",\n\t\t\t\t\t\"title\"     : \"Single Line Text\",\n\t\t\t\t\t\"urn\"       : \"urn:adsk.plm:tenant.field-type:{{Tenant Name Uppercase}}.4\"\n\t\t\t}\n\t},{\n\t\t\t\"__self__\"  : \"/api/v3/workspaces/{{Workspace ID Change Orders}}/views/13/fields/TARGET_COMPLETION_DATE\",\n\t\t\t\"value\"     : \"2022-01-01\",\n\t\t\t\"title\"     : \"Date\",\n\t\t\t\"type\"      : {\n\t\t\t\t\t\"deleted\"   : false,\n\t\t\t\t\t\"link\"      : \"/api/v3/field-types/3\",\n\t\t\t\t\t\"title\"     : \"Date\",\n\t\t\t\t\t\"urn\"       : \"urn:adsk.plm:tenant.field-type:{{Tenant Name Uppercase}}.3\"\n\t\t\t}\n\t}]\n},{\n\t\"rowData\" : [{\n\t\t\t\"__self__\"  : \"/api/v3/workspaces/{{Workspace ID Change Orders}}/views/13/fields/TITLE\",\n\t\t\t\"value\"     : \"REST API Test Entry #2\",\n\t\t\t\"title\"     : \"Integer\",\n\t\t\t\"type\"      : {\n\t\t\t\t\t\"deleted\"   : false,\n\t\t\t\t\t\"link\"      : \"/api/v3/field-types/4\",\n\t\t\t\t\t\"title\"     : \"Single Line Text\",\n\t\t\t\t\t\"urn\"       : \"urn:adsk.plm:tenant.field-type:{{Tenant Name Uppercase}}.4\"\n\t\t\t}\n\t},{\n\t\t\t\"__self__\"  : \"/api/v3/workspaces/{{Workspace ID Change Orders}}/views/13/fields/TARGET_COMPLETION_DATE\",\n\t\t\t\"value\"     : \"2022-02-01\",\n\t\t\t\"title\"     : \"Date\",\n\t\t\t\"type\"      : {\n\t\t\t\t\t\"deleted\"   : false,\n\t\t\t\t\t\"link\"      : \"/api/v3/field-types/3\",\n\t\t\t\t\t\"title\"     : \"Date\",\n\t\t\t\t\t\"urn\"       : \"urn:adsk.plm:tenant.field-type:{{Tenant Name Uppercase}}.3\"\n\t\t\t}\n\t}]\n}]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/13/rows",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"views",
+								"13",
+								"rows"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Grid Row",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"rowData\" : [{\n\t\t\t\"__self__\"  : \"/api/v3/workspaces/{{Workspace ID Change Orders}}/views/13/fields/TITLE\",\n\t\t\t\"value\"     : \"REST API Test Entry #1 Update\",\n\t\t\t\"title\"     : \"Integer\",\n\t\t\t\"type\"      : {\n\t\t\t\t\t\"deleted\"   : false,\n\t\t\t\t\t\"link\"      : \"/api/v3/field-types/4\",\n\t\t\t\t\t\"title\"     : \"Single Line Text\",\n\t\t\t\t\t\"urn\"       : \"urn:adsk.plm:tenant.field-type:{{Tenant Name Uppercase}}.4\"\n\t\t\t}\n\t},{\n\t\t\t\"__self__\"  : \"/api/v3/workspaces/{{Workspace ID Change Orders}}/views/13/fields/TARGET_COMPLETION_DATE\",\n\t\t\t\"value\"     : \"2025-12-24\",\n\t\t\t\"title\"     : \"Date\",\n\t\t\t\"type\"      : {\n\t\t\t\t\t\"deleted\"   : false,\n\t\t\t\t\t\"link\"      : \"/api/v3/field-types/3\",\n\t\t\t\t\t\"title\"     : \"Date\",\n\t\t\t\t\t\"urn\"       : \"urn:adsk.plm:tenant.field-type:{{Tenant Name Uppercase}}.3\"\n\t\t\t}\n\t}]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/13/rows/42",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"views",
+								"13",
+								"rows",
+								"42"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Grid Row",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/13/rows/41",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"views",
+								"13",
+								"rows",
+								"41"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "BOM Tab",
+			"item": [
+				{
+					"name": "GET BOM Views",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/views/5",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"views",
+								"5"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET BOM View Definition",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/views/5/viewdef/{{BOM View ID}}",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"views",
+								"5",
+								"viewdef",
+								"{{BOM View ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET BOM View Columns",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/views/5/viewdef/{{BOM View ID}}/fields",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"views",
+								"5",
+								"viewdef",
+								"{{BOM View ID}}",
+								"fields"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get BOM Data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.autodesk.plm.bom.bulk+json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/bom?depth=3&revisionBias=release&viewDefId={{BOM View ID}}&rootId={{DMS ID Item}}",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}",
+								"bom"
+							],
+							"query": [
+								{
+									"key": "depth",
+									"value": "3"
+								},
+								{
+									"key": "revisionBias",
+									"value": "release"
+								},
+								{
+									"key": "viewDefId",
+									"value": "{{BOM View ID}}"
+								},
+								{
+									"key": "rootId",
+									"value": "{{DMS ID Item}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Flat BOM Data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.autodesk.plm.bom.flat.bulk+json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/bom-items?depth=3&revisionBias=release&viewDefId=12&rootId={{DMS ID Item}}",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}",
+								"bom-items"
+							],
+							"query": [
+								{
+									"key": "depth",
+									"value": "3"
+								},
+								{
+									"key": "revisionBias",
+									"value": "release"
+								},
+								{
+									"key": "viewDefId",
+									"value": "12"
+								},
+								{
+									"key": "rootId",
+									"value": "{{DMS ID Item}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Where Used",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/where-used?depth=2",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}",
+								"where-used"
+							],
+							"query": [
+								{
+									"key": "depth",
+									"value": "2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add BOM Row",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"quantity\" : 1,\n\t\"item\"     : { \n\t\t\"link\" : \"/api/v3/workspaces/{{Workspace ID Items}}/items/15606\"\n\t},\n\t\"isPinned\" : false,\n\t\"fields\"   : [{\n\t\t\"metaData\" : {\n\t\t\t\"link\" : \"/api/v3/workspaces/57/views/5/viewdef/{{BOM View ID}}/fields/610\"\n\t\t}, \"value\" : \"REST API\"\n\t}]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/bom-items",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}",
+								"bom-items"
+							]
+						},
+						"description": "Adds new entry to the Bill of Materials tab of the defined item. Only one BOM row can be added a time.\n\nParameters quantity and item are required while item.link refers to the sub component to add to the by by using its given API link.\n\nisPinned can be used to pin the given revision in the BOM tab using true / false. This parameter is optional\n\nfields also is optional, enabling to set BOM relationship properties by providing the API link of the given BOM column field and its value."
+					},
+					"response": []
+				},
+				{
+					"name": "Update BOM Row",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"quantity\" : 100,\n\t\t\"item\"     : { \n\t\t\"link\" : \"/api/v3/workspaces/{{Workspace ID Items}}/items/15606\"\n\t},\n\t\"isPinned\" : true,\n\t\"fields\"   : [{\n\t\t\"metaData\" : {\n\t\t\t\"link\" : \"/api/v3/workspaces/57/views/5/viewdef/{{BOM View ID}}/fields/610\"\n\t\t}, \"value\" : \"REST API Update\"\n\t}]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/bom-items/12969",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}",
+								"bom-items",
+								"12969"
+							]
+						},
+						"description": "Update a BOM relationship based on the relationship's id (edgeId)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete BOM Row",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items/{{DMS ID Item}}/bom-items/12967",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items",
+								"{{DMS ID Item}}",
+								"bom-items",
+								"12967"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Project Tab",
+			"item": [
+				{
+					"name": "Get Project Tab Entries",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Projects}}/items/{{DMS ID Project}}/views/16",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Projects}}",
+								"items",
+								"{{DMS ID Project}}",
+								"views",
+								"16"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Manual Entry",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"predecessors\" : [],\n    \"progress\" : 0,\n    \"startDate\" : \"2025-01-01\",\n    \"endDate\" : \"2025-12-31\",\n    \"title\" : \"New Manual Task\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/16",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"views",
+								"16"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Linked Item",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "content-location",
+								"value": "/api/v3/workspaces/84/items/15032/views/16/linkable-items/16522",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"predecessors\" : [],\n    \"progress\" : 0,\n    \"startDate\" : \"\",\n    \"endDate\" : \"\",\n    \"title\" : \"\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/16",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"views",
+								"16"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Project Tab Entry",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/16/project-items/1023",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"views",
+								"16",
+								"project-items",
+								"1023"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Workflow Tab",
+			"item": [
+				{
+					"name": "Get Workflow Transitions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/workflows/1/transitions",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"workflows",
+								"1",
+								"transitions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Workflow History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Problem Reports}}/items/{{DMS ID Problem Report}}/workflows/1/history",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Problem Reports}}",
+								"items",
+								"{{DMS ID Problem Report}}",
+								"workflows",
+								"1",
+								"history"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Perform Workflow Transition",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "content-location",
+								"value": "/api/v3/workspaces/84/workflows/1/transitions/951",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/workflows/1/transitions",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"workflows",
+								"1",
+								"transitions"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Managed Items Tab",
+			"item": [
+				{
+					"name": "Get Managed Items",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/11",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"views",
+								"11"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Managed Items Tab Fields",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/11/fields",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"views",
+								"11",
+								"fields"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Managed Item",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.autodesk.plm.affected.items.bulk+json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\"/api/v3/workspaces/57/items/14477\"]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/affected-items",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"affected-items"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Managed Item",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"linkedFields\": [{\n        \"__self__\": \"/api/v3/workspaces/84/views/11/fields/CHANGE_PERFORMED\",\n        \"value\": \"HQ\"\n    }],\n    \"targetTransition\": {\n        \"link\": \"/api/v3/workflows/9223372036854775807/transitions/6\"\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/11/affected-items/{{DMS ID Item}}",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"views",
+								"11",
+								"affected-items",
+								"{{DMS ID Item}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Managed Item",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/11/affected-items/{{DMS ID Item}}",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"views",
+								"11",
+								"affected-items",
+								"{{DMS ID Item}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Relationships Tab",
+			"item": [
+				{
+					"name": "Get Relationships",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/10",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"views",
+								"10"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Relationship",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "content-location",
+								"value": "/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/10/linkable-items/15875",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"description\" : \"Relationship created by API\",\n    \"direction\" : {\n        \"type\" : \"Bi-Directional\"\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/10",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"views",
+								"10"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Relationship",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"description\" : \"Relationship updated by API\",\n\t\"direction\": {\n\t\t\"type\": \"Uni-Directional\"\n\t}\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/10/relationships/15875",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"views",
+								"10",
+								"relationships",
+								"15875"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Relationship",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/items/{{DMS ID Change Order}}/views/10/relationships/15875",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"items",
+								"{{DMS ID Change Order}}",
+								"views",
+								"10",
+								"relationships",
+								"15875"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Classification",
+			"item": [
+				{
+					"name": "Get All Classes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v2/classifications?size=1000&page=1",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v2",
+								"classifications"
+							],
+							"query": [
+								{
+									"key": "size",
+									"value": "1000"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Classes Tree",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v2/classifications/1/graphs/adjacency-set",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v2",
+								"classifications",
+								"1",
+								"graphs",
+								"adjacency-set"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Class Properties",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v2/property-instances?classification=118&inherited=true&page=1&size=100",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v2",
+								"property-instances"
+							],
+							"query": [
+								{
+									"key": "classification",
+									"value": "118"
+								},
+								{
+									"key": "inherited",
+									"value": "true"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "size",
+									"value": "100"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Class Property Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v2/property-instances/3/properties",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v2",
+								"property-instances",
+								"3",
+								"properties"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search by Class",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/search-results?limit=50&offset=0&page=1&query=(CLASS:CLASS_PATH=\"DOCUMENTS\")&revision=1",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"search-results"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "query",
+									"value": "(CLASS:CLASS_PATH=\"DOCUMENTS\")"
+								},
+								{
+									"key": "revision",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search by Multiple Classes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/search-results?limit=50&offset=0&page=1&query=(CLASS:CLASS_PATH=\"LAB_EQUIPMENT\" OR CLASS:CLASS_PATH=\"SUPPLIER_QUALITY\" OR CLASS:CLASS_PATH=\"WORK_INSTRUCTIONS\")&revision=1",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"search-results"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "query",
+									"value": "(CLASS:CLASS_PATH=\"LAB_EQUIPMENT\" OR CLASS:CLASS_PATH=\"SUPPLIER_QUALITY\" OR CLASS:CLASS_PATH=\"WORK_INSTRUCTIONS\")"
+								},
+								{
+									"key": "revision",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search by Class Property",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/search-results?limit=50&offset=0&page=1&query=(CLASS:SYSTEM_NAME=\"WORK_INSTRUCTIONS\" AND (CLASS:ADDITIONAL_DESCRIPTION=\"Measurements\"))\n&revision=1",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"search-results"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "query",
+									"value": "(CLASS:SYSTEM_NAME=\"WORK_INSTRUCTIONS\" AND (CLASS:ADDITIONAL_DESCRIPTION=\"Measurements\"))\n"
+								},
+								{
+									"key": "revision",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Picklists",
+			"item": [
+				{
+					"name": "Get All Picklists",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/rest/v1/setups/picklists",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"rest",
+								"v1",
+								"setups",
+								"picklists"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Picklist Definition",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api//v3/lookups/CUSTOM_LOOKUP_WS_CHANGE_APPROVAL_TEMPLATES",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"",
+								"v3",
+								"lookups",
+								"CUSTOM_LOOKUP_WS_CHANGE_APPROVAL_TEMPLATES"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Picklist Values",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "offset",
+								"value": "0",
+								"type": "text"
+							},
+							{
+								"key": "limit",
+								"value": "100",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/rest/v1/setups/picklists/CUSTOM_LOOKUP_WS_CHANGE_APPROVAL_TEMPLATES",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"rest",
+								"v1",
+								"setups",
+								"picklists",
+								"CUSTOM_LOOKUP_WS_CHANGE_APPROVAL_TEMPLATES"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Users, Groups & Roles",
+			"item": [
+				{
+					"name": "Get All Groups",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.autodesk.plm.groups.bulk+json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/groups?offset=0&limit=100",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"groups"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "limit",
+									"value": "100"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Group Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/groups/58",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"groups",
+								"58"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Group Workspace Access",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/groups/58/workspaces",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"groups",
+								"58",
+								"workspaces"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.autodesk.plm.users.bulk+json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/users?offset=0&limit=100&mappedOnly=false",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"users"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "limit",
+									"value": "100"
+								},
+								{
+									"key": "mappedOnly",
+									"value": "false"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Roles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/roles?offset=0&limit=100",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"roles"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "limit",
+									"value": "100"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Single User Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.autodesk.plm.users.bulk+json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/users?filter[loginName]=becky@forge.tools",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"users"
+							],
+							"query": [
+								{
+									"key": "filter[loginName]",
+									"value": "becky@forge.tools"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Single User Details (V1)",
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {
+							"content-type": true,
+							"content-length": true
+						}
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/rest/v1/users/8HVEA",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"rest",
+								"v1",
+								"users",
+								"8HVEA"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/users/@me",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"users",
+								"@me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add New User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\"         : \"peter@forge.tools\",\n    \"thumbnailPref\" : \"Yes\",\n    \"uomPref\"       : \"Metric\",\n    //\"licenseType\"   : { \"licenseCode\"   : \"S\" }, // Use the licenseType parameter only for trial/demo environments with \"P\" for Participant and \"S\" for Professional licenses\n    \"timezone\"      : \"Etc/GMT+1\"\n}"
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/users",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add User To Groups",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\"urn:adsk.plm:tenant.group:ADSKTENANT2024TEST10.144\"]"
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/users/GV0at/groups",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"users",
+								"GV0at",
+								"groups"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Disable User Account",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json-patch+json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[{\n    \"op\"        : \"replace\",\n    \"path\"      : \"/userStatus\",\n    \"value\"     : \"Deleted\"\n}]"
+						},
+						"url": {
+							"raw": "{{Base URL}}/api/v3/users/c9Ec1",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"users",
+								"c9Ec1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Remove User From Group",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/rest/v1/users/Sz5bB/groups/147",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"rest",
+								"v1",
+								"users",
+								"Sz5bB",
+								"groups",
+								"147"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Group Workspace Access",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/groups/58/workspaces/94",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"groups",
+								"58",
+								"workspaces",
+								"94"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Workspaces",
+			"item": [
+				{
+					"name": "Get All Workspaces",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces?offset=0&limit=5",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "\n"
+								},
+								{
+									"key": "limit",
+									"value": "5"
+								},
+								{
+									"key": "includeRoles",
+									"value": "false",
+									"disabled": true
+								},
+								{
+									"key": "unlimited",
+									"value": "true",
+									"description": "Not supported yet",
+									"disabled": true
+								},
+								{
+									"key": "typeId",
+									"value": "1",
+									"description": "Not supported yet",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Workspace Items",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/items?offset=0&limit=5",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"items"
+							],
+							"query": [
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "limit",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get details of workspace Change Orders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get workflow states of workspace Change Orders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/workflows/1/states",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"workflows",
+								"1",
+								"states"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Item Details sections of workspace Items",
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {}
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/sections",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"sections"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Item Details fields of workspace Items",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/fields",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"fields"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get scripts of workspace Change Orders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/scripts",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"scripts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get workflow transitions of workspace Change Orders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Change Orders}}/workflows/1/transitions",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Change Orders}}",
+								"workflows",
+								"1",
+								"transitions"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Logs",
+			"item": [
+				{
+					"name": "Get Setup Log Entries",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/tenants/{{Tenant Name Uppercase}}/setup-logs?limit=10&offset=0",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"tenants",
+								"{{Tenant Name Uppercase}}",
+								"setup-logs"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get System Log Entries",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/tenants/{{Tenant Name Uppercase}}/system-logs?limit=250&offset=0",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"tenants",
+								"{{Tenant Name Uppercase}}",
+								"system-logs"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "250"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "filter[from.date]",
+									"value": "2024-11-12",
+									"description": "This parameter is optional to filter by date range",
+									"disabled": true
+								},
+								{
+									"key": "filter[to.date]",
+									"value": "2024-11-12",
+									"description": "This parameter is optional to filter by date range",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Access the system log and setup log of your tenant to track all modifications over time"
+		},
+		{
+			"name": "Scripts",
+			"item": [
+				{
+					"name": "Get All Scripts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/scripts",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"scripts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Workspace Scripts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/workspaces/{{Workspace ID Items}}/scripts",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"workspaces",
+								"{{Workspace ID Items}}",
+								"scripts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Script Details/Source",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/scripts/270",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"scripts",
+								"270"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Webhooks",
+			"item": [
+				{
+					"name": "Get Webhooks at item creation",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://developer.api.autodesk.com/webhooks/v1/systems/adsk.flc.production/events/item.create/hooks",
+							"protocol": "https",
+							"host": [
+								"developer",
+								"api",
+								"autodesk",
+								"com"
+							],
+							"path": [
+								"webhooks",
+								"v1",
+								"systems",
+								"adsk.flc.production",
+								"events",
+								"item.create",
+								"hooks"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Webhooks at item update",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://developer.api.autodesk.com/webhooks/v1/systems/adsk.flc.production/events/item.update/hooks",
+							"protocol": "https",
+							"host": [
+								"developer",
+								"api",
+								"autodesk",
+								"com"
+							],
+							"path": [
+								"webhooks",
+								"v1",
+								"systems",
+								"adsk.flc.production",
+								"events",
+								"item.update",
+								"hooks"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Webhooks at workflow transitions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://developer.api.autodesk.com/webhooks/v1/systems/adsk.flc.production/events/workflow.transition/hooks",
+							"protocol": "https",
+							"host": [
+								"developer",
+								"api",
+								"autodesk",
+								"com"
+							],
+							"path": [
+								"webhooks",
+								"v1",
+								"systems",
+								"adsk.flc.production",
+								"events",
+								"workflow.transition",
+								"hooks"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Webhook at item creation (Problem Reports)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Tenant",
+								"value": "{{Tenant Name Uppercase}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"callbackUrl\": \"https://www.getpostman.com/auth2/callback\",\n    \"scope\": {\n        \"workspace\": \"urn:adsk.plm:tenant.workspace:{{Tenant Name Uppercase}}.82\"\n    }\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://developer.api.autodesk.com/webhooks/v1/systems/adsk.flc.production/events/item.create/hooks",
+							"protocol": "https",
+							"host": [
+								"developer",
+								"api",
+								"autodesk",
+								"com"
+							],
+							"path": [
+								"webhooks",
+								"v1",
+								"systems",
+								"adsk.flc.production",
+								"events",
+								"item.create",
+								"hooks"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Webhook at workflow transition (Problem Report Submit)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Tenant",
+								"value": "{{Tenant Name Uppercase}}",
+								"type": "text"
+							},
+							{
+								"key": "",
+								"value": "",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"callbackUrl\": \"https://www.getpostman.com/auth2/callback\",\n    \"scope\": {\n        \"workflow.transition\": \"urn:adsk.plm:tenant.workspace.workflow.transition:{{Tenant Name Uppercase}}.{{Workspace ID Problem Reports}}.1.523\"\n    }\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://developer.api.autodesk.com/webhooks/v1/systems/adsk.flc.production/events/workflow.transition/hooks",
+							"protocol": "https",
+							"host": [
+								"developer",
+								"api",
+								"autodesk",
+								"com"
+							],
+							"path": [
+								"webhooks",
+								"v1",
+								"systems",
+								"adsk.flc.production",
+								"events",
+								"workflow.transition",
+								"hooks"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Webhook at item creation",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "https://developer.api.autodesk.com/webhooks/v1/systems/adsk.flc.production/events/item.create/hooks/9714146f-f757-4ced-a869-3105a564399e",
+							"protocol": "https",
+							"host": [
+								"developer",
+								"api",
+								"autodesk",
+								"com"
+							],
+							"path": [
+								"webhooks",
+								"v1",
+								"systems",
+								"adsk.flc.production",
+								"events",
+								"item.create",
+								"hooks",
+								"9714146f-f757-4ced-a869-3105a564399e"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Use webhooks to implement integrations with external systems"
+		},
+		{
+			"name": "Tenant Setup",
+			"item": [
+				{
+					"name": "Get General Settings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{Base URL}}/api/v3/tenants/{{Tenant Name Uppercase}}/general-settings",
+							"host": [
+								"{{Base URL}}"
+							],
+							"path": [
+								"api",
+								"v3",
+								"tenants",
+								"{{Tenant Name Uppercase}}",
+								"general-settings"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "oauth2",
+		"oauth2": [
+			{
+				"key": "useBrowser",
+				"value": false,
+				"type": "boolean"
+			},
+			{
+				"key": "redirect_uri",
+				"value": "https://www.getpostman.com/auth2/callback",
+				"type": "string"
+			},
+			{
+				"key": "scope",
+				"value": "data:read",
+				"type": "string"
+			},
+			{
+				"key": "clientSecret",
+				"value": "{{Client Secret}}",
+				"type": "string"
+			},
+			{
+				"key": "clientId",
+				"value": "{{Client ID}}",
+				"type": "string"
+			},
+			{
+				"key": "accessTokenUrl",
+				"value": "https://developer.api.autodesk.com/authentication/v2/token",
+				"type": "string"
+			},
+			{
+				"key": "authUrl",
+				"value": "https://developer.api.autodesk.com/authentication/v2/authorize",
+				"type": "string"
+			},
+			{
+				"key": "tokenName",
+				"value": "Autodesk Platform Services",
+				"type": "string"
+			},
+			{
+				"key": "addTokenTo",
+				"value": "header",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "Base URL",
+			"value": "https://previewdickmans.autodeskplm360.net"
+		},
+		{
+			"key": "Client ID",
+			"value": ""
+		},
+		{
+			"key": "Client Secret",
+			"value": ""
+		},
+		{
+			"key": "DMS ID Change Order",
+			"value": "15032"
+		},
+		{
+			"key": "DMS ID Item",
+			"value": "14669"
+		},
+		{
+			"key": "Tenant Name Uppercase",
+			"value": "PREVIEWDICKMANS"
+		},
+		{
+			"key": "Workspace ID Change Orders",
+			"value": "84"
+		},
+		{
+			"key": "Workspace ID Items",
+			"value": "57"
+		},
+		{
+			"key": "BOM View ID",
+			"value": "9"
+		},
+		{
+			"key": "DMS ID Problem Report",
+			"value": "15982"
+		},
+		{
+			"key": "Workspace ID Problem Reports",
+			"value": "82"
+		},
+		{
+			"key": "DMS ID Project",
+			"value": "11710"
+		},
+		{
+			"key": "Workspace ID Projects",
+			"value": "86"
+		}
+	]
+}

@@ -1,0 +1,17 @@
+doctype html
+html
+    head
+        meta(charset='utf-8')
+        title Signed in
+    body
+        p Signed in.
+        script.
+            var targetUrl = !{JSON.stringify(targetUrl)};
+
+            if(window.opener) {
+                // Opened as a popup (e.g. Teams tab auth) - just close and let the
+                // original tab reload to pick up the now-authenticated session.
+                window.close();
+            } else {
+                window.location.href = targetUrl;
+            }

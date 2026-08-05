@@ -1,0 +1,270 @@
+<title>Remote Access</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef0f4;
+    --border: #e3e6ea;
+    --ink: #1b1e24;
+    --muted: #5b6472;
+    --accent: #3457d5;
+    --accent-ink: #ffffff;
+    --qr-tile: #ffffff;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1015;
+      --surface: #171a21;
+      --surface-2: #1d212a;
+      --border: #272c36;
+      --ink: #e7e9ee;
+      --muted: #8b93a3;
+      --accent: #7c96ff;
+      --accent-ink: #10131c;
+      --qr-tile: #f2f4f8;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0e1015;
+    --surface: #171a21;
+    --surface-2: #1d212a;
+    --border: #272c36;
+    --ink: #e7e9ee;
+    --muted: #8b93a3;
+    --accent: #7c96ff;
+    --accent-ink: #10131c;
+    --qr-tile: #f2f4f8;
+  }
+
+  :root[data-theme="light"] {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef0f4;
+    --border: #e3e6ea;
+    --ink: #1b1e24;
+    --muted: #5b6472;
+    --accent: #3457d5;
+    --accent-ink: #ffffff;
+    --qr-tile: #ffffff;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    justify-content: center;
+    padding: 64px 24px 80px;
+  }
+
+  main {
+    width: 100%;
+    max-width: 780px;
+  }
+
+  .eyebrow {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 10px;
+  }
+
+  h1 {
+    font-size: 30px;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+
+  .lede {
+    color: var(--muted);
+    font-size: 15.5px;
+    line-height: 1.6;
+    max-width: 52ch;
+    margin: 0 0 44px;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+
+  @media (max-width: 620px) {
+    .cards { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 26px 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .card-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .card-label .tag {
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .card-label h2 {
+    font-size: 17px;
+    margin: 0;
+    letter-spacing: -0.005em;
+  }
+
+  .qr-frame {
+    background: var(--qr-tile);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .qr-frame svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .card-desc {
+    font-size: 13.5px;
+    color: var(--muted);
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  .link-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 4px 4px 12px;
+  }
+
+  .link-row code {
+    flex: 1;
+    min-width: 0;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--ink);
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 6px 0;
+  }
+
+  .copy-btn {
+    flex-shrink: 0;
+    border: none;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+
+  .copy-btn:hover { opacity: 0.85; }
+  .copy-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .copy-btn:active { transform: translateY(1px); }
+
+  .foot-note {
+    margin-top: 32px;
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .copy-btn { transition: none; }
+  }
+</style>
+
+<main>
+  <p class="eyebrow">Remote access</p>
+  <h1>Scan to continue on another device</h1>
+  <p class="lede">Two separate destinations below — one opens this Claude Code session, the other opens the ERP Integration app through its current tunnel.</p>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">
+        <span class="tag">Claude Code</span>
+        <h2>This session</h2>
+      </div>
+      <div class="qr-frame">
+        <svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 35 35" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h35v35H0z"/><path stroke="#000000" d="M1 1.5h7m1 0h11m4 0h1m2 0h7M1 2.5h1m5 0h1m4 0h4m1 0h1m1 0h3m1 0h1m1 0h1m1 0h1m5 0h1M1 3.5h1m1 0h3m1 0h1m2 0h1m1 0h1m2 0h1m2 0h1m2 0h2m1 0h2m1 0h1m1 0h3m1 0h1M1 4.5h1m1 0h3m1 0h1m1 0h3m1 0h1m3 0h3m1 0h1m2 0h2m1 0h1m1 0h3m1 0h1M1 5.5h1m1 0h3m1 0h1m1 0h1m2 0h2m3 0h1m1 0h2m2 0h3m1 0h1m1 0h3m1 0h1M1 6.5h1m5 0h1m1 0h1m1 0h3m2 0h1m3 0h1m2 0h1m3 0h1m5 0h1M1 7.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M9 8.5h3m6 0h2m1 0h2m2 0h1M1 9.5h1m3 0h1m1 0h3m1 0h1m2 0h1m1 0h1m1 0h5m2 0h6m2 0h1M3 10.5h1m5 0h2m1 0h1m3 0h2m1 0h1m4 0h1m1 0h1m3 0h2M1 11.5h1m1 0h1m1 0h5m1 0h1m1 0h4m1 0h2m1 0h1m1 0h3m4 0h1M4 12.5h1m1 0h1m3 0h2m1 0h2m1 0h11m5 0h1M2 13.5h1m1 0h5m1 0h1m1 0h3m1 0h2m3 0h3m2 0h2m1 0h2m1 0h2M1 14.5h1m1 0h1m2 0h1m1 0h1m1 0h1m2 0h1m1 0h1m2 0h1m1 0h1m1 0h3m3 0h1m2 0h1M1 15.5h2m4 0h2m1 0h3m2 0h2m2 0h1m4 0h4m2 0h3M3 16.5h2m1 0h1m2 0h1m2 0h1m3 0h5m1 0h2m2 0h2m1 0h1M2 17.5h1m1 0h2m1 0h3m1 0h2m1 0h1m3 0h1m1 0h5m2 0h1m1 0h1m2 0h1M1 18.5h3m5 0h1m3 0h1m2 0h2m6 0h1m1 0h1m3 0h2M6 19.5h2m1 0h2m3 0h3m4 0h6m1 0h1m1 0h1M3 20.5h1m2 0h1m1 0h1m6 0h1m1 0h4m1 0h1m1 0h1m3 0h1M1 21.5h8m4 0h2m4 0h3m1 0h1m1 0h1m1 0h4m1 0h2M1 22.5h1m1 0h1m1 0h2m1 0h1m3 0h2m1 0h1m1 0h1m1 0h1m6 0h1m3 0h3M5 23.5h5m1 0h1m5 0h1m3 0h5m4 0h1m1 0h1M5 24.5h2m2 0h1m4 0h1m3 0h2m2 0h1m1 0h1m1 0h2m1 0h1m2 0h2M1 25.5h5m1 0h1m2 0h1m1 0h7m1 0h4m1 0h7m1 0h1M9 26.5h6m1 0h4m2 0h1m2 0h1m3 0h1m1 0h1M1 27.5h7m1 0h1m1 0h1m1 0h1m2 0h1m2 0h1m1 0h2m2 0h1m1 0h1m1 0h2M1 28.5h1m5 0h1m2 0h2m1 0h1m3 0h1m2 0h3m2 0h1m3 0h1m2 0h2M1 29.5h1m1 0h3m1 0h1m1 0h4m1 0h2m1 0h1m5 0h1m1 0h6M1 30.5h1m1 0h3m1 0h1m2 0h1m1 0h3m4 0h2m1 0h1m2 0h1m1 0h3m1 0h1M1 31.5h1m1 0h3m1 0h1m5 0h4m1 0h2m2 0h2m1 0h1m1 0h5M1 32.5h1m5 0h1m2 0h3m2 0h5m1 0h2m1 0h1m2 0h1M1 33.5h7m1 0h1m2 0h1m1 0h1m2 0h2m2 0h2m1 0h2m1 0h1m2 0h1m2 0h1"/></svg>
+      </div>
+      <p class="card-desc">Opens claude.ai/code directly into this conversation.</p>
+      <div class="link-row">
+        <code id="url-session">claude.ai/code/session_012dRw7a4iAKw5rqMLQbEXES</code>
+        <button class="copy-btn" type="button" data-copy-target="url-session-full">Copy</button>
+      </div>
+      <span id="url-session-full" hidden>https://claude.ai/code/session_012dRw7a4iAKw5rqMLQbEXES</span>
+    </div>
+
+    <div class="card">
+      <div class="card-label">
+        <span class="tag">ERP Integration</span>
+        <h2>App via tunnel</h2>
+      </div>
+      <div class="qr-frame">
+        <svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 35 35" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h35v35H0z"/><path stroke="#000000" d="M1 1.5h7m5 0h1m3 0h1m1 0h4m1 0h1m2 0h7M1 2.5h1m5 0h1m4 0h2m2 0h1m4 0h2m4 0h1m5 0h1M1 3.5h1m1 0h3m1 0h1m1 0h3m3 0h1m6 0h2m1 0h1m1 0h1m1 0h3m1 0h1M1 4.5h1m1 0h3m1 0h1m1 0h4m3 0h1m1 0h1m1 0h1m2 0h1m1 0h1m1 0h1m1 0h3m1 0h1M1 5.5h1m1 0h3m1 0h1m1 0h5m1 0h4m1 0h5m2 0h1m1 0h3m1 0h1M1 6.5h1m5 0h1m1 0h4m2 0h1m5 0h1m1 0h1m1 0h1m1 0h1m5 0h1M1 7.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M9 8.5h3m1 0h1m3 0h1m1 0h5M1 9.5h1m1 0h5m5 0h3m1 0h2m1 0h1m2 0h3m1 0h5M2 10.5h1m2 0h1m4 0h1m3 0h1m2 0h1m1 0h6m2 0h2m1 0h2m1 0h1M7 11.5h3m1 0h1m2 0h6m6 0h2m1 0h1m1 0h1M2 12.5h1m7 0h3m1 0h1m2 0h1m1 0h4m6 0h5M1 13.5h2m1 0h1m2 0h2m2 0h2m2 0h1m1 0h2m4 0h4m1 0h3m1 0h1M4 14.5h1m1 0h1m1 0h3m5 0h1m3 0h1m1 0h1m1 0h1m2 0h1m2 0h1m1 0h2M1 15.5h2m1 0h1m1 0h5m3 0h4m3 0h1m3 0h3m1 0h1m2 0h1M1 16.5h2m2 0h2m1 0h1m1 0h1m3 0h1m1 0h1m4 0h2m1 0h1m1 0h3m1 0h2M2 17.5h2m1 0h4m2 0h4m1 0h1m1 0h3m2 0h1m1 0h2m1 0h3m2 0h1M1 18.5h3m2 0h1m1 0h2m3 0h1m1 0h1m1 0h1m1 0h4m1 0h2m1 0h2m1 0h2m1 0h1M1 19.5h2m1 0h1m2 0h2m2 0h2m1 0h4m1 0h1m1 0h3m1 0h5m1 0h2M1 20.5h3m1 0h2m4 0h1m2 0h2m3 0h1m1 0h4m1 0h6m1 0h1M5 21.5h5m5 0h2m2 0h2m4 0h2m1 0h3m1 0h2M1 22.5h1m2 0h1m1 0h1m3 0h1m1 0h1m1 0h9m1 0h1m1 0h2m2 0h2m1 0h1M1 23.5h1m3 0h3m1 0h4m2 0h1m5 0h3m1 0h1m1 0h1m3 0h2M1 24.5h1m1 0h1m1 0h1m2 0h1m1 0h1m1 0h2m3 0h1m2 0h4m2 0h1m1 0h6M1 25.5h1m1 0h2m2 0h2m1 0h2m6 0h1m1 0h1m2 0h1m1 0h6m1 0h1M9 26.5h3m1 0h2m2 0h4m4 0h1m3 0h1m1 0h1m1 0h1M1 27.5h7m2 0h2m4 0h3m4 0h3m1 0h1m1 0h1m1 0h2M1 28.5h1m5 0h1m1 0h1m1 0h1m1 0h3m2 0h2m1 0h2m1 0h2m3 0h4M1 29.5h1m1 0h3m1 0h1m1 0h2m4 0h3m5 0h1m1 0h6m2 0h1M1 30.5h1m1 0h3m1 0h1m1 0h1m2 0h3m1 0h1m2 0h4m3 0h1m2 0h1m1 0h3M1 31.5h1m1 0h3m1 0h1m1 0h1m2 0h1m1 0h1m1 0h2m1 0h1m1 0h4m2 0h2M1 32.5h1m5 0h1m3 0h1m1 0h1m1 0h2m3 0h1m1 0h2m2 0h1m2 0h3M1 33.5h7m1 0h4m1 0h1m1 0h1m1 0h1m4 0h4m1 0h1m1 0h1m1 0h1"/></svg>
+      </div>
+      <p class="card-desc">Opens the ERP Integration app through the active Cloudflare tunnel. Temporary URL — breaks if the tunnel restarts.</p>
+      <div class="link-row">
+        <code id="url-erp">inf-agreed-file-according.trycloudflare.com/erp</code>
+        <button class="copy-btn" type="button" data-copy-target="url-erp-full">Copy</button>
+      </div>
+      <span id="url-erp-full" hidden>https://inf-agreed-file-according.trycloudflare.com/erp</span>
+    </div>
+  </div>
+
+  <p class="foot-note">Both codes point to live URLs at generation time. If the tunnel has since restarted, the ERP code will need a fresh scan.</p>
+</main>
+
+<script>
+  document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var target = document.getElementById(btn.getAttribute('data-copy-target'));
+      var text = target ? target.textContent : '';
+      var original = btn.textContent;
+      function done(ok) {
+        btn.textContent = ok ? 'Copied' : 'Failed';
+        setTimeout(function () { btn.textContent = original; }, 1400);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+      } else {
+        done(false);
+      }
+    });
+  });
+</script>

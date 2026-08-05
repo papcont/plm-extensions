@@ -1,0 +1,168 @@
+/*  Insert your custom CSS settings here to override the standard styling        */
+/* ----------------------------------------------------------------------------- */
+
+/*  CONTELOS BRAND OVERRIDE  ----------------------------------------------------- */
+/*  Nur Tokens/Selektoren ueberschreiben - Framework-CSS bleibt unberuehrt.       */
+/*  Farben aus contelos.de ausgelesen (computed styles):                          */
+/*    Primaer #004f9e, Sekundaer hell #0077cc, Neutral #0d0e0f / #f2f5f7          */
+
+:root {
+    --contelos-blue        : #004f9e;   /* Corporate-Blau (dominant) */
+    --contelos-blue-hover  : #003a75;   /* dunkler fuer Hover        */
+    --contelos-blue-bright : #0077cc;   /* Sekundaer, hell           */
+
+    /* Interaktionsfarben app-weit auf Contelos-Blau umstellen */
+    --color-hover-border        : var(--contelos-blue);
+    --color-selected-border     : var(--contelos-blue);
+    --color-hover-background     : var(--color-dark-blue-100);  /* #e1ebf7 */
+    --color-selected-background  : var(--color-dark-blue-200);  /* #bcd3ee */
+}
+
+/* Links + Tabellen-Links -> Contelos-Blau statt Autodesk-Azur */
+a, td.link { color : var(--contelos-blue); }
+
+/* Primaer-Button (.default) -> Contelos-Blau */
+.button.default {
+    background   : var(--contelos-blue) !important;
+    border-color : var(--contelos-blue) !important;
+    color        : #ffffff;
+}
+.button.default:hover {
+    background   : var(--contelos-blue-hover) !important;
+    border-color : var(--contelos-blue-hover) !important;
+    color        : #ffffff;
+}
+
+/* Header -> Contelos-Blau */
+.light-theme #header.dark,
+.dark-theme  #header.dark,
+#header.dark #header-toolbar { background : var(--contelos-blue); }
+#header-title, #header-subtitle { color : #ffffff; }
+
+
+/*  A11y-FIX 1: Fokus-Ring (fehlt aktuell komplett)                              */
+/*  Ohne :where(), sonst schlaegt das bestehende input:focus{outline:0}          */
+/*  meinen Ring auf Feldern (Spezifitaet). Plain-Selektoren + spaeter geladen    */
+/*  -> gewinnen bei Gleichstand.                                                  */
+.button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline        : 2px solid var(--contelos-blue);
+    outline-offset : 2px;
+    border-radius  : 2px;
+}
+
+/*  A11y-FIX 2: Weiss auf Gelb (~1.9:1) -> dunkle Schrift  ---------------------- */
+.button.enabled, .button.main,
+.button.enabled:hover, .button.main:hover { color : var(--color-gray-900); }
+
+
+/*  FRAMEWORK-FIXES  ------------------------------------------------------------ */
+
+/* Touch-Targets: Icon-Buttons 32 -> 40px (Minimum-Trefferflaeche) */
+.button.icon {
+    height    : 40px;
+    line-height : 40px;
+    min-width : 40px;
+    width     : 40px;
+}
+/* 300ms-Tap-Delay auf Touch vermeiden */
+.button, .tile, .menu-command, a { touch-action : manipulation; }
+
+/* Text-Selektion: global auf div/button deaktiviert -> auf Inhalten wieder erlauben
+   (Nutzer muessen Nummern/Descriptoren/IDs kopieren koennen) */
+.panel-content, td, th,
+.tile-title, .tile-subtitle, .tree-descriptor, .tree-number,
+input, textarea { user-select : text; -webkit-user-select : text; }
+
+/* Font-Fallback: 'ArtifaktElement' hatte KEINE Fallback-Familie
+   -> bei Ladefehler/Verzoegerung sauberer System-Sans statt Serif-Default */
+body, input, select, textarea, .button {
+    font-family : 'ArtifaktElement', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+/*#header.dark,
+#header.dark #header-toolbar {
+    background : red;
+}
+#header.dark #header-logo {
+    background-image: url(https://th.bing.com/th/id/OIP.qZA7x3i21KVgI8uCsGOmIwHaHa?rs=1&pid=ImgDetMain);
+    background-size : 42px;
+    height : 32px;
+    width : 40px;
+}
+#header-title {
+    margin-left : 20px;
+}*/
+
+/* 
+:root ,
+.light-theme,
+.dark-theme,
+body.dark-theme {
+
+    --color-font : #000000;
+    --color-surface-level-1 : #FFFFFF;
+    --color-surface-level-2 : #F3F3F3;
+    --color-surface-level-3 : #E0E0E0;
+}
+.dark-theme { color : var(--color-font);}
+#header-title,
+#header-subtitle { color : #ffffff; }
+.surface-level-1 { background : var(--color-surface-level-1); }
+.surface-level-2 { background : var(--color-surface-level-2); }
+.surface-level-3 { background : var(--color-surface-level-3); }
+
+.light-theme #header.dark,
+.dark-theme #header.dark,
+#header.dark #header-toolbar {
+    background : #004878;
+}
+#header-title {
+    margin-left : 24px;
+}
+
+.dark-theme #header.dark .button,
+.dark-theme .button, 
+.black-theme .button {
+    background : white;
+    border-color: #08346A;
+}
+.dark-theme #header.dark .button:hover,
+.dark-theme .button:hover, 
+.black-theme .button:hover {
+        background : white;
+    border-color: #004878;
+}
+#header.dark #header-logo {
+    background-image: url(https://www.eggersmann-recyclingtechnology.com/fileadmin/logo/Logo_Eggersmann_Recycling_Technology_white.png?v=3);
+    background-size : 130px;
+    height : 42px;
+    max-width : 130px;
+    min-width : 130px;
+    width : 130px;
+}
+
+.dark-theme .button input,
+.dark-theme .button input:hover {
+    background : #ffffff;
+}
+
+.tile:hover { 
+    background-color : #004878 !important;
+    border-color     : #004878 !important;
+    color : white;
+}
+.tile:hover > .tile-image { 
+    background-color : var(--color-hover-image) !important;
+    opacity          : 0.6;
+}
+
+
+.spare-parts-group {
+    background : #E0E0E0;
+    border-color     : #B0B0B0;
+} */

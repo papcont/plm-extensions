@@ -1,0 +1,311 @@
+#erp-studio {
+    box-sizing: border-box;
+    display: grid;
+    gap: 16px;
+    grid-template-rows: auto auto 1fr;
+    height: calc(100vh - 68px);
+    margin-top: 68px;
+    padding: 16px;
+}
+
+#config-warning {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    padding: 10px 14px;
+}
+
+#config-warning .instructions-icon {
+    color: var(--color-warning, #d98c00);
+}
+
+#summary {
+    align-items: center;
+    display: flex;
+    gap: 24px;
+    padding: 12px;
+}
+
+.summary-label {
+    color: var(--color-font-light, #777);
+    display: block;
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+.summary-value {
+    font-size: 26px;
+    font-weight: 600;
+}
+
+#workspace {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(300px, 340px) minmax(520px, 1fr) minmax(300px, 360px);
+    min-height: 0;
+    padding: 14px;
+}
+
+#search-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+#search {
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+}
+
+#action-panel {
+    display: grid;
+    gap: 16px;
+    grid-template-rows: auto 1fr;
+    min-height: 0;
+    min-width: 0;
+}
+
+.section-title {
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+#selected-item {
+    min-height: 100px;
+    min-width: 0;
+    padding: 16px;
+    position: relative;
+}
+
+.selected-item-title {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.selected-item-meta {
+    color: var(--color-font-light, #777);
+    font-size: 12px;
+    margin-bottom: 14px;
+    margin-top: 4px;
+}
+
+#transfer-button {
+    display: inline-block;
+}
+
+.last-transfer-status {
+    color: var(--color-font-light, #777);
+    font-size: 13px;
+    margin-top: 14px;
+}
+
+.last-transfer-status.status-success {
+    color: var(--color-success, #1e7a33);
+}
+
+.last-transfer-status.status-warning {
+    color: var(--color-warning, #a86400);
+}
+
+.last-transfer-status.status-rejected {
+    color: var(--color-font-light, #6b6b6b);
+}
+
+.last-transfer-status.status-error,
+.last-transfer-status.status-failed {
+    color: var(--color-error, #c0392b);
+}
+
+.transfer-current-part {
+    color: var(--color-font-light, #777);
+    font-size: 12px;
+    margin-top: 6px;
+}
+
+#transfer-progress-dialog {
+    top: calc(50% - 130px);
+    right: calc(50% - 220px);
+    bottom: calc(50% - 130px);
+    left: calc(50% - 220px);
+}
+
+#transfer-progress-dialog .dialog-content {
+    padding: 14px 30px;
+}
+
+.transfer-progress-detail {
+    color: var(--color-font-light, #777);
+    font-size: 12px;
+    margin-top: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.retry-transfer-button {
+    cursor: pointer;
+    display: inline-block;
+}
+
+#history-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+}
+
+#side-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+}
+
+#side-panel .tabs {
+    flex: 0 0 auto;
+}
+
+.tab-group-side {
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+}
+
+.tab-group-side .instructions {
+    margin: 16px;
+}
+
+#history-table-wrapper {
+    min-height: 0;
+    min-width: 0;
+    overflow: auto;
+}
+
+#history-table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+}
+
+#history-table th,
+#history-table td {
+    border-bottom: 1px solid var(--color-border, #ddd);
+    overflow: hidden;
+    padding: 8px;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Fixed widths for every column except Item (2nd) - it absorbs whatever width is left, so the
+   table always fills the panel instead of leaving empty space when the panel is wide. */
+#history-table th:nth-child(1),
+#history-table td:nth-child(1) { width: 150px; }
+
+#history-table th:nth-child(3),
+#history-table td:nth-child(3) { width: 110px; }
+
+#history-table th:nth-child(4),
+#history-table td:nth-child(4) { width: 90px; }
+
+#history-table th {
+    font-weight: 600;
+}
+
+.history-row {
+    cursor: pointer;
+}
+
+.history-row:hover {
+    background: var(--color-surface-level-2, #f5f5f5);
+}
+
+.history-row.selected {
+    background: var(--color-surface-level-3, #e8f1fa);
+}
+
+.history-item-link {
+    color: var(--color-link, #0696d7);
+    cursor: pointer;
+}
+
+.history-item-link:hover {
+    text-decoration: underline;
+}
+
+.transfer-trigger {
+    color: var(--color-font-light, #777);
+    font-size: 11px;
+    margin-top: 2px;
+}
+
+.detail-row {
+    margin-bottom: 8px;
+}
+
+.detail-message {
+    background: var(--color-surface-level-2, #f5f5f5);
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    margin: 4px 0 12px;
+    max-height: 120px;
+    overflow: auto;
+    padding: 8px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.detail-log {
+    font-size: 12px;
+    margin: 4px 0 0;
+    max-height: 160px;
+    overflow: auto;
+    padding-left: 18px;
+}
+
+.detail-log li {
+    margin-bottom: 4px;
+}
+
+#history-table th:nth-last-child(-n+2),
+#history-table td:nth-last-child(-n+2) {
+    text-align: center;
+    white-space: nowrap;
+    width: 65px;
+}
+
+.status-badge {
+    border-radius: 10px;
+    font-size: 11px;
+    padding: 2px 8px;
+    text-transform: capitalize;
+}
+
+.status-badge.status-success {
+    background: var(--color-success, #1e7a33);
+    color: #fff;
+}
+
+.status-badge.status-warning {
+    background: var(--color-warning, #a86400);
+    color: #fff;
+}
+
+.status-badge.status-rejected {
+    background: var(--color-font-light, #6b6b6b);
+    color: #fff;
+}
+
+.status-badge.status-error,
+.status-badge.status-failed {
+    background: var(--color-error, #c0392b);
+    color: #fff;
+}
+
+@media (max-width: 960px) {
+    #workspace {
+        grid-template-columns: 1fr;
+    }
+}

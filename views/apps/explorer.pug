@@ -1,0 +1,66 @@
+extends ../framework/layout
+
+block head
+
+    link(rel='stylesheet', href='/stylesheets/apps/explorer.css')
+    link(rel='stylesheet', href='/stylesheets/custom/explorer.css')
+    
+    script(src='/javascripts/apps/explorer.js')
+    script(src='/javascripts/custom/explorer.js')
+
+block body
+
+    body.surface-level-1.text-selection-off.layout-1.screen-startup.home-pending
+
+        #header.dark
+            #header-logo
+            #header-title= title
+            #header-subtitle.main
+            #header-toolbar
+                .landing.button.with-toggle.toggle-on.filled#button-toggle-recents(title='Click to toggle Recently Viewed & Bookmarks panel on/off') Show Recently Viewed &amp; Bookmarks
+                .landing.button.with-toggle.toggle-on.filled#button-toggle-search(title='Click to toggle Search panel on/off') Show Search
+                select.explorer#select-version.button.main
+                .explorer#button-home.button.icon.icon-home(title='Browse availalbe products')
+                .explorer#button-toggle-dashboard.button.with-icon.icon-dashboard(title='Click to toggle dashboard panel on/off') Dashboard
+                .explorer#button-toggle-layout.button.with-icon.icon-product(title='Click to switch between alternate BOM / Viewer layouts') Layout
+                .explorer#button-toggle-attachments.button.with-icon.icon-pdf(title='Click to toggle files panel on/off') Files
+                .explorer#button-toggle-details.button.with-icon.icon-panel(title='Click to toggle details panel on/off') Details
+                .explorer#button-toggle-processes.button.with-icon.icon-workflow(title='Click to toggle processes panel on/off') Processes
+                #header-avatar
+        
+        .screen#landing
+
+            #recents.surface-level-2
+            #search.surface-level-2
+            #products.surface-level-1
+            #bookmarks.surface-level-2
+
+        .screen#main
+
+            #dashboard.no-toolbar.surface-level-2.pos-abs-left
+                .panel-header
+                    .panel-title
+                        .panel-title-main#dashboard-title Dashboard
+                    .panel-controls#dashboard-toolbar
+                        .button.icon.xs.icon-clear#dashboard-reset.hidden
+                        .button.icon.xs.icon-fold#collapse-all-kpis
+                        .button.icon.xs.icon-unfold#expand-all-kpis 
+                        .button.icon.xs.icon-refresh#dashboard-refresh(title='Click to reload KPIs')
+                #dashboard-panel.no-scrollbar.pos-abs-bottom
+
+            #bom.surface-level-1
+            #viewer.viewer
+            #attachments.surface-level-1
+            #details.surface-level-2.panel
+            #processes.surface-level-2.panel
+            
+            #create.dialog
+            
+            .dialog#create-connect
+                .dialog-header Create Supplier Package
+                .dialog-content#create-connect-sections.no-scrollbar.surface-level-1
+                .dialog-footer
+                    #create-connect-confirm.button.default Confirm
+                    #create-connect-cancel.button Cancel
+
+        iframe#frame-download(name='frame-download' style="display:none")
