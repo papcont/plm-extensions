@@ -1,0 +1,132 @@
+extends ../framework/layout
+
+block head
+
+    link(rel='stylesheet', href='/stylesheets/apps/bom-export-attachment-studio.css')
+    link(rel='stylesheet', href='/stylesheets/custom/bom-export-attachment-studio.css')
+
+    script(src='/javascripts/libs/jspdf/jspdf.umd.min.js')
+    script(src='/javascripts/libs/jspdf/jspdf.plugin.autotable.min.js')
+    script(src='/javascripts/apps/bom-export-attachment-studio.js')
+    script(src='/javascripts/custom/bom-export-attachment-studio.js')
+
+block body
+
+    body.surface-level-1
+
+        #header.dark
+            #header-logo
+            #header-title= title
+            #header-subtitle BOM view export, local layout proof, and controlled attachment gate
+            #header-toolbar
+                #toggle-details.button.with-icon.icon-details(title='Toggle item details panel on/off') Details
+                #toggle-attachments.button.with-icon.icon-attachment(title='Toggle attachments panel on/off') Attachments
+                #refresh.button.icon.icon-refresh(title='Reload BOM views')
+                #header-avatar
+
+        #bom-export-studio
+            #item-header-line.surface-level-2
+
+            #summary.surface-level-2
+                .summary-tile
+                    .summary-label Item
+                    .summary-value#item-status -
+                .summary-tile
+                    .summary-label BOM Views
+                    .summary-value#view-count -
+                    #view-note
+                .summary-tile
+                    .summary-label Rows
+                    .summary-value#row-count -
+
+            #workspace.surface-level-2
+                #control-panel
+                    .section-title Export setup
+                    label.input-label(for='search-workspace') Search in
+                    select#search-workspace
+                        option(value='both') Items + Assets
+                        option(value='items') Items only
+                        option(value='assets') Assets only
+
+                    label.input-label(for='item-search') Find item
+                    .control-grid
+                        input#item-search(type='text', placeholder='Type to search...')
+                        select#item-picker
+                            option(value='') Search results appear here
+                    .control-grid
+                        input#item-link.hidden(type='text', placeholder='/api/v3/workspaces/57/items/123')
+                        #open-item-link.button.with-icon.icon-external-link.disabled Open in Fusion Manage
+
+                    #related-boms-row.hidden
+                        label.input-label(for='related-boms') Related BOMs &amp; items
+                        select#related-boms
+                            option(value='') Select a related item...
+
+                    .control-grid
+                        label
+                            span.input-label BOM view
+                            select#bom-view
+                        label
+                            span.input-label Depth
+                            input#depth(type='number', min='1', max='20', value='10')
+                        label
+                            span.input-label Revision bias
+                            select#revision-bias
+                                option(value='release') release
+                                option(value='working') working
+                                option(value='latest') latest
+
+                    .button-row
+                        #load-views.button.with-icon.icon-list Load views
+                        #preview-bom.button.with-icon.icon-bom.disabled Preview
+                        #export-xlsx.button.with-icon.icon-download.disabled Excel
+                        #export-csv.button.with-icon.icon-download.disabled CSV
+                        #export-pdf.button.with-icon.icon-pdf.disabled Build PDF
+                        #attach-file.button.with-icon.icon-attachment.disabled Attach file
+
+                    label.input-label ZIP export
+                    #zip-options
+                        label.zip-option
+                            input#zip-attachments(type='checkbox', checked='checked')
+                            span Attachments
+                        label.zip-option
+                            input#zip-excel(type='checkbox', checked='checked')
+                            span Excel BOM
+                        label.zip-option
+                            input#zip-pdf(type='checkbox', disabled='disabled')
+                            span PDF
+                    .button-row
+                        #export-zip.button.with-icon.icon-download.disabled ZIP
+
+                    #gate-note Attach is gated. Uploading generated files to an item is a tenant write and needs explicit target, before-state, and rollback/export path.
+
+                #right-panels
+                    #model-panel
+                        .section-title 3D Model
+                        .viewer#viewer.surface-level-1
+
+                    #preview-panel
+                        .section-title BOM preview
+                        table#bom-preview
+                            thead#bom-preview-head
+                            tbody#bom-preview-body
+                                tr
+                                    td Load a BOM view to preview export rows.
+
+                    #pdf-panel.hidden
+                        .section-title
+                            span PDF preview
+                            #close-pdf-preview.button.icon.icon-close(title='Close PDF preview, back to BOM preview')
+                        iframe#pdf-preview-frame
+                        .button-row
+                            #attach-pdf.button.with-icon.icon-attachment Attach this PDF to item
+                            #download-pdf.button.with-icon.icon-download Save PDF to disk
+
+                #side-panels
+                    #details.surface-level-2.hidden
+                    #attachments.surface-level-2.hidden
+
+            iframe#frame-download(name='frame-download')
+            iframe#frame-upload(name='frame-upload').hidden
+            form#uploadForm(method='post', enctype='multipart/form-data', target='frame-upload')
+                input#select-file(type='file', name='newFiles').hidden

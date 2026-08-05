@@ -1,0 +1,39 @@
+extends ../framework/layout
+
+block head
+
+    link(rel='stylesheet', href='/stylesheets/apps/quality-closure.css')
+    link(rel='stylesheet', href='/stylesheets/custom/quality-closure.css')
+
+    script(src='/javascripts/apps/quality-closure.js')
+    script(src='/javascripts/custom/quality-closure.js')
+
+block body
+
+    body.surface-level-1
+
+        #header.dark
+            #header-logo
+            #header-title= title
+            #header-subtitle Problem reports, NCRs, supplier exposure, and corrective-change context
+            #header-toolbar
+                #refresh.button.icon.icon-refresh(title='Refresh workspace counters')
+                #header-avatar
+
+        #quality-closure
+            #summary.surface-level-2
+                .summary-tile
+                    .summary-label Workspaces
+                    .summary-value#workspace-count -
+                .summary-tile
+                    .summary-label Records
+                    .summary-value#record-count -
+                .summary-tile
+                    .summary-label Readiness
+                    .summary-value#readiness -
+
+            #workspace-grid
+
+            #next-slice.surface-level-2
+                .section-title Next read-only slice
+                .section-text Validate issue, item, supplier, and change links before adding CAPA, SCAR, workflow transitions, or corrective-change creation.

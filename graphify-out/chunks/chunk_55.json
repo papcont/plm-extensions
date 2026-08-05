@@ -1,0 +1,50 @@
+[
+  {
+    "abs": "E:/Git fork/2026.07.27/plm-extensions-main/plm-extensions-main/public/images/docs/tutorial-7-04.png",
+    "rel": "public/images/docs/tutorial-7-04.png"
+  },
+  {
+    "abs": "E:/Git fork/2026.07.27/plm-extensions-main/plm-extensions-main/public/images/docs/workspace-ids.png",
+    "rel": "public/images/docs/workspace-ids.png"
+  },
+  {
+    "abs": "E:/Git fork/2026.07.27/plm-extensions-main/plm-extensions-main/public/images/fusion-logo.svg",
+    "rel": "public/images/fusion-logo.svg"
+  },
+  {
+    "abs": "E:/Git fork/2026.07.27/plm-extensions-main/plm-extensions-main/public/images/troubleshooting/error-100.png",
+    "rel": "public/images/troubleshooting/error-100.png"
+  },
+  {
+    "abs": "E:/Git fork/2026.07.27/plm-extensions-main/plm-extensions-main/public/images/troubleshooting/error-101.jpg",
+    "rel": "public/images/troubleshooting/error-101.jpg"
+  },
+  {
+    "abs": "E:/Git fork/2026.07.27/plm-extensions-main/plm-extensions-main/public/ios-180x180.png",
+    "rel": "public/ios-180x180.png"
+  },
+  {
+    "abs": "E:/Git fork/2026.07.27/plm-extensions-main/plm-extensions-main/public/javascripts/libs/DataTables-1.12.1/images/sort_asc.png",
+    "rel": "public/javascripts/libs/DataTables-1.12.1/images/sort_asc.png"
+  },
+  {
+    "abs": "E:/Git fork/2026.07.27/plm-extensions-main/plm-extensions-main/public/javascripts/libs/DataTables-1.12.1/images/sort_asc_disabled.png",
+    "rel": "public/javascripts/libs/DataTables-1.12.1/images/sort_asc_disabled.png"
+  },
+  {
+    "abs": "E:/Git fork/2026.07.27/plm-extensions-main/plm-extensions-main/public/javascripts/libs/DataTables-1.12.1/images/sort_both.png",
+    "rel": "public/javascripts/libs/DataTables-1.12.1/images/sort_both.png"
+  },
+  {
+    "abs": "E:/Git fork/2026.07.27/plm-extensions-main/plm-extensions-main/public/javascripts/libs/DataTables-1.12.1/images/sort_desc.png",
+    "rel": "public/javascripts/libs/DataTables-1.12.1/images/sort_desc.png"
+  },
+  {
+    "abs": "E:/Git fork/2026.07.27/plm-extensions-main/plm-extensions-main/public/javascripts/libs/DataTables-1.12.1/images/sort_desc_disabled.png",
+    "rel": "public/javascripts/libs/DataTables-1.12.1/images/sort_desc_disabled.png"
+  },
+  {
+    "abs": "E:/Git fork/2026.07.27/plm-extensions-main/plm-extensions-main/public/javascripts/libs/jquery-ui-1.12.1/images/ui-icons_444444_256x240.png",
+    "rel": "public/javascripts/libs/jquery-ui-1.12.1/images/ui-icons_444444_256x240.png"
+  }
+]

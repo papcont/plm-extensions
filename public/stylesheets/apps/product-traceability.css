@@ -1,0 +1,75 @@
+#product-traceability {
+    box-sizing: border-box;
+    display: grid;
+    gap: 16px;
+    grid-template-rows: auto 1fr auto;
+    height: calc(100vh - 64px);
+    padding: 16px;
+}
+
+#summary {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 12px;
+}
+
+.summary-label,
+.workspace-role {
+    color: var(--color-font-light, #777);
+    font-size: 12px;
+}
+
+.summary-value {
+    font-size: 26px;
+    font-weight: 600;
+    margin-top: 6px;
+}
+
+#workspace-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    overflow: auto;
+}
+
+.workspace-card {
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 150px;
+    padding: 14px;
+}
+
+.workspace-title {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.workspace-meta,
+.workspace-count,
+.section-text {
+    color: var(--color-font-light, #777);
+}
+
+.workspace-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+}
+
+#next-slice {
+    padding: 12px;
+}
+
+.section-title {
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+@media (max-width: 720px) {
+    #summary {
+        grid-template-columns: 1fr;
+    }
+}

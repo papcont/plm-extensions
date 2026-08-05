@@ -1,0 +1,84 @@
+extends ../framework/layout
+
+block head
+
+    link(rel='stylesheet', href='/stylesheets/apps/erp.css')
+
+    script(src='/javascripts/apps/erp.js')
+    script.
+        config = !{JSON.stringify(config)};
+
+block body
+
+    body.surface-level-1
+
+        #header.dark
+            #header-logo
+            #header-title= title
+            #header-subtitle Transfer Bills of Materials from Fusion Manage to your ERP system
+            #header-toolbar
+                #refresh-history.button.icon.icon-refresh(title='Reload transfer history', aria-label='Reload transfer history')
+                #header-avatar
+
+        #erp-studio
+
+            #config-warning.surface-level-2.instructions.hidden
+                .instructions-icon.icon.icon-alert-2
+                .instructions-text ERP connection is not configured. Set #[code dolibarrApiUrl] and #[code dolibarrApiKey] in #[code environment.js] (or #[code DOLIBARR_API_URL] / #[code DOLIBARR_API_KEY]) and restart the server.
+
+            #summary.surface-level-2
+                .summary-tile
+                    .summary-label Transfers
+                    .summary-value#total-count -
+                .summary-tile
+                    .summary-label Successful
+                    .summary-value#success-count -
+                .summary-tile
+                    .summary-label Failed
+                    .summary-value#failed-count -
+
+            #workspace.surface-level-2
+
+                #search-panel
+                    .section-title Select an item
+                    #search.surface-level-2
+
+                #action-panel
+
+                    #selected-item.surface-level-1
+                        .instructions
+                            .instructions-icon.icon.icon-info
+                            .instructions-text Select an item on the left to review and transfer its Bill of Materials
+
+                    #history-panel
+                        .section-title Transfer History
+                        #history-table-wrapper
+                            table#history-table
+                                thead
+                                    tr
+                                        th Date
+                                        th Item
+                                        th Status
+                                        th Dolibarr BOM
+                                        th Details
+                                        th Retry
+                                tbody#history-body
+
+                #side-panel
+
+                    .tabs(data-tab-group='tab-group-side')
+                        div#tab-bom.selected BOM
+                        div#tab-details Item Details
+                        div#tab-transfer Transfer Info
+
+                    .tab-group-side.surface-level-1#bom
+                        .instructions
+                            .instructions-icon.icon.icon-info
+                            .instructions-text Select an item to view its Bill of Materials
+
+                    .tab-group-side.surface-level-1#details
+
+                    .tab-group-side.surface-level-1#transfer-log
+                        .instructions
+                            .instructions-icon.icon.icon-info
+                            .instructions-text Select a transfer from the history to view its details

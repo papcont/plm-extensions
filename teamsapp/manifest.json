@@ -1,0 +1,38 @@
+{
+    "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+    "manifestVersion": "1.16",
+    "version": "1.0.0",
+    "id": "f9a903a7-cda4-4f7d-a710-76351a1191bd",
+    "packageName": "de.contelos.harmonia",
+    "developer": {
+        "name": "Contelos",
+        "websiteUrl": "https://harmonia.contelos.de",
+        "privacyUrl": "https://harmonia.contelos.de",
+        "termsOfUseUrl": "https://harmonia.contelos.de"
+    },
+    "icons": {
+        "color": "color.png",
+        "outline": "outline.png"
+    },
+    "name": {
+        "short": "Harmonia PLM",
+        "full": "Harmonia Fusion Manage Extensions"
+    },
+    "description": {
+        "short": "Fusion Manage PLM extensions inside Teams",
+        "full": "Gives access to all Harmonia Fusion Manage PLM extensions (BOM export, search, workspace tools) directly inside Microsoft Teams, using the same login and behavior as the web version."
+    },
+    "accentColor": "#2A6EE0",
+    "staticTabs": [
+        {
+            "entityId": "harmonia-home",
+            "name": "Harmonia PLM",
+            "contentUrl": "https://harmonia.contelos.de/",
+            "websiteUrl": "https://harmonia.contelos.de/",
+            "scopes": ["personal"]
+        }
+    ],
+    "validDomains": [
+        "harmonia.contelos.de"
+    ]
+}

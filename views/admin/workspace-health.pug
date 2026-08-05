@@ -1,0 +1,44 @@
+extends ../framework/layout
+
+block head
+
+    link(rel='stylesheet', href='/stylesheets/admin/workspace-health.css')
+    script(src='/javascripts/admin/workspace-health.js')
+
+block body
+
+    body.surface-level-1
+
+        #header.dark
+            #header-logo
+            #header-title=title
+            #header-subtitle Read-only extension candidate scan
+            #header-toolbar
+                input#search.button.input(placeholder='Filter workspaces')
+                select#category.button
+                    option(value='---') All Categories
+                #scan-visible.button.with-icon.icon-search-list(title='Scan currently visible workspaces') Scan Visible
+                #export.button.with-icon.icon-download(title='Export current scan as markdown') Export
+                #header-avatar
+
+        .screen.surface-level-1
+
+            #workspaces.panel-top.surface-level-2
+                .panel-header
+                    .panel-title
+                        .panel-title-main Workspaces
+                    .panel-controls
+                        #workspace-count
+                .panel-content.tiles.list.no-scrollbar#workspace-list
+
+            #details.surface-level-1
+                .panel-header
+                    .panel-title
+                        .panel-title-main Candidate Details
+                .panel-content.no-scrollbar#candidate-details
+
+            #archetypes.surface-level-1
+                .panel-header
+                    .panel-title
+                        .panel-title-main Ranked Archetypes
+                .panel-content.no-scrollbar#archetype-list

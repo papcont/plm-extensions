@@ -1,0 +1,78 @@
+settings
+code
+group
+schema
+Nur in diesem Arbeitsbereich
+Start
+Arbeitsbereich-Manager
+Arbeitsbereich erstellen
+Kategorie erstellen
+Vorlagenbibliothek
+Name
+Beschreibung
+Typ
+Instance Management (5)
+Service
+This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library
+Mit Revisionskontrolle
+Serial Numbers
+This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library
+Mit Revisionskontrolle
+Motors
+This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library
+Mit Revisionskontrolle
+Sensors
+This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library
+Mit Revisionskontrolle
+Control Elements
+This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library
+Mit Revisionskontrolle
+Product Development (9)
+Items
+Mit Revisionskontrolle
+VIES Freigabe
+Revisionierung
+Item Variants
+Mit Revisionskontrolle
+Documents
+Mit Revisionskontrolle
+Design Reviews_old
+Basis mit Arbeitsablauf
+Design Reviews
+Basis mit Arbeitsablauf
+Design Review Tasks_old
+Basis mit Arbeitsablauf
+Design Review Tasks
+Basis mit Arbeitsablauf
+Spare Parts Request
+Basis mit Arbeitsablauf
+Asset Lifecycle & Projects (7)
+Assets
+This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library
+Basis mit Arbeitsablauf
+Asset Items
+This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library
+Mit Revisionskontrolle
+Asset Groups
+This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library
+Basis mit Arbeitsablauf
+Asset Services
+This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library
+Revisionierung
+Order Project Deliveries
+This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library
+Revisionierung
+Order Projects
+This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library
+Basis mit Arbeitsablauf
+Order Project Tasks
+This workspace is provided by ASSET LIFECYCLE & PROJECTS available in the Template Library
+Basis mit Arbeitsablauf
+Konifguratix (1)
+Konfiguratix
+Basis mit Arbeitsablauf
+VISI_TEST (2)
+VisiTEST
+Basis mit Arbeitsablauf
+VisiTEST_Meeting
+Basis mit Arbeitsablauf

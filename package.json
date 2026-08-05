@@ -1,0 +1,29 @@
+{
+  "name": "plm-extensions",
+  "version": "May 2026",
+  "private": true,
+  "scripts": {
+    "start": "node --max-http-header-size=16384 ./bin/www",
+    "usecases": "node tools/run-usecase-pipeline.js",
+    "usecases:mine": "node tools/usecase-miner.js docs/USECASE-MINER-REPORT.md docs/tenant-discovery/contelosuxdemo-initial.json",
+    "usecases:discovery:verify": "node tools/verify-discovery-tools.js",
+    "usecases:discovery:merge": "node tools/merge-workspace-editor-discovery.js",
+    "usecases:verify": "node tools/verify-extension-shells.js",
+    "usecases:previews": "node tools/render-extension-previews.js"
+  },
+  "dependencies": {
+    "agentkeepalive": "*",
+    "archiver": "*",
+    "axios": "*",
+    "body-parser": "*",
+    "exceljs": "^3.4.0",
+    "express": "*",
+    "express-fileupload": "*",
+    "express-session": "*",
+    "form-data": "*",
+    "morgan": "*",
+    "pug": "*",
+    "serve-favicon": "*",
+    "serve-index": "^1.9.1"
+  }
+}

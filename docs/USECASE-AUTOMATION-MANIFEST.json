@@ -1,0 +1,636 @@
+{
+  "discovery": {
+    "file": "docs/tenant-discovery/contelosuxdemo-initial.json",
+    "tenant": "contelosuxdemo",
+    "source": "Workspace Manager screenshot provided in chat; Chrome browser read-only extraction on 2026-07-29",
+    "workspaceCount": 24,
+    "workspaceEditorDetailCount": 0
+  },
+  "currentState": {
+    "implementedShells": 13,
+    "promotionCandidates": 4,
+    "nextAction": "Browser-verify implemented `/installed-base-service` against live tenant evidence."
+  },
+  "candidates": [
+    {
+      "name": "Installed Base Service Cockpit",
+      "endpoint": "/installed-base-service",
+      "score": 82,
+      "implementation": "implemented",
+      "readiness": "demo candidate; browser check needed",
+      "blueprint": "docs/INSTALLED-BASE-SERVICE-COCKPIT-MVP.md",
+      "lane": "Service and supply chain",
+      "tenantWorkspaces": [
+        "Instance Management / Service",
+        "Instance Management / Serial Numbers",
+        "Instance Management / Motors",
+        "Instance Management / Sensors",
+        "Instance Management / Control Elements",
+        "Asset Lifecycle & Projects / Assets",
+        "Asset Lifecycle & Projects / Asset Items",
+        "Asset Lifecycle & Projects / Asset Groups",
+        "Asset Lifecycle & Projects / Asset Services"
+      ],
+      "repoWorkspaces": [
+        {
+          "key": "equipments",
+          "id": 280
+        },
+        {
+          "key": "equipmentServices",
+          "id": 284
+        },
+        {
+          "key": "serialNumbers",
+          "id": 277
+        },
+        {
+          "key": "serializedItems",
+          "id": 282
+        },
+        {
+          "key": "assets",
+          "id": 280
+        },
+        {
+          "key": "assetItems",
+          "id": 282
+        },
+        {
+          "key": "assetServices",
+          "id": 284
+        }
+      ]
+    },
+    {
+      "name": "BOM Export And Attachment Studio",
+      "endpoint": "/bom-export-attachment-studio",
+      "score": 53,
+      "implementation": "implemented",
+      "readiness": "demo candidate; browser check needed",
+      "blueprint": "docs/BOM-EXPORT-AND-ATTACHMENT-STUDIO-MVP.md",
+      "lane": "Digital thread and compliance",
+      "tenantWorkspaces": [
+        "Product Development / Items",
+        "Product Development / Item Variants",
+        "Asset Lifecycle & Projects / Asset Items"
+      ],
+      "repoWorkspaces": [
+        {
+          "key": "items",
+          "id": 57
+        },
+        {
+          "key": "serializedItems",
+          "id": 282
+        },
+        {
+          "key": "assetItems",
+          "id": 282
+        }
+      ]
+    },
+    {
+      "name": "NPI Launch Readiness Board",
+      "endpoint": "/launch-readiness",
+      "score": 48,
+      "implementation": "implemented",
+      "readiness": "demo candidate; browser check needed",
+      "blueprint": "docs/NPI-LAUNCH-READINESS-BOARD-MVP.md",
+      "lane": "Product development governance",
+      "tenantWorkspaces": [
+        "Asset Lifecycle & Projects / Order Project Deliveries",
+        "Asset Lifecycle & Projects / Order Projects",
+        "Asset Lifecycle & Projects / Order Project Tasks"
+      ],
+      "repoWorkspaces": [
+        {
+          "key": "engineeringProjects",
+          "id": 213
+        },
+        {
+          "key": "engineeringProjectActivities",
+          "id": 211
+        },
+        {
+          "key": "projects",
+          "id": 86
+        },
+        {
+          "key": "projectTasks",
+          "id": 90
+        },
+        {
+          "key": "orderProjects",
+          "id": 283
+        },
+        {
+          "key": "orderProjectDeliveries",
+          "id": 279
+        }
+      ]
+    },
+    {
+      "name": "Product Data Traceability Hub",
+      "endpoint": "/product-traceability",
+      "score": 48,
+      "implementation": "implemented",
+      "readiness": "demo candidate; browser check needed",
+      "blueprint": "docs/PRODUCT-DATA-TRACEABILITY-HUB-MVP.md",
+      "lane": "Digital thread and compliance",
+      "tenantWorkspaces": [
+        "Product Development / Items",
+        "Product Development / Documents",
+        "Asset Lifecycle & Projects / Asset Items"
+      ],
+      "repoWorkspaces": [
+        {
+          "key": "items",
+          "id": 57
+        },
+        {
+          "key": "products",
+          "id": 95
+        },
+        {
+          "key": "serializedItems",
+          "id": 282
+        },
+        {
+          "key": "assetItems",
+          "id": 282
+        }
+      ]
+    },
+    {
+      "name": "Design Review Closure Cockpit",
+      "endpoint": "/design-review-closure",
+      "score": 42,
+      "implementation": "implemented",
+      "readiness": "demo candidate; browser check needed",
+      "blueprint": "docs/DESIGN-REVIEW-CLOSURE-COCKPIT-MVP.md",
+      "lane": "Quality, requirements and validation",
+      "tenantWorkspaces": [
+        "Product Development / Design Reviews_old",
+        "Product Development / Design Reviews",
+        "Product Development / Design Review Tasks_old",
+        "Product Development / Design Review Tasks"
+      ],
+      "repoWorkspaces": [
+        {
+          "key": "designReviews",
+          "id": 76
+        },
+        {
+          "key": "designReviewTasks",
+          "id": 77
+        }
+      ]
+    },
+    {
+      "name": "Product Release Readiness Cockpit",
+      "endpoint": "/release-readiness",
+      "score": 34,
+      "implementation": "implemented",
+      "readiness": "demo candidate; browser check needed",
+      "blueprint": "docs/PRODUCT-RELEASE-READINESS-COCKPIT-MVP.md",
+      "lane": "Product development governance",
+      "tenantWorkspaces": [
+        "Product Development / VIES Freigabe"
+      ],
+      "repoWorkspaces": [
+        {
+          "key": "changeOrders",
+          "id": 84
+        },
+        {
+          "key": "changeRequests",
+          "id": 83
+        },
+        {
+          "key": "changeTasks",
+          "id": 80
+        }
+      ]
+    },
+    {
+      "name": "Supplier Command Center",
+      "endpoint": "/supplier-center",
+      "score": 27,
+      "implementation": "implemented",
+      "readiness": "demo candidate; browser check needed",
+      "blueprint": "docs/SUPPLIER-COMMAND-CENTER-MVP.md",
+      "lane": "Service and supply chain",
+      "tenantWorkspaces": [
+        "Product Development / Spare Parts Request"
+      ],
+      "repoWorkspaces": [
+        {
+          "key": "sparePartsRequests",
+          "id": 241
+        },
+        {
+          "key": "supplierPackages",
+          "id": 147
+        }
+      ]
+    },
+    {
+      "name": "Test And Validation Evidence Hub",
+      "endpoint": "/test-validation-hub",
+      "score": 26,
+      "implementation": "implemented",
+      "readiness": "demo candidate; browser check needed",
+      "blueprint": "docs/TEST-AND-VALIDATION-EVIDENCE-HUB-MVP.md",
+      "lane": "Quality, requirements and validation",
+      "tenantWorkspaces": [
+        "VISI_TEST / VisiTEST",
+        "VISI_TEST / VisiTEST_Meeting"
+      ],
+      "repoWorkspaces": []
+    },
+    {
+      "name": "Quality Closure Cockpit",
+      "endpoint": "/quality-closure",
+      "score": 22,
+      "implementation": "implemented",
+      "readiness": "preview only; tenant evidence needed",
+      "blueprint": "docs/QUALITY-CLOSURE-COCKPIT-MVP.md",
+      "lane": "Quality, requirements and validation",
+      "tenantWorkspaces": [],
+      "repoWorkspaces": [
+        {
+          "key": "nonConformances",
+          "id": 98
+        },
+        {
+          "key": "problemReports",
+          "id": 82
+        }
+      ]
+    },
+    {
+      "name": "Variant Governance Cockpit",
+      "endpoint": "/variant-governance",
+      "score": 18,
+      "implementation": "implemented",
+      "readiness": "demo candidate; browser check needed",
+      "blueprint": "docs/VARIANT-GOVERNANCE-COCKPIT-MVP.md",
+      "lane": "Product development governance",
+      "tenantWorkspaces": [
+        "Product Development / Item Variants",
+        "Konifguratix / Konfiguratix"
+      ],
+      "repoWorkspaces": []
+    },
+    {
+      "name": "Requirements Coverage Matrix",
+      "endpoint": "/requirements-coverage",
+      "score": 17,
+      "implementation": "implemented",
+      "readiness": "preview only; tenant evidence needed",
+      "blueprint": "docs/REQUIREMENTS-COVERAGE-MATRIX-MVP.md",
+      "lane": "Quality, requirements and validation",
+      "tenantWorkspaces": [],
+      "repoWorkspaces": [
+        {
+          "key": "designReviews",
+          "id": 76
+        },
+        {
+          "key": "designReviewTasks",
+          "id": 77
+        },
+        {
+          "key": "requirements",
+          "id": 143
+        }
+      ]
+    },
+    {
+      "name": "Spare Parts Request Desk",
+      "endpoint": "/spare-parts-desk",
+      "score": 16,
+      "implementation": "implemented",
+      "readiness": "demo candidate; browser check needed",
+      "blueprint": "docs/SPARE-PARTS-REQUEST-DESK-MVP.md",
+      "lane": "Service and supply chain",
+      "tenantWorkspaces": [
+        "Product Development / Spare Parts Request"
+      ],
+      "repoWorkspaces": [
+        {
+          "key": "sparePartsRequests",
+          "id": 241
+        }
+      ]
+    },
+    {
+      "name": "Digital Product Passport Readiness",
+      "endpoint": "/dpp-readiness",
+      "score": 11,
+      "implementation": "implemented",
+      "readiness": "preview only; tenant evidence needed",
+      "blueprint": "docs/DIGITAL-PRODUCT-PASSPORT-READINESS-MVP.md",
+      "lane": "Digital thread and compliance",
+      "tenantWorkspaces": [],
+      "repoWorkspaces": []
+    }
+  ],
+  "whitespace": [
+    {
+      "name": "Service Feedback To Engineering Loop",
+      "endpoint": "/service-feedback-engineering-loop",
+      "score": 33,
+      "implementation": "planned",
+      "blueprint": "docs/SERVICE-FEEDBACK-TO-ENGINEERING-LOOP-MVP.md",
+      "evidence": "Service, Asset Services",
+      "source": "docs/EXTENSION-USECASE-BRAINSTORM.md:219"
+    },
+    {
+      "name": "Workspace Health Scanner",
+      "endpoint": "/workspace-health",
+      "score": 33,
+      "implementation": "implemented",
+      "blueprint": "docs/WORKSPACE-HEALTH-SCANNER-MVP.md",
+      "evidence": "abom, classes, dashboard",
+      "source": "docs/EXTENSION-USECASE-BRAINSTORM.md:239"
+    },
+    {
+      "name": "Change Impact War Room",
+      "endpoint": "/change-impact-war-room",
+      "score": 28,
+      "implementation": "planned",
+      "blueprint": "docs/CHANGE-IMPACT-WAR-ROOM-MVP.md",
+      "evidence": "changeOrders, changeRequests, changeTasks",
+      "source": "docs/EXTENSION-USECASE-BRAINSTORM.md:130"
+    },
+    {
+      "name": "Supplier Risk And Readiness Radar",
+      "endpoint": "/supplier-risk-readiness-radar",
+      "score": 14,
+      "implementation": "planned",
+      "blueprint": "docs/SUPPLIER-RISK-AND-READINESS-RADAR-MVP.md",
+      "evidence": "supplierPackages",
+      "source": "docs/EXTENSION-USECASE-BRAINSTORM.md:84"
+    },
+    {
+      "name": "External Contributor Portal",
+      "endpoint": "/external-contributor-portal",
+      "score": 3,
+      "implementation": "planned",
+      "blueprint": "docs/EXTERNAL-CONTRIBUTOR-PORTAL-MVP.md",
+      "evidence": "dashboard",
+      "source": "docs/EXTENSION-USECASE-BRAINSTORM.md:259"
+    }
+  ],
+  "promotion": [
+    {
+      "name": "Service Feedback To Engineering Loop",
+      "endpoint": "/service-feedback-engineering-loop",
+      "score": 33,
+      "blueprint": "docs/SERVICE-FEEDBACK-TO-ENGINEERING-LOOP-MVP.md",
+      "gate": "Tenant evidence exists; browser-verify Workspace Editor details before adding the archetype.",
+      "targets": [
+        "Instance Management / Service",
+        "Asset Lifecycle & Projects / Asset Services"
+      ],
+      "decision": "needs Workspace Editor scan"
+    },
+    {
+      "name": "Change Impact War Room",
+      "endpoint": "/change-impact-war-room",
+      "score": 28,
+      "blueprint": "docs/CHANGE-IMPACT-WAR-ROOM-MVP.md",
+      "gate": "Repo evidence exists; wait for tenant scan evidence before adding the archetype.",
+      "targets": [
+        "changeOrders",
+        "changeRequests",
+        "changeTasks"
+      ],
+      "decision": "needs tenant workspace match"
+    },
+    {
+      "name": "Supplier Risk And Readiness Radar",
+      "endpoint": "/supplier-risk-readiness-radar",
+      "score": 14,
+      "blueprint": "docs/SUPPLIER-RISK-AND-READINESS-RADAR-MVP.md",
+      "gate": "Repo evidence exists; wait for tenant scan evidence before adding the archetype.",
+      "targets": [
+        "supplierPackages"
+      ],
+      "decision": "needs tenant workspace match"
+    },
+    {
+      "name": "External Contributor Portal",
+      "endpoint": "/external-contributor-portal",
+      "score": 3,
+      "blueprint": "docs/EXTERNAL-CONTRIBUTOR-PORTAL-MVP.md",
+      "gate": "Repo evidence exists; wait for tenant scan evidence before adding the archetype.",
+      "targets": [
+        "Supplier Packages",
+        "Design Reviews",
+        "Design Review Tasks"
+      ],
+      "decision": "needs Workspace Editor scan"
+    }
+  ],
+  "decisions": [
+    {
+      "name": "Service Feedback To Engineering Loop",
+      "endpoint": "/service-feedback-engineering-loop",
+      "status": "needs Workspace Editor scan",
+      "hints": [
+        "Instance Management / Service",
+        "Asset Lifecycle & Projects / Asset Services"
+      ],
+      "captured": [],
+      "next": "Capture serial/asset linkage fields, service event/request states, fields for Instance Management / Service, Asset Lifecycle & Projects / Asset Services."
+    },
+    {
+      "name": "Change Impact War Room",
+      "endpoint": "/change-impact-war-room",
+      "status": "needs tenant workspace match",
+      "hints": [
+        "changeOrders",
+        "changeRequests",
+        "changeTasks",
+        "Product Development / VIES Freigabe",
+        "Asset Lifecycle & Projects / Order Project Deliveries",
+        "Asset Lifecycle & Projects / Order Projects",
+        "Asset Lifecycle & Projects / Order Project Tasks"
+      ],
+      "captured": [],
+      "next": "Find or confirm a matching Workspace Manager row before promotion. Start with changeOrders, changeRequests, changeTasks, Product Development / VIES Freigabe."
+    },
+    {
+      "name": "Supplier Risk And Readiness Radar",
+      "endpoint": "/supplier-risk-readiness-radar",
+      "status": "needs tenant workspace match",
+      "hints": [
+        "supplierPackages",
+        "Product Development / Spare Parts Request"
+      ],
+      "captured": [],
+      "next": "Find or confirm a matching Workspace Manager row before promotion. Start with supplierPackages, Product Development / Spare Parts Request."
+    },
+    {
+      "name": "External Contributor Portal",
+      "endpoint": "/external-contributor-portal",
+      "status": "needs Workspace Editor scan",
+      "hints": [
+        "Supplier Packages",
+        "Design Reviews",
+        "Design Review Tasks"
+      ],
+      "captured": [],
+      "next": "Capture external role/assignee fields, safe attachment/comment visibility, fields for Product Development / Design Reviews_old, Product Development / Design Reviews, Product Development / Design Review Tasks_old."
+    }
+  ],
+  "coverage": [
+    {
+      "workspace": "Instance Management / Service",
+      "type": "Revision controlled",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Instance Management / Serial Numbers",
+      "type": "Revision controlled",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Instance Management / Motors",
+      "type": "Revision controlled",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Instance Management / Sensors",
+      "type": "Revision controlled",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Instance Management / Control Elements",
+      "type": "Revision controlled",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Product Development / Items",
+      "type": "Revision controlled",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Product Development / VIES Freigabe",
+      "type": "Revisioning",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Product Development / Item Variants",
+      "type": "Revision controlled",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Product Development / Documents",
+      "type": "Revision controlled",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Product Development / Design Reviews_old",
+      "type": "Basic with workflow",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Product Development / Design Reviews",
+      "type": "Basic with workflow",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Product Development / Design Review Tasks_old",
+      "type": "Basic with workflow",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Product Development / Design Review Tasks",
+      "type": "Basic with workflow",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Product Development / Spare Parts Request",
+      "type": "Basic with workflow",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Asset Lifecycle & Projects / Assets",
+      "type": "Basic with workflow",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Asset Lifecycle & Projects / Asset Items",
+      "type": "Revision controlled",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Asset Lifecycle & Projects / Asset Groups",
+      "type": "Basic with workflow",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Asset Lifecycle & Projects / Asset Services",
+      "type": "Revisioning",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Asset Lifecycle & Projects / Order Project Deliveries",
+      "type": "Revisioning",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Asset Lifecycle & Projects / Order Projects",
+      "type": "Basic with workflow",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Asset Lifecycle & Projects / Order Project Tasks",
+      "type": "Basic with workflow",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "Konifguratix / Konfiguratix",
+      "type": "Basic with workflow",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "VISI_TEST / VisiTEST",
+      "type": "Basic with workflow",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    },
+    {
+      "workspace": "VISI_TEST / VisiTEST_Meeting",
+      "type": "Basic with workflow",
+      "editorSignals": [],
+      "status": "workspace manager only"
+    }
+  ]
+}

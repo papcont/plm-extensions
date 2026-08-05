@@ -1,0 +1,48 @@
+{
+  "tenant": "tenant-name",
+  "source": "read-only Workspace Manager and Workspace Editor browser scan",
+  "url": "https://tenant.autodeskplm360.net/plm/admin/workspace-manager",
+  "workspaces": [
+    {
+      "category": "Product Development",
+      "name": "Supplier Packages",
+      "type": "Basic with workflow",
+      "fields": [
+        "Supplier",
+        "Due Date",
+        "Status",
+        "Affected Item"
+      ],
+      "tabs": [
+        "Item Details",
+        "Workflow Actions",
+        "Attachments",
+        "Relationships"
+      ],
+      "workflowStates": [
+        "Open",
+        "Supplier Review",
+        "Closed"
+      ],
+      "workflowTransitions": [
+        "Submit",
+        "Request Quote",
+        "Close"
+      ],
+      "relationships": [
+        "Items",
+        "Problem Reports",
+        "Non Conformances"
+      ],
+      "reports": [
+        "Open Supplier Packages"
+      ],
+      "scripts": [
+        "none captured"
+      ],
+      "permissions": [
+        "read-only capture only; do not store users or secrets"
+      ]
+    }
+  ]
+}

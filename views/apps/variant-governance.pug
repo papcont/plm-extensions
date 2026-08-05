@@ -1,0 +1,39 @@
+extends ../framework/layout
+
+block head
+
+    link(rel='stylesheet', href='/stylesheets/apps/variant-governance.css')
+    link(rel='stylesheet', href='/stylesheets/custom/variant-governance.css')
+
+    script(src='/javascripts/apps/variant-governance.js')
+    script(src='/javascripts/custom/variant-governance.js')
+
+block body
+
+    body.surface-level-1
+
+        #header.dark
+            #header-logo
+            #header-title= title
+            #header-subtitle Variant families, base items, option evidence, and approval state
+            #header-toolbar
+                #refresh.button.icon.icon-refresh(title='Refresh workspace counters')
+                #header-avatar
+
+        #variant-governance
+            #summary.surface-level-2
+                .summary-tile
+                    .summary-label Workspaces
+                    .summary-value#workspace-count -
+                .summary-tile
+                    .summary-label Records
+                    .summary-value#record-count -
+                .summary-tile
+                    .summary-label Readiness
+                    .summary-value#readiness -
+
+            #workspace-grid
+
+            #next-slice.surface-level-2
+                .section-title Next read-only slice
+                .section-text Confirm Item Variants and Konfiguratix workspace IDs before adding option generation, comparison, or workflow actions.
