@@ -1,0 +1,93 @@
+/* Condition Monitoring dashboard layout. Reuses framework surface-level-* backgrounds; adds only
+   layout, tiles and chart cards. Responsive: tiles and charts wrap on narrow viewports. */
+
+#condition-monitoring {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+}
+
+.cm-pill {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-right: 8px;
+    align-self: center;
+    white-space: nowrap;
+}
+
+/* asset anchor */
+#cm-asset { padding: 16px; border-radius: 8px; display: flex; flex-direction: column; gap: 12px; }
+.cm-asset-head { display: flex; align-items: baseline; gap: 10px; }
+.cm-asset-name { font-size: 18px; font-weight: 600; }
+.cm-sensor-row {
+    display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px;
+    border-top: 1px solid rgba(128, 128, 128, 0.15);
+}
+.cm-sensor-name { font-weight: 500; }
+.cm-sensor-id { margin-left: auto; font-family: monospace; font-size: 12px; opacity: 0.8; }
+.cm-sensor-noid { opacity: 0.45; font-style: italic; font-family: inherit; }
+
+/* summary tiles */
+#cm-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    padding: 16px;
+    border-radius: 8px;
+}
+.cm-tile { display: flex; flex-direction: column; gap: 6px; }
+.cm-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.6; }
+.cm-value { font-size: 28px; font-weight: 600; line-height: 1.1; }
+.cm-value-sm { font-size: 15px; font-weight: 500; }
+.cm-unit { font-size: 14px; font-weight: 400; opacity: 0.6; }
+.cm-trend { font-size: 16px; margin-left: 4px; }
+.cm-status-value { display: flex; align-items: center; gap: 8px; font-size: 22px; font-weight: 600; }
+.cm-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; background: #8a8f98; flex: none; }
+
+/* controls */
+#cm-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+.cm-control-label { font-size: 12px; opacity: 0.7; }
+#cm-range { padding: 4px 8px; border-radius: 4px; }
+.cm-legend { display: flex; gap: 14px; margin-left: auto; font-size: 12px; }
+.cm-legend-item { display: flex; align-items: center; gap: 5px; }
+.cm-legend-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.cm-legend-swatch.cm-normal { background: #3fb950; }
+.cm-legend-swatch.cm-warning { background: #d29922; }
+.cm-legend-swatch.cm-critical { background: #f85149; }
+
+/* charts */
+.cm-charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+.cm-chart-card { padding: 12px; border-radius: 8px; }
+.cm-chart-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; opacity: 0.85; }
+.cm-chart { width: 100%; display: block; }
+
+/* events */
+#cm-events { padding: 16px; border-radius: 8px; }
+.cm-section-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; opacity: 0.85; }
+.cm-events-empty { font-size: 13px; opacity: 0.5; }
+.cm-event-row {
+    display: grid;
+    grid-template-columns: 16px 72px 90px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 13px;
+    border-top: 1px solid rgba(128, 128, 128, 0.15);
+}
+.cm-event-sev { font-weight: 600; }
+.cm-event-type { opacity: 0.7; font-size: 12px; }
+.cm-event-reason { opacity: 0.8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cm-event-time { opacity: 0.55; font-size: 12px; }
