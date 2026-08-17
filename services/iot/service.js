@@ -91,4 +91,24 @@ function createRuntime(overrides = {}) {
 let shared = null;
 function getShared() { if (!shared) shared = createRuntime(); return shared; }
 
-module.exports = { createRuntime, getShared, readingToCanonical, accelReadingToCanonical };
+// Optional unattended driver. The demo is normally client-driven (the dashboard polls /iot/tick), so
+// there are no timers by default. When config.serverTickMs > 0 (set per deployment) this ticks the
+// pipeline server-side so the asset's IoT fields keep updating even with no browser open. Gated OFF by
+// default; call once at startup. ponytail: single global interval, one asset — fine for the demo.
+let tickerStarted = false;
+function startServerTicker() {
+    const rt = getShared();
+    const ms = rt.config.serverTickMs;
+    if (!ms || ms <= 0 || tickerStarted) return;
+    tickerStarted = true;
+    let busy = false;
+    setInterval(async function() {
+        if (busy) return;                       // skip if the previous tick is still in flight
+        busy = true;
+        try { await rt.tick(); } catch (e) { console.error('[iot] server tick failed:', e.message); }
+        busy = false;
+    }, ms);
+    console.log('[iot] server ticker started: every ' + ms + 'ms');
+}
+
+module.exports = { createRuntime, getShared, startServerTicker, readingToCanonical, accelReadingToCanonical };

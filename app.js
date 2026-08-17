@@ -96,6 +96,11 @@ if ((process.argv.length > 2) && (!fs.existsSync(pathEnvironment))) {
     app.locals.chrome       = settings.chrome;
     app.locals.colors       = settings.colors;
 
+    // IoT: fold per-deployment settings (admin creds, tenant link, `exports.iot` block) into the IoT
+    // config singleton, then start the optional unattended server ticker (off unless serverTickMs set).
+    require('./services/iot/config').applyDeployment(environment);
+    require('./services/iot/service').startServerTicker();
+
     // Re-registers the Lean Change Order webhooks if the configured callbackUrl changed since
     // last run (e.g. tunnel restarted) - never blocks server startup, just logs on failure.
     require('./services/erpWebhookManager').ensureWebhooksRegistered(app)
