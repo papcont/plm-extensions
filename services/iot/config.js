@@ -31,6 +31,21 @@ const config = {
     sensorWorkspaceId : process.env.IOT_SENSOR_WS_ID || '968',
     deviceIdFieldId   : process.env.IOT_DEVICE_ID_FIELD || 'IOT_DEVICE_ID',
 
+    // Live asset condition write target (Assets workspace + the "IoT" section on it). Tenant-specific;
+    // set per deployment via environment.js `exports.iot`. Section id is the numeric FM section id of the
+    // IoT section on the asset item-details layout. The 6 field ids are fixed (IOT_CONDITION, ...).
+    assetWorkspaceId   : process.env.IOT_ASSET_WS_ID || '904',
+    conditionSectionId : process.env.IOT_CONDITION_SECTION_ID || '',       // e.g. '2358'; empty => writes skipped
+    // 2-legged admin apps can only write by IMPERSONATING a user (PLM rejects pure client-credentials
+    // writes: "no user in header"). This is the impersonated user's EMAIL (X-user-id header), which must
+    // be a valid tenant user with write access. Defaults to the deployment's erpServiceAccountEmail.
+    impersonateUser    : process.env.IOT_IMPERSONATE_USER || '',
+    writeMinIntervalMs : Number(process.env.IOT_WRITE_MIN_INTERVAL_MS) || 30000,  // FM is not a time-series DB: throttle upserts
+    floatDecimals      : (process.env.IOT_FLOAT_DECIMALS != null) ? Number(process.env.IOT_FLOAT_DECIMALS) : 2,  // must match the FM Float field precision
+
+    // Optional unattended driver: tick the simulator server-side every N ms (default off = client-driven only).
+    serverTickMs       : Number(process.env.IOT_SERVER_TICK_MS) || 0,
+
     // Health/condition thresholds. Vibration is overall velocity magnitude (mm/s), roughly
     // ISO 10816 medium-machine bands; temperature in °C. Tune per asset later — NOT universal truth.
     thresholds : {
@@ -49,6 +64,31 @@ const config = {
         deviceId  : process.env.IOT_DEVICE_ID || 'MOTOR-DEMO-001',
         historyLimit : Number(process.env.IOT_HISTORY_LIMIT) || 2000,
     },
+};
+
+// Merge per-deployment settings from environment.js (loaded after this module) into the singleton.
+// config.js is required before environment.js in app.js, so process.env wins where set, then the
+// environment's optional `exports.iot` block fills the rest. Mutates in place because the runtime is
+// created lazily (first request) from this same object. Safe to call once at startup.
+config.applyDeployment = function(env) {
+    if (!env) return config;
+    const iot = env.iot || {};
+    // 2-legged admin app: reuse the deployment's admin creds (same app the admin utilities use) unless
+    // process.env already provided IoT-specific ones.
+    config.adminClientId     = config.adminClientId     || iot.adminClientId     || env.adminClientId     || '';
+    config.adminClientSecret = config.adminClientSecret || iot.adminClientSecret || env.adminClientSecret || '';
+    config.tenantLink        = config.tenantLink        || iot.tenantLink        || (env.tenant ? 'https://' + env.tenant + '.autodeskplm360.net' : '');
+    config.impersonateUser   = config.impersonateUser   || iot.impersonateUser   || env.erpServiceAccountEmail || '';
+    // Only let the environment block override where the corresponding process.env var was NOT set.
+    if (process.env.FUSION_MANAGE_IOT_WRITES == null && iot.fusionManageWrites  !== undefined) config.fusionManageWrites = !!iot.fusionManageWrites;
+    if (process.env.IOT_RESOLVE_FROM_FM      == null && iot.resolveFromFm        !== undefined) config.resolveFromFm      = !!iot.resolveFromFm;
+    if (process.env.IOT_CONDITION_SECTION_ID == null && iot.conditionSectionId   !== undefined) config.conditionSectionId = String(iot.conditionSectionId);
+    if (process.env.IOT_ASSET_WS_ID          == null && iot.assetWorkspaceId     !== undefined) config.assetWorkspaceId   = String(iot.assetWorkspaceId);
+    if (process.env.IOT_SERVER_TICK_MS       == null && iot.serverTickMs         !== undefined) config.serverTickMs       = Number(iot.serverTickMs);
+    if (process.env.IOT_WRITE_MIN_INTERVAL_MS== null && iot.writeMinIntervalMs   !== undefined) config.writeMinIntervalMs = Number(iot.writeMinIntervalMs);
+    if (process.env.IOT_FLOAT_DECIMALS       == null && iot.floatDecimals        !== undefined) config.floatDecimals      = Number(iot.floatDecimals);
+    if (iot.deviceAssetMap) config.deviceAssetMap = Object.assign({}, config.deviceAssetMap, iot.deviceAssetMap);
+    return config;
 };
 
 module.exports = config;

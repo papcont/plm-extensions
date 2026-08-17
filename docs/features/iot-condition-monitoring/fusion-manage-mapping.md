@@ -93,3 +93,60 @@ The demo tenant already ships the **Asset Lifecycle & Projects** template. Relev
 sensor (by its `DevEUI` field, once it exists) to a telemetry stream. The canonical model / bridge /
 health / condition / UI from the MVP stay unchanged; only the device→asset resolution swaps from the
 static map to "derived from the selected Asset's sensor list".
+
+---
+
+## Live condition writes — BUILT (2026-08-17): fields on the Asset, not a separate workspace
+
+The user chose to put the condition summary **directly on the Asset (904)** in a dedicated **"IoT"
+section** (simpler than the separate Workspace A above). Created via the admin UI and persisted:
+
+- Section **"IoT"** on Assets (904), FM section id **`2358`**.
+- 6 fields: `IOT_CONDITION` (text 32), `IOT_HEALTH_SCORE` (integer), `IOT_VIBRATION` (float 10/2),
+  `IOT_TEMPERATURE` (float 10/2), `IOT_LAST_TELEMETRY` (text 40), `IOT_LAST_ALERT` (text 40).
+  (Gotcha: FM numeric fields also require field/display length — Float additionally precision — or the
+  admin "Save" silently no-ops. Fields land in "unassigned"; moved into the IoT section, then
+  "Layout speichern".)
+
+**Write path (`services/iot/fusionManageRepository.js`).** `upsertConditionSummary` now PATCHes those 6
+fields on the asset item using the same nested `sections/fields` shape as `routes/plm.js` `/edit`
+(a raw flat PATCH → "Abschnitt null"). Authenticates **2-legged** with the deployment's admin app
+(no user session on an inbound uplink). Throttled to `writeMinIntervalMs` (default 30 s) — FM is not a
+time-series store. Gated OFF by default; discrete events stay dry-run (no events workspace modeled).
+
+**Impersonation is mandatory for 2-legged writes (verified 2026-08-17).** A pure client-credentials PATCH
+is rejected: `401 SEC_UNAUTHORIZED "no user in header for impersonation"`. The 2-legged admin app can only
+write by impersonating a real user via the **`X-user-id`** header — and that value is the user's **email**,
+not the internal PLM userId (`Qb3Na` → `401 "Mapped user not valid"`; `philipp.poort@contelos.de` → `204`).
+Config key `impersonateUser`; defaults to the deployment's `erpServiceAccountEmail`. The impersonated user
+must have write access to the Assets workspace. (Same `X-user-id` pattern the admin utilities in
+`routes/plm.js` already use, e.g. `/tableaus`.) End-to-end verified: the wired repository wrote
+WARNING/47/4.63/58.41 onto asset 30057 and it read back.
+
+**Second gotcha — Float fields want STRINGS (verified 2026-08-17).** A bare number for a Float field is
+rejected: `400 BAD_REQUEST "Invalid field value"` (`4.9` → 400; `"4.9"` → 204). Integer fields accept a
+number. So the writer sends Float values as strings, Integer as a rounded number. A string with MORE
+decimals than the field allows is also rejected, so floats are capped to `config.floatDecimals`, which
+**must match the FM Float field precision** (`exports.iot.floatDecimals`). This tenant's IOT_VIBRATION /
+IOT_TEMPERATURE were set to 12 decimals → `floatDecimals: 12`; verified read-back `"10.633333333333"`.
+
+**Cadence.** Ticking is normally client-driven (dashboard polls `/iot/tick`). For unattended updates a
+gated server ticker (`config.serverTickMs`, default off) drives the pipeline every N ms.
+
+**Enable per deployment** — add to `environment.js` (gitignored; tenant values live here, not settings.js):
+
+```js
+exports.iot = {
+    fusionManageWrites : true,
+    conditionSectionId : '2358',                        // IoT section id on Assets (904)
+    assetWorkspaceId   : '904',
+    impersonateUser    : 'philipp.poort@contelos.de',   // X-user-id (email!) the 2-legged app impersonates
+    deviceAssetMap     : { 'MOTOR-DEMO-001': '30057' }, // sim device -> A000019 - Unterbau
+    serverTickMs       : 30000,                         // unattended: update the asset every 30 s
+    writeMinIntervalMs : 30000,                         // throttle live writes (FM is not time-series)
+};
+```
+
+`adminClientId`/`adminClientSecret` are reused from the deployment's existing admin app (already set in
+`environment.js`); `impersonateUser` defaults to `erpServiceAccountEmail` if omitted. Requires a
+**server restart** to take effect.

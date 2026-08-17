@@ -56,6 +56,30 @@ _Last updated: 2026-08-12_
   (Direct v3 PATCH with a hand-built body failed with "Abschnitt null" — use the `/plm/edit` proxy, which
   builds the correct sections payload, not a raw PATCH.)
 
+## Live asset condition writes implemented (2026-08-17, `npm test` = 30/30)
+- User chose condition fields **directly on the Asset (904)** in a dedicated **"IoT" section** (id `2358`),
+  not a separate workspace. 6 fields created + persisted via the admin UI: `IOT_CONDITION`,
+  `IOT_HEALTH_SCORE`, `IOT_VIBRATION`, `IOT_TEMPERATURE`, `IOT_LAST_TELEMETRY`, `IOT_LAST_ALERT`.
+- `fusionManageRepository.upsertConditionSummary` now does the real v3 PATCH (nested sections/fields shape,
+  like `/plm/edit`; raw PATCH → "Abschnitt null"), **2-legged** with the deployment admin app, throttled to
+  `writeMinIntervalMs` (default 30 s). Gated OFF by default; events stay dry-run.
+- Optional gated server ticker (`config.serverTickMs`, default off) drives the pipeline unattended — this
+  reverses the earlier "no server-side timers" note **on purpose**, hence gated.
+- `config.applyDeployment(environment)` (called in `app.js`) folds admin creds + an `exports.iot` block from
+  `environment.js` into the IoT config singleton (works despite config.js being required before environment.js).
+- Target asset for the demo: **A000019 - Unterbau, dmsId `30057`** (has real motors; replaces the Cheops demo).
+- Tested: 3 new gating tests in `test/iot/fusionManage.test.js` (dry-run when off; blocked when creds/section
+  missing — never PATCHes an unconfigured target).
+- **Live write VERIFIED end-to-end (2026-08-17):** the wired repository (`config.applyDeployment(environment)`
+  → `createFusionManageRepository` → `upsertConditionSummary`) returned `written:true, mode:'live'` and the
+  values (OBSERVE/72/4.9/58.4 + timestamps) read back on asset 30057.
+- **Key finding — impersonation is mandatory.** 2-legged client-credentials writes are rejected
+  ("no user in header"); the app must send `X-user-id` = the impersonated user's **email**
+  (`philipp.poort@contelos.de`, not the PLM userId `Qb3Na`). Config `impersonateUser`, default
+  `erpServiceAccountEmail`. See `fusion-manage-mapping.md`.
+- Enable block is in `environment.js` (`exports.iot`, gitignored). **Server restart** picks up the ticker;
+  then the asset updates every 30 s unattended.
+
 ## Asset-anchored (2026-08-12) — the live monitor now binds to a Fusion Manage Asset
 - `condition-monitoring.js` gained an asset context: launched as `/condition-monitoring?wsId=904&dmsId=<asset>`
   it reads `/plm/details`, shows the Asset descriptor, resolves the `SENSORS_LIST` reference → the linked
