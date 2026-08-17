@@ -2365,6 +2365,16 @@ exports.applications = {
 
     },
 
+    conditionMonitoring : {
+        // IoT / condition-monitoring dashboard. Backend + thresholds live in services/iot/config.js
+        // (env-overridable). This block only carries app-launch settings; keep it as an anchor for
+        // per-tenant overrides in settings/<tenant>.js (e.g. the Fusion Manage asset workspace id
+        // once it exists). null = resolve at runtime / not yet mapped.
+        assetWorkspaceId       : null,
+        conditionEventsWsId    : null,
+        deviceId               : 'MOTOR-DEMO-001'
+    },
+
     bomExportAttachmentStudio : {
         defaultBOMView : 'Tree Navigator',
         exportFieldsIn : [],
@@ -2678,6 +2688,7 @@ exports.server = {
         classes        : true,  // Class Browser
         client         : true,  // Mobile Client
         compare        : true,  // BOM Comparison
+        'condition-monitoring' : true,  // IoT Condition Monitoring dashboard
         dashboard      : true,  // Process Dashboard
         'design-review-closure' : true,  // Design Review Closure Cockpit
         'dpp-readiness' : true,  // Digital Product Passport Readiness

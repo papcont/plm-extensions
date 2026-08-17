@@ -75,6 +75,7 @@ router.get('/abom'          , function(req, res, next) { launch('apps/abom'     
 router.get('/classes'       , function(req, res, next) { launch('apps/classes'       , 'classes'       , 'Classification Browser'   , req, res, next); });
 router.get('/client'        , function(req, res, next) { launch('apps/client'        , ''              , 'Mobile PLM Client'        , req, res, next); });
 router.get('/compare'       , function(req, res, next) { launch('apps/compare'       , 'compare'       , 'BOM Comparison'           , req, res, next); });
+router.get('/condition-monitoring', function(req, res, next) { launch('apps/condition-monitoring', 'conditionMonitoring', 'Condition Monitoring', req, res, next); });
 router.get('/dashboard'     , function(req, res, next) { launch('apps/dashboard'     , 'dashboard'     , 'Dashboard'                , req, res, next); });
 router.get('/bom-export-attachment-studio', function(req, res, next) { launch('apps/bom-export-attachment-studio', 'bomExportAttachmentStudio', 'BOM Export And Attachment Studio', req, res, next); });
 router.get('/supplier-package-center', function(req, res, next) { launch('apps/supplier-package-center', 'supplierPackageCenter', 'Supplier Package Center', req, res, next); });

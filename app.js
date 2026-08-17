@@ -40,6 +40,7 @@ if ((process.argv.length > 2) && (!fs.existsSync(pathEnvironment))) {
     const aps         = require('./routes/aps');
     const services    = require('./routes/services');
     const erp         = require('./routes/erp');
+    const iot         = require('./routes/iot');
     const { fchmodSync } = require('fs');
     const environment = require(pathEnvironment);
     const app         = express();
@@ -133,6 +134,7 @@ if ((process.argv.length > 2) && (!fs.existsSync(pathEnvironment))) {
     app.use('/aps', aps);
     app.use('/services', services);
     app.use('/erp', erp);
+    app.use('/iot', iot);
     app.use('/storage', express.static(__dirname + '/storage'), serveIndex(__dirname + '/storage', { icons: true }));
 
 

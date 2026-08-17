@@ -1,0 +1,95 @@
+extends ../framework/layout
+
+block head
+
+    link(rel='stylesheet', href='/stylesheets/apps/condition-monitoring.css')
+
+    script(src='/javascripts/apps/condition-monitoring.js')
+
+block body
+
+    body.surface-level-1
+
+        #header.dark
+            #header-logo
+            #header-title= title
+            #header-subtitle Asset health, vibration and temperature from live telemetry
+            #header-toolbar
+                #cm-source.cm-pill(title='Telemetry source')  source: -
+                #cm-pause.button.icon.icon-pause(title='Pause / resume live updates')
+                #cm-reset.button.icon.icon-refresh(title='Restart the demo scenario')
+                #header-avatar
+
+        #condition-monitoring
+
+            #cm-asset.surface-level-2(style='display:none')
+                .cm-asset-head
+                    span.cm-label Asset
+                    span#cm-asset-name.cm-asset-name -
+                .cm-sensors
+                    .cm-section-title Sensors on this asset
+                    #cm-sensors-list
+                        .cm-events-empty Loading…
+
+            #cm-summary.surface-level-2
+                .cm-tile#cm-tile-status
+                    .cm-label Status
+                    .cm-status-value
+                        span#cm-status-dot.cm-dot
+                        span#cm-status-text -
+                .cm-tile
+                    .cm-label Health
+                    .cm-value
+                        span#cm-health -
+                        span.cm-unit  %
+                .cm-tile
+                    .cm-label Temperature
+                    .cm-value
+                        span#cm-temp -
+                        span.cm-unit  °C
+                .cm-tile
+                    .cm-label Vibration
+                    .cm-value
+                        span#cm-vib -
+                        span.cm-unit  mm/s
+                        span#cm-vib-trend.cm-trend
+                .cm-tile
+                    .cm-label Last update
+                    .cm-value.cm-value-sm#cm-updated -
+                .cm-tile
+                    .cm-label Last event
+                    .cm-value.cm-value-sm#cm-last-event -
+
+            #cm-controls.surface-level-2
+                .cm-control-label Time range
+                select#cm-range
+                    option(value='60') Last 60
+                    option(value='300' selected) Last 300
+                    option(value='900') Last 900
+                    option(value='0') All
+                .cm-legend
+                    span.cm-legend-item
+                        span.cm-legend-swatch.cm-normal
+                        | Normal
+                    span.cm-legend-item
+                        span.cm-legend-swatch.cm-warning
+                        | Warning
+                    span.cm-legend-item
+                        span.cm-legend-swatch.cm-critical
+                        | Critical
+
+            .cm-charts
+                .cm-chart-card.surface-level-2
+                    .cm-chart-title Health trend
+                    canvas.cm-chart#cm-chart-health(height='160')
+                .cm-chart-card.surface-level-2
+                    .cm-chart-title Vibration trend (mm/s)
+                    canvas.cm-chart#cm-chart-vib(height='160')
+                .cm-chart-card.surface-level-2
+                    .cm-chart-title Temperature trend (°C)
+                    canvas.cm-chart#cm-chart-temp(height='160')
+
+            #cm-events.surface-level-2
+                .cm-section-title Condition events
+                #cm-events-list
+                    .cm-events-empty No events yet.
