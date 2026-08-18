@@ -46,10 +46,33 @@ body.variant-filter #bom tr[data-link]:not(.variant-allowed) { display : none; }
 /* Node selected for replacement / already swapped. */
 #bom tr.swap-selected > td { background : var(--color-blue-500) !important; }
 #bom tr.swapped .tree-descriptor { text-decoration : line-through; opacity : 0.7; }
+/* Badge on its OWN line inside the descriptor cell: the cell is nowrap + overflow-hidden
+   (ellipsis), so an inline badge after the long descriptor is clipped away. block keeps it
+   visible; the short badge text fits the column width. */
 .swap-badge {
     color           : var(--color-status-new, #fe8d55);
     font-weight     : 600;
     text-decoration : none;
-    display         : inline-block;
+    display         : block;
+    white-space     : nowrap;
     opacity         : 1;
 }
+
+/* Replacement picker mounts in #vb-replace, below the material box. Make it a positioning
+   context so insertWorkspaceSearch's absolute .panel-actions toolbar stays INSIDE it instead
+   of escaping to #item and overlapping the "Apply material" button. */
+#vb-replace { position : relative; }
+
+/* Empty state / hint for the #item panel when no node is selected. */
+.vb-placeholder {
+    display         : flex;
+    flex-direction  : column;
+    align-items     : center;
+    justify-content : center;
+    height          : 100%;
+    text-align      : center;
+    padding         : 24px;
+    opacity         : 0.7;
+}
+.vb-placeholder-title { font-weight : 600; font-size : 15px; margin-bottom : 6px; }
+.vb-placeholder-text  { font-size : 13px; line-height : 1.5; max-width : 240px; }

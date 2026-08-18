@@ -124,10 +124,23 @@ function openAssembly(link) {
 
         insertViewer(link, { features : config.viewerFeatures });
 
+        vbShowItemPlaceholder();
+
         $('#overlay').hide();
 
     });
 
+}
+
+
+// Empty state for the #item panel: shown at start and after a successful create, so the panel
+// is never a blank grey block. Replaced by the material/replace picker once a node is selected.
+function vbShowItemPlaceholder() {
+    let elem = $('#item').removeClass().addClass('surface-level-3').html('');
+    let box  = $('<div></div>').appendTo(elem).addClass('vb-placeholder');
+    $('<div></div>').appendTo(box).addClass('vb-placeholder-title').html('No part selected');
+    $('<div></div>').appendTo(box).addClass('vb-placeholder-text')
+        .html('Select a variant-eligible part in the BOM to change its material or replace it.');
 }
 
 
@@ -230,7 +243,7 @@ function recordMaterialSwap(material) {
     let row = vb.selected.row;
     row.addClass('swapped');
     row.find('.swap-badge').remove();
-    $('<span></span>').addClass('swap-badge').html(' → Material: ' + material).appendTo(row.find('.tree-descriptor'));
+    $('<span></span>').addClass('swap-badge').html('→ Material: ' + material).appendTo(row.find('.tree-descriptor').closest('td'));
 
     $('#button-save').removeClass('disabled');
 }
@@ -261,7 +274,7 @@ function recordSwap(picked) {
     let row = vb.selected.row;
     row.addClass('swapped');
     row.find('.swap-badge').remove();
-    $('<span></span>').addClass('swap-badge').html(' → ' + toTitle).appendTo(row.find('.tree-descriptor'));
+    $('<span></span>').addClass('swap-badge').html('→ ' + toTitle).appendTo(row.find('.tree-descriptor').closest('td'));
 
     $('#button-save').removeClass('disabled');
 }
@@ -698,6 +711,7 @@ async function vbExecutePlan(tree, changed) {
 
         vb.swaps = {};
         $('#button-save').addClass('disabled');
+        vbShowItemPlaceholder();
         if(topLink) openItemByLink(topLink);
 
     } catch(e) {
