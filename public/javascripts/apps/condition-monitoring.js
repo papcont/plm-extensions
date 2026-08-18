@@ -22,9 +22,15 @@
             start();
         }).fail(function () { $('#cm-source').text('source: unavailable'); });
 
+        // Pause/resume BOTH the client poll and the unattended server ticker, so pausing actually
+        // stops mock data from accumulating (not just the on-screen updates). Reflect real state on load.
+        $.getJSON('/iot/ticker', function (res) {
+            if (res && res.data && res.data.configured) setPaused(!res.data.running);
+        });
         $('#cm-pause').on('click', function () {
-            paused = !paused;
-            $(this).toggleClass('icon-pause', !paused).toggleClass('icon-play', paused);
+            var next = !paused;
+            setPaused(next);
+            $.post('/iot/ticker', { running: !next });   // paused => ticker off, resume => ticker on
         });
         $('#cm-reset').on('click', function () {
             $.post('/iot/reset', function () { samples = []; events = []; renderEvents(); });
@@ -32,6 +38,11 @@
         $('#cm-range').on('change', renderCharts);
         $(window).on('resize', renderCharts);
     });
+
+    function setPaused(p) {
+        paused = p;
+        $('#cm-pause').toggleClass('icon-pause', !p).toggleClass('icon-play', p).text(p ? 'Resume' : 'Pause');
+    }
 
     function start() {
         if (timer) clearInterval(timer);

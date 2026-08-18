@@ -47,6 +47,19 @@ router.post('/reset', function(req, res) {
     res.json({ success: true });
 });
 
+// Unattended server ticker on/off. The dashboard's pause button uses this so pausing also stops
+// the background writes, not just the client poll. GET reports current state.
+router.get('/ticker', function(req, res) {
+    const rt = service.getShared();
+    const configured = !!(rt.config.serverTickMs && rt.config.serverTickMs > 0);
+    res.json({ success: true, data: { running: service.isServerTickerRunning(), configured: configured } });
+});
+router.post('/ticker', function(req, res) {
+    const running = req.body && (req.body.running === true || req.body.running === 'true');
+    if (running) service.startServerTicker(); else service.stopServerTicker();
+    res.json({ success: true, data: { running: service.isServerTickerRunning() } });
+});
+
 // Ingest a The Things Stack uplink (raw frm_payload). Untrusted input — decode errors are 400.
 router.post('/uplink', async function(req, res) {
     try {
