@@ -1732,6 +1732,32 @@ exports.applications = {
         }
     },
 
+    variantsBom : {
+        workspaceItems : {
+            workspaceId : null,   // null -> common.workspaceIds.items
+            bomViewName : null    // null -> common.workspaces.items.defaultBOMView ('Tree Navigator')
+        },
+        fieldIds : {
+            number         : 'NUMBER',            // identity used as the leaf fingerprint
+            variantAllowed : 'VARIANT_ALLOWED',   // checkbox: item is variant-eligible (part OR assembly)
+            bomFingerprint : 'BOM_FINGERPRINT',   // searchable text: canonical BOM hash for dedup
+            material       : 'MATERIAL',          // freetext: material value written on a material variant
+            materialart    : 'MATERIALART',       // freetext: material category, part of the leaf identity
+            isVariant      : 'IS_VARIANT'         // checkbox: stamped true on every generated variant
+        },
+        materialPicklistId       : 'CUSTOM_LOOKUP_MATERIAL',   // live picklist for the material selector
+        materialVariantNumbering : 'new',   // 'new' = clone gets an auto-number (primary); 'keep' = reuse fromNumber (deferred, see code)
+        maxBOMLevels : 10,
+        variantAllowedOnly : false,   // toggle default: show only VARIANT_ALLOWED nodes in BOM + viewer
+        panels : {
+            insertBOM     : { collapsed : false, hideDetails : false },
+            insertDetails : { editable : true, collapsed : true }
+        },
+        viewerFeatures : {
+            views : true
+        }
+    },
+
     worklist : {
         workspaceId : null,   // matches Engineering Project Activities
         fieldIDs          : {
@@ -2717,6 +2743,7 @@ exports.server = {
         'test-validation-hub' : true,  // Test And Validation Evidence Hub
         'variant-governance' : true,  // Variant Governance Cockpit
         variants       : true,  // Variants Manager
+        'variants-bom' : true,  // Variant BOM Editor (flag-gated, upward propagation, dedup)
 
         // Administration Utitliies
         comparison         : true,  // Tenant Comparison

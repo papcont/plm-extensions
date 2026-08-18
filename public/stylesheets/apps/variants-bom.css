@@ -1,0 +1,55 @@
+/* Variant BOM Editor - app styles.
+   #main.screen is position:absolute (top 68px); its direct children (#bom, #item)
+   are absolute too (framework .screen > div). We only set their box, not flex. */
+
+:root {
+    --vb-padding-v : 24px;
+    --vb-padding-h : 36px;
+    --vb-item-w    : 520px;
+    --vb-viewer-h  : 380px;
+}
+
+/* Left column: viewer on top, BOM below. Right column: item details, full height. */
+.viewer {
+    top    : 0px;
+    left   : 0px;
+    right  : calc((2 * var(--vb-padding-h)) + var(--vb-item-w));
+    height : var(--vb-viewer-h);
+}
+
+#bom {
+    top          : var(--vb-viewer-h);
+    left         : 0px;
+    bottom       : 0px;
+    right        : calc((2 * var(--vb-padding-h)) + var(--vb-item-w));
+    border-width : var(--vb-padding-v) var(--vb-padding-h);
+}
+
+#item {
+    top          : 0px;
+    bottom       : 0px;
+    right        : 0px;
+    width        : var(--vb-item-w);
+    border-width : var(--vb-padding-v) var(--vb-padding-h) var(--vb-padding-h) var(--vb-padding-h);
+}
+
+/* Details toggled off: viewer + BOM take full width, item panel slides out. */
+body.no-details .viewer,
+body.no-details #bom  { right : 0px; }
+body.no-details #item { right : calc(0px - (2 * var(--vb-padding-h)) - var(--vb-item-w)); }
+
+/* Filter on: show only rows marked variant-eligible.
+   ponytail: flat row hide; tree parents of a hidden node also vanish — acceptable per spec
+   ("nur die [Items] in der BOM anzeigen"). Revisit if parent context needs to stay. */
+body.variant-filter #bom tr[data-link]:not(.variant-allowed) { display : none; }
+
+/* Node selected for replacement / already swapped. */
+#bom tr.swap-selected > td { background : var(--color-blue-500) !important; }
+#bom tr.swapped .tree-descriptor { text-decoration : line-through; opacity : 0.7; }
+.swap-badge {
+    color           : var(--color-status-new, #fe8d55);
+    font-weight     : 600;
+    text-decoration : none;
+    display         : inline-block;
+    opacity         : 1;
+}

@@ -106,6 +106,7 @@ router.get('/supplier-center', function(req, res, next) { launch('apps/supplier-
 router.get('/test-validation-hub', function(req, res, next) { launch('apps/test-validation-hub', 'testValidationHub', 'Test And Validation Evidence Hub', req, res, next); });
 router.get('/variant-governance', function(req, res, next) { launch('apps/variant-governance', 'variantGovernance', 'Variant Governance Cockpit', req, res, next); });
 router.get('/variants'      , function(req, res, next) { launch('apps/variants'      , 'variants'      , 'Variants Manager'         , req, res, next); });
+router.get('/variants-bom'  , function(req, res, next) { launch('apps/variants-bom'  , 'variantsBom'   , 'Variant BOM Editor'       , req, res, next); });
 
 
 

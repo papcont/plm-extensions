@@ -1,0 +1,31 @@
+extends ../framework/layout
+
+block head
+
+    link(rel='stylesheet', href='/stylesheets/apps/variants-bom.css')
+    link(rel='stylesheet', href='/stylesheets/custom/variants-bom.css')
+
+    script(src='/javascripts/apps/variants-bom.js')
+    script(src='/javascripts/custom/variants-bom.js')
+
+block body
+
+    body.surface-level-1
+
+        #header.dark
+            #header-logo
+            #header-title=title
+            #header-subtitle
+            #header-toolbar
+                .button#button-save.disabled.default.with-icon.icon-create(title='Check for duplicates and create the variant assemblies') Save Variant
+                .button#button-filter-variants.with-icon.icon-filter(title='Show only variant-eligible items (VARIANT_ALLOWED)') Variant Items Only
+                .button#button-toggle-details.with-icon.icon-panel.filled(title='Toggle item details panel') Toggle Details
+                #header-avatar
+
+        #main.screen.with-viewer.with-details
+
+            #viewer.viewer
+
+            #bom.surface-level-1
+
+            #item.surface-level-3

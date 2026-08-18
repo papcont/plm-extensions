@@ -52,6 +52,8 @@ The `common.workspaceIds` block in `settings/custom.js` is the most commonly ten
 
 Adding a new standard app means: one line in `routes/landing.js`, one Pug view extending `views/framework/layout.pug`, one JS file in `public/javascripts/apps/`, an entry under `exports.applications` in `settings.js`, and a `servicesEnabled` flag.
 
+**`/variants-bom` (Variant BOM Editor)** — app for variant-driven BOM editing (`apps/variants-bom`, settings key `variantsBom`). A `VARIANT_ALLOWED` checkbox flags any item (part or assembly) as variant-eligible; swapping a BOM node and saving creates new variants **bottom-up** for every flagged ancestor (propagation stops+blocks at the first unflagged parent), while a recursive NUMBER-based `BOM_FINGERPRINT` (stored per variant, searched via `/plm/search` comparator 15) **deduplicates** exact-match assemblies so identical variants are reused, not re-created. Both fields are per-tenant and UI-created. Design + decisions + verification: `docs/VARIANTS-BOM-PLAN.md`. Distinct from the older option-based `dev/configurator` and the `apps/variants` manager, which both remain.
+
 ### Server-to-client config bridge
 
 `views/framework/layout.pug` is the base layout extended by nearly every view. It injects server state into the page as **global JavaScript variables** (not module imports) via an inline `script` block: `tenant`, `tenantLink`, `theme`, `host`, `wsId`, `dmsId`, `descriptor`, `number`, `fileId`, `vaultId`, `language`, `revisionBias`, `options`, `type`, `common`, `config`, `menu`, `colors`, `debugMode`. Client code reads these as bare globals. The layout also loads a large set of shared client modules in a fixed order before the per-app script runs.
