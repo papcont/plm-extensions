@@ -103,7 +103,8 @@ function openAssembly(link) {
         vb.root = {
             link           : link,
             number         : getSectionFieldValue(response.data.sections, vb.fieldIds.number),
-            variantAllowed : (rootAllowed === true || rootAllowed === 'true')
+            variantAllowed : (rootAllowed === true || rootAllowed === 'true'),
+            fingerprint    : getSectionFieldValue(response.data.sections, vb.fieldIds.bomFingerprint)   // '' if none yet
         };
 
         insertBOM(link, {
@@ -712,4 +713,29 @@ async function vbExecutePlan(tree, changed) {
 // not just when the filter is on.
 function onBOMLoaded(id, data) {
     ensureVariantFlags();
+    lazyStampOriginal();
+}
+
+
+// Lazy fingerprint backfill. The first time an un-fingerprinted assembly is opened, stamp its
+// BOM_FINGERPRINT (NOT IS_VARIANT - an opened original is not a generated variant) so later dedup
+// searches can also match hand-built originals, not just tool-created variants. One edit per
+// assembly, only when the field is empty - no bulk backfill, grows through normal use.
+async function lazyStampOriginal() {
+    if(!vb.root || isBlank(vb.root.link)) return;
+    if(!isBlank(vb.root.fingerprint)) return;                   // already fingerprinted (or a tool variant)
+
+    let tree = buildTreeFromDOM();
+    if(!tree.children || tree.children.length === 0) return;    // a leaf has no assembly fingerprint
+
+    let fp = computeFingerprint(tree);
+    vb.root.fingerprint = fp;                                   // optimistic: blocks re-entry on view reloads
+
+    try {
+        if(!vb.wsSections) vb.wsSections = (await $.get('/plm/sections', { wsId : vb.ws.id, useCache : true })).data;
+        await vbEditFields(vb.root.link, [{ id : vb.fieldIds.bomFingerprint, value : fp }]);
+    } catch(e) {
+        vb.root.fingerprint = '';                               // failed -> allow a later retry
+        console.log('variants-bom lazy-stamp skipped', e);
+    }
 }

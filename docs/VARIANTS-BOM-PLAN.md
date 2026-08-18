@@ -174,10 +174,12 @@ aber bestätigt unseren bottom-up + Aufwärts-Propagations-Ansatz 1:1. Verwertba
 - [ ] Nummernschema (`Stammnummer`/Generator) statt roher Auto-Nummer; gleiches Kind an mehreren Positionen.
 
 ## Offene Punkte (später entscheiden)
-- ~~Basis-Assemblies fingerprinten (Backfill)~~ **deferred (YAGNI).** Dedup läuft gegen tool-erzeugte Varianten;
-  ein Backfill deckt nur den Randfall „gewünschte Variante existiert schon als handgebautes Original" ab und
-  kein echter Auslöser ist bekannt. Falls es je klemmt: **Lazy-Stamping** — Fingerprint einer Baugruppe erst beim
-  Öffnen berechnen+speichern (füllt sich über normale Nutzung, kein Massen-Write). Kein proaktiver Batch nötig.
+- [x] **Original-Dedup via Lazy-Stamping** (statt Massen-Backfill) — verifiziert. Beim Öffnen einer Baugruppe
+  **ohne** `BOM_FINGERPRINT` stempelt `lazyStampOriginal()` (in `onBOMLoaded`) einmalig den berechneten
+  Fingerprint — **ohne** `IS_VARIANT` (Original ≠ Variante), nur bei Baugruppen (Blätter haben keinen),
+  idempotent (nie überschreiben, Guard über `vb.root.fingerprint`), Fehler → Retry beim nächsten Öffnen.
+  Das Feld füllt sich über normale Nutzung; Dedup trifft danach auch handgebaute Originale. Kein Batch.
+  Verifiziert: XL200 (33508) beim Öffnen gestempelt (`ae8db25710fe9585`, IS_VARIANT=false), per Suche auffindbar.
 - Swap-Picker filtern (aktuell ganzer Workspace, keine Klassen-/Typ-Einschränkung).
 - Zählen Positions-/Find-Nummern zum Fingerprint? (Default: nein.)
 - Teil-Propagation statt Blockade zulassen? (aktuell Blockade am ungeflaggten Parent.)
