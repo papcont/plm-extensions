@@ -43,6 +43,11 @@ body.no-details #item { right : calc(0px - (2 * var(--vb-padding-h)) - var(--vb-
    ("nur die [Items] in der BOM anzeigen"). Revisit if parent context needs to stay. */
 body.variant-filter #bom tr[data-link]:not(.variant-allowed) { display : none; }
 
+/* Once flags are resolved, dim rows that are NOT variant-eligible so the eligible parts stand
+   out and it mirrors the selection gate (dimmed rows can't be selected). The filter above still
+   hides them entirely; this is the softer always-on cue. */
+#bom.vb-flags-resolved tr[data-link]:not(.variant-allowed) > td { opacity : 0.45; }
+
 /* Node selected for replacement / already swapped. */
 #bom tr.swap-selected > td { background : var(--color-blue-500) !important; }
 #bom tr.swapped .tree-descriptor { text-decoration : line-through; opacity : 0.7; }

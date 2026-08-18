@@ -84,6 +84,8 @@ function ensureVariantFlags(callback) {
             if(flagged[$(this).attr('data-dmsid')]) $(this).addClass('variant-allowed');
         });
 
+        $('#bom').addClass('vb-flags-resolved');   // enables dimming of non-eligible rows (CSS)
+
         if(callback) callback();
     }).fail(function() { if(callback) callback(); });
 
