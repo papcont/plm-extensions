@@ -650,6 +650,13 @@ function vbShowPlan(tree, changed) {
         .addClass('button').addClass('default').addClass('with-icon').addClass('icon-create')
         .html('Confirm & Create')
         .click(function() { vbExecutePlan(tree, changed); });
+
+    // Escape route: close the plan preview without committing. Swaps are kept (rows stay marked,
+    // Save stays enabled) so the user can review the BOM and re-open the plan.
+    $('<div></div>').appendTo(body)
+        .addClass('button').css({ marginTop : '8px' })
+        .html('Cancel')
+        .click(function() { vbShowItemPlaceholder(); });
 }
 
 // Execute the plan bottom-up: clone/replace/stamp for creates, thread resolved links upward.
