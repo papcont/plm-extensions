@@ -1,12 +1,35 @@
 # Handover — Variant BOM Editor (`/variants-bom`) + IoT Pause-Button
 
-**Für den nächsten Chat.** Stand: Phasen 1–8 gebaut & per Playwright verifiziert. **Phase 8 (Material-Variation)
-LIVE-verifiziert** (Create+Reuse Mode b, Mode a intakt, IS_VARIANT gestempelt — Details in `VARIANTS-BOM-PLAN.md`).
-IoT-Button gebaut, braucht Server-Neustart zum Verifizieren. Nichts committed.
+**Für den nächsten Chat.** Stand: Phasen 1–8 gebaut & Playwright-verifiziert, dazu Node-Gate, Lazy-Stamping,
+UI-Fixes, Row-Dimming, **sprechende Titel + Basis-Verweis** — alles committed (siehe `git log`, ~14 lokale Commits).
 
-**Gotcha Phase 8:** `settings.js` ist **serverseitig** (ins `config`-Global injiziert) → Änderungen an `applications.variantsBom`
-brauchen **Server-Neustart**; nur JS/Pug/CSS sind statisch. Nach Neustart ist die APS-Session weg → neu „ERLAUBEN".
-Test-Items `00000745` (Blatt Stahl) + `00000746` (Baugruppe) erzeugt — archivieren wie 741–744.
+**⚠️ PUSH-REGEL (kritisch):** NIE zu `main` pushen — `main` ist Google-gehostet und **deployed sofort auf Produktion**.
+Immer nur Feature-Branch: `git push origin main:<branch>`. Lokaler `main` und `origin/main` sind **disjunkt** (keine
+gemeinsame History), ein Branch trägt die ganze lokale History. Nichts gepusht — nur auf ausdrückliche Ansage.
+
+**Gotcha:** `settings.js` ist serverseitig (ins `config`-Global injiziert) → Änderungen an `applications.variantsBom`
+brauchen **Server-Neustart**; JS/Pug/CSS sind statisch. Nach Neustart ist die APS-Session weg → neu „ERLAUBEN".
+Session läuft ~1h → mitten im Multi-Level-Create bricht sie mit `sections is not iterable` ab (kein Bug); Teil-Items
+per `IS_VARIANT=true`-Suche finden + `GET /plm/archive?wsId=57&dmsId=…` aufräumen.
+
+**GERADE NACHGERÜSTET (Titel + Basis-Verweis, aus Vergleich mit Variants Manager WS 241):**
+- Jede Variante bekommt **`TITLE = "<Basis-Name ohne Nr/Rev> - <Labels>"`** (z.B. „XL200 PART1 - Stahl", „XL200 - Stahl").
+  **Verifiziert** (Blatt 00000758, Baugruppe 00000759, danach archiviert). `TITLE` ist hardcoded (FM-Systemfeld).
+- **Basis-Verweis-Felder in WS 57 per FM-UI gerade angelegt:** `BASE_ITEM_NUMBER` + `DMS_ID_BASE_ITEM` (beide Einzeiliger
+  Text, 200/200, „Layout gespeichert" bestätigt). Code (`vbBaseRefFields`) stempelt sie automatisch, sobald sie in
+  `/plm/sections` erscheinen.
+- **OFFEN / NÄCHSTER SCHRITT:** Die 2 neuen Felder liegen noch unter **„Nicht zugewiesene Felder"** im Workspace Manager
+  (Tab 7 = `/plm/admin/workspace-manager/57/item-details-tab`). Prüfen, ob sie einer **Sektion** zugewiesen sein müssen,
+  damit `addFieldToPayload`/`/plm/sections` sie sieht (sonst überspringt der Code sie stumm). Ggf. im WS-Manager in einen
+  Abschnitt (z.B. „Basic") ziehen + „Layout speichern". Der v3-Cache (`/plm/fields`,`/plm/sections`) aktualisiert
+  **verzögert** (Minuten) — „noch nicht da" ist kein Fehler. Dann eine Variante erzeugen und prüfen, dass
+  `BASE_ITEM_NUMBER`/`DMS_ID_BASE_ITEM` auf Blatt **und** Baugruppen gestempelt sind. Server-Neustart macht die
+  neuen `config.fieldIds` (title/baseItemNumber/dmsIdBaseItem) sauber — Code-Fallbacks decken es bis dahin ab.
+
+**Konzept-Fazit (warum WS 57 richtig):** WS 241 (Variants Manager) hat nur 12 Felder und seine „Varianten" haben **keine
+eigene BOM** (leichte Attribut-Definition + Rückverweis). variants-bom erzeugt vollwertige, strukturell getauschte
+Baugruppen → gehören in WS 57. Wir übernehmen nur die **WS-241-Konventionen** (TITLE-Ableitung, BASE_ITEM_NUMBER,
+DMS_ID_BASE_ITEM als Textfelder), damit beide Tools konsistent sind.
 
 ## Umgebung / Fakten
 - Tenant **contelosuxdemo**, Port **8080**, Items-Workspace **57**, BOM-View **"Tree Navigator"**.
