@@ -1743,7 +1743,10 @@ exports.applications = {
             bomFingerprint : 'BOM_FINGERPRINT',   // searchable text: canonical BOM hash for dedup
             material       : 'MATERIAL',          // freetext: material value written on a material variant
             materialart    : 'MATERIALART',       // freetext: material category, part of the leaf identity
-            isVariant      : 'IS_VARIANT'         // checkbox: stamped true on every generated variant
+            isVariant      : 'IS_VARIANT',        // checkbox: stamped true on every generated variant
+            title          : 'TITLE',             // derived speaking title "<base> - <labels>" (FM system field)
+            baseItemNumber : 'BASE_ITEM_NUMBER',  // WS-241 convention: NUMBER of the original this variant came from
+            dmsIdBaseItem  : 'DMS_ID_BASE_ITEM'   // WS-241 convention: dmsId of the original (text back-reference)
         },
         materialPicklistId       : 'CUSTOM_LOOKUP_MATERIAL',   // live picklist for the material selector
         materialVariantNumbering : 'new',   // 'new' = clone gets an auto-number (primary); 'keep' = reuse fromNumber (deferred, see code)

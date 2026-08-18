@@ -105,6 +105,7 @@ function openAssembly(link) {
         vb.root = {
             link           : link,
             number         : getSectionFieldValue(response.data.sections, vb.fieldIds.number),
+            title          : response.data.title,                                                       // for the derived variant title
             variantAllowed : (rootAllowed === true || rootAllowed === 'true'),
             fingerprint    : getSectionFieldValue(response.data.sections, vb.fieldIds.bomFingerprint)   // '' if none yet
         };
@@ -362,6 +363,7 @@ function buildTreeFromDOM() {
         let path = row.attr('data-number-path');
         byPath[path] = {
             number         : row.attr('data-part-number'),
+            title          : row.attr('data-title'),
             quantity       : row.attr('data-quantity'),
             edgeId         : parseInt(row.attr('data-edgeid'), 10),
             link           : row.attr('data-link'),
@@ -372,6 +374,7 @@ function buildTreeFromDOM() {
 
     let root = {
         number         : vb.root ? vb.root.number : null,
+        title          : vb.root ? vb.root.title : null,
         quantity       : '1',
         edgeId         : null,
         link           : vb.root ? vb.root.link : null,
@@ -505,13 +508,16 @@ function vbEditFields(link, fields) {
     return $.post('/plm/edit', payload);
 }
 
-// Stamp the canonical fingerprint AND mark the item as a variant (IS_VARIANT=true).
+// Stamp the canonical fingerprint AND mark the item as a variant (IS_VARIANT=true), plus any
+// extra fields (material, derived title, base-item back-references) in the same /plm/edit.
 // Used for both generated leaves and generated assemblies.
-function vbStampFingerprint(link, fp) {
-    return vbEditFields(link, [
+function vbStampFingerprint(link, fp, extra) {
+    let fields = [
         { id : vb.fieldIds.bomFingerprint, value : fp   },
         { id : vb.fieldIds.isVariant,      value : true }
-    ]);
+    ];
+    if(extra) fields = fields.concat(extra);
+    return vbEditFields(link, fields);
 }
 
 // Identity a swapped child contributes to its parent's fingerprint.
@@ -526,6 +532,42 @@ function vbSwapIdentity(swap) {
 // The BOM_FINGERPRINT stored on a material-variant leaf (also the leaf-dedup search key).
 function vbLeafFingerprint(swap) {
     return fpHash(swap.fromNumber + '|' + swap.material + '|' + swap.materialart);
+}
+
+// Speaking variant title, WS-241 (Variants Manager) convention: "<base name> - <change labels>".
+// Base name = descriptor stripped of its leading "<number> - " and trailing "[REV:x]".
+function vbBaseName(title, number) {
+    let name = title || '';
+    if(number && name.indexOf(number + ' - ') === 0) name = name.substring((number + ' - ').length);
+    return name.replace(/\s*\[REV:[^\]]*\]\s*$/, '').trim();
+}
+
+// Distinct change labels across all swaps in this save: material name (mode 'material') or the
+// replacement's title (mode 'replace'). ponytail: labels are global to the save, not per-subtree,
+// so with several swaps in different branches a title may list a sibling branch's label too. Fine
+// for the common single-swap case; refine to per-node subtree labels if that becomes confusing.
+function vbSwapLabels() {
+    let labels = [];
+    for(let e in vb.swaps) { let s = vb.swaps[e]; labels.push(s.mode === 'material' ? s.material : s.toTitle); }
+    return labels.filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
+}
+
+function vbVariantTitle(baseTitle, baseNumber, labels) {
+    let base   = vbBaseName(baseTitle, baseNumber);
+    let suffix = labels.filter(Boolean).join(' / ');
+    if(base === '') return baseTitle || '';
+    return suffix ? base + ' - ' + suffix : base;
+}
+
+// Base-item back-references (WS-241 convention: BASE_ITEM_NUMBER + DMS_ID_BASE_ITEM as text).
+// addFieldToPayload silently drops fields that don't exist in the workspace, so this is a no-op
+// until those fields are created in WS 57 - then it just starts populating them.
+function vbBaseRefFields(baseNumber, baseLink) {
+    let dmsId = baseLink ? (baseLink.split('/items/')[1] || '') : '';
+    return [
+        { id : (config.fieldIds.baseItemNumber || 'BASE_ITEM_NUMBER'), value : baseNumber },
+        { id : (config.fieldIds.dmsIdBaseItem  || 'DMS_ID_BASE_ITEM'), value : dmsId }
+    ];
 }
 
 
@@ -678,14 +720,16 @@ async function vbExecutePlan(tree, changed) {
 
             if(s._leafExisting) { s.toLink = s._leafExisting.link; continue; }
 
-            let leaf   = await vbCloneAssembly(s.fromLink);   // works for leaves too (shallow clone)
-            let fields = [{ id : vb.fieldIds.material, value : s.material }];
+            let leaf  = await vbCloneAssembly(s.fromLink);   // works for leaves too (shallow clone)
+            let extra = [
+                { id : vb.fieldIds.material, value : s.material },
+                { id : 'TITLE',              value : vbVariantTitle(s.fromTitle, s.fromNumber, [s.material]) }
+            ].concat(vbBaseRefFields(s.fromNumber, s.fromLink));
             // ponytail: 'keep' (same NUMBER, only MATERIAL differs) resets the number but does NOT make
             // regular leaves carry material in their identity -> cross-assembly dedup stays number-only.
             // That is the documented O(n) ceiling; 'new' is primary. Upgrade: add material to leaf identity.
-            if(config.materialVariantNumbering === 'keep') fields.push({ id : vb.fieldIds.number, value : s.fromNumber });
-            await vbEditFields(leaf, fields);
-            await vbStampFingerprint(leaf, s._leafFp);   // BOM_FINGERPRINT = leaf fp + IS_VARIANT=true
+            if(config.materialVariantNumbering === 'keep') extra.push({ id : vb.fieldIds.number, value : s.fromNumber });
+            await vbStampFingerprint(leaf, s._leafFp, extra);   // fp + IS_VARIANT + material + title + base refs
             s.toLink = leaf;
         }
 
@@ -705,7 +749,9 @@ async function vbExecutePlan(tree, changed) {
 
             if(prev.length) await new Promise(res => replaceBOMItems(cloneLink, prev, next, res));
 
-            await vbStampFingerprint(cloneLink, n._fp);
+            let extra = [{ id : 'TITLE', value : vbVariantTitle(n.title, n.number, vbSwapLabels()) }]
+                            .concat(vbBaseRefFields(n.number, n.link));
+            await vbStampFingerprint(cloneLink, n._fp, extra);   // fp + IS_VARIANT + title + base refs
 
             resolved[n.link] = cloneLink;
         }
