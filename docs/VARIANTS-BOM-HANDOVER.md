@@ -18,13 +18,14 @@ per `IS_VARIANT=true`-Suche finden + `GET /plm/archive?wsId=57&dmsId=…` aufrä
 - **Basis-Verweis-Felder in WS 57 per FM-UI gerade angelegt:** `BASE_ITEM_NUMBER` + `DMS_ID_BASE_ITEM` (beide Einzeiliger
   Text, 200/200, „Layout gespeichert" bestätigt). Code (`vbBaseRefFields`) stempelt sie automatisch, sobald sie in
   `/plm/sections` erscheinen.
-- **OFFEN / NÄCHSTER SCHRITT:** Die 2 neuen Felder liegen noch unter **„Nicht zugewiesene Felder"** im Workspace Manager
-  (Tab 7 = `/plm/admin/workspace-manager/57/item-details-tab`). Prüfen, ob sie einer **Sektion** zugewiesen sein müssen,
-  damit `addFieldToPayload`/`/plm/sections` sie sieht (sonst überspringt der Code sie stumm). Ggf. im WS-Manager in einen
-  Abschnitt (z.B. „Basic") ziehen + „Layout speichern". Der v3-Cache (`/plm/fields`,`/plm/sections`) aktualisiert
-  **verzögert** (Minuten) — „noch nicht da" ist kein Fehler. Dann eine Variante erzeugen und prüfen, dass
-  `BASE_ITEM_NUMBER`/`DMS_ID_BASE_ITEM` auf Blatt **und** Baugruppen gestempelt sind. Server-Neustart macht die
-  neuen `config.fieldIds` (title/baseItemNumber/dmsIdBaseItem) sauber — Code-Fallbacks decken es bis dahin ab.
+- **ERLEDIGT & VERIFIZIERT (Playwright):** Beide Felder einer Sektion zugewiesen (lösen jetzt Section-ID 203 via
+  `getFieldSectionId` auf). Material-Variante „Kupfer" von XL200 PART1 erzeugt → **Blatt** (33636: `BASE_ITEM_NUMBER=XL200 PART1`,
+  `DMS_ID_BASE_ITEM=17195`) **und Baugruppe** (33637: `BASE_ITEM_NUMBER=XL200`, `DMS_ID_BASE_ITEM=33508`) korrekt gestempelt,
+  dazu `IS_VARIANT=true` + `TITLE` + `BOM_FINGERPRINT`. Test-Items 33636/33637 (00000760/761) danach archiviert.
+  Merke: `/plm/sections` mit `updateCache=true` abrufen, sonst greift der v3-Cache noch auf den alten Layout-Stand.
+- **⚠️ ALTLAST:** Die frühen Titel-Test-Items **00000758** (XL200 PART1 - Stahl) + **00000759** (XL200 - Stahl) sind noch
+  **live** (Dedup fand sie als Reuse-Kandidaten) — im Handover als „archiviert" notiert, war es aber nicht. Sie stammen von
+  **vor** der Feld-Zuweisung → tragen **keine** Basis-Refs. Bei Bedarf archivieren (`GET /plm/archive?wsId=57&dmsId=…`).
 
 **Konzept-Fazit (warum WS 57 richtig):** WS 241 (Variants Manager) hat nur 12 Felder und seine „Varianten" haben **keine
 eigene BOM** (leichte Attribut-Definition + Rückverweis). variants-bom erzeugt vollwertige, strukturell getauschte
