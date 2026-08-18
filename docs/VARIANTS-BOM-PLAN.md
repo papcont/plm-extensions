@@ -180,6 +180,12 @@ aber bestätigt unseren bottom-up + Aufwärts-Propagations-Ansatz 1:1. Verwertba
   idempotent (nie überschreiben, Guard über `vb.root.fingerprint`), Fehler → Retry beim nächsten Öffnen.
   Das Feld füllt sich über normale Nutzung; Dedup trifft danach auch handgebaute Originale. Kein Batch.
   Verifiziert: XL200 (33508) beim Öffnen gestempelt (`ae8db25710fe9585`, IS_VARIANT=false), per Suche auffindbar.
-- Swap-Picker filtern (aktuell ganzer Workspace, keine Klassen-/Typ-Einschränkung).
+- ~~Swap-Picker filtern~~ **deferred (YAGNI).** Der Picker sucht per Descriptor — der User tippt gezielt, das ist
+  die natürliche Einschränkung. Eine harte Klassen-/Typ-Filterung bräuchte selbst Tenant-Config und löst kein
+  konkretes Problem. Bauen, wenn ein realer Fehlgriff-Fall auftritt.
+- **Teile flaggen ist Betriebsaufgabe, kein Code.** Welche Teile variierbar sind, entscheidet der Kunde und setzt
+  `VARIANT_ALLOWED` — genau den Workflow erzwingt das Node-Gate. Der Migrations-„Rest" (nach dem Entflaggen der
+  3 Test-Baugruppen) ist damit normale Nutzung. (Test-Tenant: Demo-Blatt `16821` unter 16789 geflaggt, damit der
+  mehrstufige Trancheur-Pfad demonstrierbar bleibt.)
 - Zählen Positions-/Find-Nummern zum Fingerprint? (Default: nein.)
 - Teil-Propagation statt Blockade zulassen? (aktuell Blockade am ungeflaggten Parent.)

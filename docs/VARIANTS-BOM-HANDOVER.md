@@ -26,6 +26,11 @@ Test-Items `00000745` (Blatt Stahl) + `00000746` (Baugruppe) erzeugt — archivi
 - **`/plm/edit`:** `$.post('/plm/edit', {link, sections})` (jQuery-Bracket-Serialisierung ok). Sections bauen mit `addFieldToPayload(payload.sections, wsSections, null, FIELD, value)`, `wsSections = (GET /plm/sections?wsId=57).data`.
 - **BOM-Add nimmt Master/Root-Version** des Teils (z.B. 28540→26226). Fingerprint nutzt **NUMBER** (revisionsunabhängig) → konsistent.
 - **Panel-Mount:** `insertBOM/insertDetails/insertWorkspaceSearch/insertViewer` rendern in ein DOM-Element mit `id == params.id`. Container: `#bom`, `#item`, `#viewer`.
+- **Session-Ablauf mitten im Create:** läuft die APS-Session (~1h) während eines mehrstufigen Creates ab, geben die
+  `/plm/details`-Reads **401** zurück → `vbCloneAssembly` wirft `d.data.sections is not iterable` und der Create bricht
+  ab ("Creation failed"). Kein App-Bug, globales Framework-Verhalten (XHR kann nicht re-authen). Kann **Teil-Items**
+  hinterlassen → per Suche `IS_VARIANT=true` (comparator 13) finden und via `GET /plm/archive?wsId=57&dmsId=…` (204,
+  reversibel) aufräumen. Vor langen Läufen ggf. frisch re-authen (App-URL öffnen → „ERLAUBEN").
 
 ## Dateien (uncommitted)
 - **Neu:** `views/apps/variants-bom.pug`, `public/javascripts/apps/variants-bom.js`, `public/javascripts/custom/variants-bom.js`, `public/stylesheets/apps/variants-bom.css`, `public/stylesheets/custom/variants-bom.css`, `docs/VARIANTS-BOM-PLAN.md`, `docs/VARIANTS-BOM-HANDOVER.md`.
