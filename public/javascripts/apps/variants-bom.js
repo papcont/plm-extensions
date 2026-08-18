@@ -9,6 +9,7 @@ let vb = {
     root      : null,                        // launched assembly { link, number, variantAllowed }
     selected  : null,                        // BOM node currently being replaced
     materials : null,                        // cached material picklist labels (Phase 8)
+    flagged   : null,                        // { dmsId: true } of VARIANT_ALLOWED items (gates node selection)
     swaps     : {}                           // edgeId -> { mode, fromLink, fromTitle, toLink/material, row }
 };
 
@@ -76,6 +77,8 @@ function ensureVariantFlags(callback) {
         let flagged = {};
         let rows = (r.data && r.data.row) ? r.data.row : [];
         for(let row of rows) flagged[row.dmsId] = true;
+
+        vb.flagged = flagged;   // cached for the selection gate (selectNodeForSwap)
 
         $('#bom tr[data-dmsid]').each(function() {
             if(flagged[$(this).attr('data-dmsid')]) $(this).addClass('variant-allowed');
@@ -147,6 +150,19 @@ function selectNodeForSwap(elemClicked) {
 
     let link = elemClicked.attr('data-link');
     if(isBlank(link)) return;
+
+    // Selection gate: only VARIANT_ALLOWED items are variation points. Fail-open while the flag
+    // search is still in flight (vb.flagged === null) - the gate is UX guidance, not a hard lock.
+    let dmsId = elemClicked.attr('data-dmsid');
+    if(vb.flagged !== null && !vb.flagged[dmsId]) {
+        $('#bom tr.swap-selected').removeClass('swap-selected');
+        elemClicked.addClass('swap-selected');
+        let elem = $('#item').removeClass().addClass('surface-level-3').html('');
+        $('<div></div>').appendTo(elem).css({ padding : '16px', opacity : 0.75 })
+            .html('"' + (elemClicked.attr('data-part-number') || 'This item') + '" is not marked variant-eligible ' +
+                  '(VARIANT_ALLOWED). Flag it to vary it.');
+        return;
+    }
 
     vb.selected = {
         row         : elemClicked,
@@ -691,7 +707,9 @@ async function vbExecutePlan(tree, changed) {
 }
 
 
-// BOM fully rendered (also fires on view change / reload).
+// BOM fully rendered (also fires on view change / reload). Always resolve the VARIANT_ALLOWED
+// flags (one indexed search) so the selection gate knows which nodes are variation points -
+// not just when the filter is on.
 function onBOMLoaded(id, data) {
-    if($('body').hasClass('variant-filter')) ensureVariantFlags();
+    ensureVariantFlags();
 }

@@ -157,8 +157,11 @@ automatisch mitgenommen. Kein Baugruppen-Flag, keine Blockade mehr.
       propagierte Baugruppe `00000746` (IS_VARIANT=true, fp `221b5ab2df475a45`), altes PART1 (17195) ersetzt;
       **Reuse:** identischer Swap → „Reuse 00000745" + „Reuse 00000746", 0 erzeugt; **Mode a** Picker rendert nach Layout-Umzug.
       Selbsttest um Material-Identitäts-Vertrag erweitert (grün). Test-Items `00000745`/`00000746` zum Archivieren.
-- **Offen:** Node-Selektion nicht auf `VARIANT_ALLOWED`-Teile beschränkt; `'keep'`-Nummerierung (O(n), deferred);
-      cross-session Re-Derivation der Baugruppen-Fingerprints aus echter BOM (Tool bleibt über Swap-Flow konsistent).
+- [x] **Node-Selektion auf `VARIANT_ALLOWED` beschränkt** (verifiziert): `ensureVariantFlags` läuft bei jedem
+      BOM-Load (eine indizierte Suche → `vb.flagged`); Klick auf ungeflaggten Knoten zeigt Hinweis statt Picker,
+      fail-open solange die Flag-Suche noch läuft.
+- **Offen:** `'keep'`-Nummerierung (O(n), deferred); cross-session Re-Derivation der Baugruppen-Fingerprints
+      aus echter BOM (Tool bleibt über Swap-Flow konsistent).
 
 ## Phase 6 — Backlog (aus `knowledge/Contelos.Vault.CopyItem` abgeleitet)
 Referenz-Tool (Vault C#-Add-in) löst dasselbe Problem im Desktop; **Code nicht übernehmbar** (Vault ≠ FM),
