@@ -83,6 +83,7 @@
             var st = res && res.data;
             if (!st || !st.summary) { $('#cm-source').text('source: live · asset ' + liveAsset + ' · waiting for first uplink'); return; }
             var sm = st.summary;
+            if (sm.deviceId) renderSensors([{ name: 'Live sensor', deviceId: sm.deviceId }], null);
             if (sm.lastTelemetry !== liveSeenT) {
                 liveSeenT = sm.lastTelemetry;
                 if (sm.deviceId) $('#cm-source').text('source: live · ' + sm.deviceId + ' · asset ' + liveAsset);
@@ -305,8 +306,13 @@
         $('#cm-asset-name').text(desc || (ws + '/' + dms));
         $('#cm-asset-link').attr('href', assetUrl(ws, dms));
         var assetLink = '/api/v3/workspaces/' + ws + '/items/' + dms;
-        insertImages(assetLink, { id: 'cm-asset-images', hideHeader: true });
-        insertDetails(assetLink, { id: 'cm-asset-details', hideHeader: true, hideComputed: true });
+        insertDetails(assetLink, {
+            id: 'cm-asset-details', hideHeader: true, hideComputed: true,
+            sectionsIn: [
+                'Header', 'Asset Configuration', 'Customer Details & Asset Location',
+                'Asset Images', 'Warranty', 'Last Service & Operating Hours', 'IoT'
+            ]
+        });
         $.getJSON('/plm/details?wsId=' + ws + '&dmsId=' + dms, function (res) {
             var d = res.data || res;
             if (!desc && d.title) $('#cm-asset-name').text(d.title);
