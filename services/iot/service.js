@@ -139,6 +139,7 @@ function createRuntime(overrides = {}) {
             },
             condition: evaluated,
             health: { score: latest.healthScore, vibration, temperature: metrics.temperature },
+            analytics: null,
             events,
         };
     }

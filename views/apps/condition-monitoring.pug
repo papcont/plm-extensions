@@ -74,28 +74,47 @@ block body
                     .cm-value
                         span#cm-health -
                         span.cm-unit  %
+                .cm-tile#cm-tile-ai
+                    .cm-label AI model
+                    .cm-value
+                        span#cm-ai-state.cm-value-sm -
+                    .cm-tile-sub#cm-ai-samples -
+                .cm-tile#cm-tile-anomaly
+                    .cm-label Anomaly
+                    .cm-value
+                        span#cm-anomaly -
+                    .cm-tile-sub#cm-anomaly-driver -
+                .cm-tile
+                    .cm-label Vibration
+                    .cm-value
+                        span#cm-vib -
+                        span.cm-unit#cm-vib-unit  g
+                        span#cm-vib-trend.cm-trend
                 .cm-tile
                     .cm-label Temperature
                     .cm-value
                         span#cm-temp -
                         span.cm-unit  °C
                 .cm-tile
+                    .cm-label Trend
+                    .cm-value
+                        span#cm-trend.cm-value-sm -
+                .cm-tile
                     .cm-label Humidity
                     .cm-value
                         span#cm-humidity -
                         span.cm-unit  %
-                .cm-tile
-                    .cm-label Vibration
-                    .cm-value
-                        span#cm-vib -
-                        span.cm-unit  g
-                        span#cm-vib-trend.cm-trend
                 .cm-tile
                     .cm-label Last update
                     .cm-value.cm-value-sm#cm-updated -
                 .cm-tile
                     .cm-label Last event
                     .cm-value.cm-value-sm#cm-last-event -
+
+            #cm-why.surface-level-2
+                .cm-section-title Why is this unusual?
+                #cm-why-body
+                    .cm-events-empty Learning this asset’s normal behavior…
 
             #cm-controls.surface-level-2
                 .cm-control-label Time range
@@ -122,7 +141,11 @@ block body
                     .cm-chart-title Health trend
                     canvas.cm-chart#cm-chart-health(height='160')
                 .cm-chart-card.surface-level-2
-                    .cm-chart-title Vibration trend (g)
+                    .cm-chart-title
+                        span Vibration trend (
+                        span#cm-vib-chart-unit g
+                        span )
+                        span.cm-chart-hint  · band = learned normal
                     canvas.cm-chart#cm-chart-vib(height='160')
                 .cm-chart-card.surface-level-2
                     .cm-chart-title Temperature trend (°C)

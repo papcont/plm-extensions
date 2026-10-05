@@ -3,12 +3,13 @@
 // band is WARNING, past critical is CRITICAL). NORMAL vs OBSERVE is split by the continuous health
 // score (early drift before any threshold is crossed). All bands/thresholds are configurable.
 
-const { vibrationMagnitude } = require('./canonical');
+const { vibrationMagnitude, vibrationUnit } = require('./canonical');
 
 const ORDER = ['OFF', 'NORMAL', 'OBSERVE', 'WARNING', 'CRITICAL'];
 
 function evaluate(health, metrics, thresholds, bands, options = {}) {
     const vibration = vibrationMagnitude(metrics);
+    const vUnit = vibrationUnit(metrics);   // mm/s (Netvox velocity) or g (Dragino accel) — never hardcoded
     const temperature = metrics.temperature;
     const hasTemp = typeof temperature === 'number';
 
@@ -20,13 +21,13 @@ function evaluate(health, metrics, thresholds, bands, options = {}) {
     }
 
     if (vibration >= thresholds.vibration.critical) {
-        return { condition: 'CRITICAL', reason: 'vibration ' + round1(vibration) + ' mm/s >= critical ' + thresholds.vibration.critical };
+        return { condition: 'CRITICAL', reason: 'vibration ' + round1(vibration) + ' ' + vUnit + ' >= critical ' + thresholds.vibration.critical };
     }
     if (hasTemp && temperature >= thresholds.temperature.critical) {
         return { condition: 'CRITICAL', reason: 'temperature ' + round1(temperature) + ' °C >= critical ' + thresholds.temperature.critical };
     }
     if (vibration >= thresholds.vibration.warn) {
-        return { condition: 'WARNING', reason: 'vibration ' + round1(vibration) + ' mm/s >= warn ' + thresholds.vibration.warn };
+        return { condition: 'WARNING', reason: 'vibration ' + round1(vibration) + ' ' + vUnit + ' >= warn ' + thresholds.vibration.warn };
     }
     if (hasTemp && temperature >= thresholds.temperature.warn) {
         return { condition: 'WARNING', reason: 'temperature ' + round1(temperature) + ' °C >= warn ' + thresholds.temperature.warn };

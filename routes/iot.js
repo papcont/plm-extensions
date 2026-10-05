@@ -18,6 +18,13 @@ router.get('/config', function(req, res) {
         fusionManageWrites: rt.config.fusionManageWrites,
         thresholds        : rt.config.thresholds,
         conditionBands    : rt.config.conditionBands,
+        analytics         : rt.config.analytics ? {
+            enabled          : rt.config.analytics.enabled,
+            minimumSamples   : rt.config.analytics.minimumSamples,
+            observeThreshold : rt.config.analytics.observeThreshold,
+            warningThreshold : rt.config.analytics.warningThreshold,
+            criticalThreshold: rt.config.analytics.criticalThreshold,
+        } : null,
     }});
 });
 
