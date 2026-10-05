@@ -11,6 +11,7 @@
     var cfg = null;                 // /iot/config payload (thresholds, bands, source)
     var samples = [];               // { t, health, vibration, temperature, condition }
     var events = [];                // condition events, newest first
+    var latestAnalytics = null;     // learned-baseline snapshot from the last poll (modelState, anomaly, baseline)
     var paused = false;
     var timer = null;
     var liveAsset = null;           // FM asset id when bound to a real sensor; null => simulator demo
@@ -69,6 +70,7 @@
                 condition: d.condition.condition
             });
             if (samples.length > 5000) samples.splice(0, samples.length - 5000);
+            if (d.analytics) latestAnalytics = d.analytics;
             if (d.conditionEvent) { events.unshift(d.conditionEvent); if (events.length > 50) events.pop(); renderEvents(); }
             renderTiles();
             renderCharts();
@@ -97,6 +99,7 @@
                 });
                 if (samples.length > 5000) samples.splice(0, samples.length - 5000);
             }
+            if (st.analytics) latestAnalytics = st.analytics;
             events = (st.events || []).slice().reverse();   // bridge stores oldest-first; UI wants newest-first
             renderEvents();
             renderTiles();
@@ -176,6 +179,77 @@
             else                                          trend.text(' –').css('color', '#8a8f98');
         }
         if (events[0]) $('#cm-last-event').text(events[0].severity + ' · ' + new Date(events[0].timestamp).toLocaleTimeString());
+        renderAnalyticsTiles();
+    }
+
+    // AI-model state, anomaly score, trend, and the vibration unit — all from the learned-baseline snapshot.
+    function renderAnalyticsTiles() {
+        var a = latestAnalytics;
+        if (a && a.unit) { $('#cm-vib-unit').text(' ' + a.unit); $('#cm-vib-chart-unit').text(a.unit); }
+        if (!a) { $('#cm-ai-state').text('-'); $('#cm-anomaly').text('-'); $('#cm-trend').text('-'); return; }
+
+        var ready = a.modelState === 'READY';
+        $('#cm-ai-state').text(a.modelState || '-').css('color', ready ? '#3fb950' : '#58a6ff');
+        var min = a.minimumSamples || (cfg && cfg.analytics && cfg.analytics.minimumSamples) || 0;
+        $('#cm-ai-samples').text(ready ? ('samples ' + a.sampleCount) : ('samples ' + a.sampleCount + ' / ' + min));
+
+        if (typeof a.anomalyScore === 'number') {
+            $('#cm-anomaly').text(a.anomalyScore.toFixed(2)).css('color', anomalyColor(a.anomalyScore));
+            $('#cm-anomaly-driver').text(a.primaryDriver ? ('driver: ' + a.primaryDriver) : '');
+        } else {
+            $('#cm-anomaly').text(ready ? '0.00' : '–').css('color', '');
+            $('#cm-anomaly-driver').text(ready ? '' : 'learning');
+        }
+        $('#cm-trend').text(a.trend || '-');
+        renderWhy();
+    }
+
+    function anomalyColor(score) {
+        var A = cfg && cfg.analytics;
+        if (!A) return '';
+        if (score >= A.criticalThreshold) return '#f85149';
+        if (score >= A.warningThreshold)  return '#d29922';
+        if (score >= A.observeThreshold)  return '#58a6ff';
+        return '#3fb950';
+    }
+
+    // Explainability: build the "why" from the computed analytics facts — never invented text.
+    function renderWhy() {
+        var a = latestAnalytics, body = $('#cm-why-body');
+        if (!a) return;
+        if (a.modelState !== 'READY') {
+            body.html('<div class="cm-why-line">Learning this asset’s normal behavior — ' +
+                escapeHtml('samples ' + a.sampleCount + ' / ' + (a.minimumSamples || '?')) + '.</div>');
+            return;
+        }
+        var vb = a.baseline && a.baseline.vibration, vd = a.drivers && a.drivers.vibration;
+        var td = a.drivers && a.drivers.temperature;
+        var unit = a.unit || '';
+        var lines = [];
+        var abnormal = typeof a.anomalyScore === 'number' && a.anomalyScore >= (cfg && cfg.analytics ? cfg.analytics.observeThreshold : 0.4);
+        lines.push('<div class="cm-why-head" style="color:' + anomalyColor(a.anomalyScore || 0) + '">' +
+            (abnormal ? 'Primary deviation: ' + escapeHtml(a.primaryDriver || 'vibration') : 'Within learned normal') +
+            ' · anomaly ' + (a.anomalyScore != null ? a.anomalyScore.toFixed(2) : '0.00') + '</div>');
+        if (vb) {
+            lines.push(whyRow('Vibration', (vd ? vd.current : '?') + ' ' + unit,
+                'learned median ' + vb.median + ' ' + unit + ', normal ' + vb.lower + '–' + vb.upper + ' ' + unit +
+                (vd ? ', deviation ' + vd.z + ' MAD' : '')));
+        }
+        if (td) {
+            lines.push(whyRow('Temperature', td.current + ' °C',
+                'learned median ' + (a.baseline.temperature ? a.baseline.temperature.median : '?') + ' °C' +
+                ', deviation ' + td.z + ' MAD'));
+        } else {
+            lines.push(whyRow('Temperature', 'within normal range', ''));
+        }
+        lines.push('<div class="cm-why-line">Trend: ' + escapeHtml(a.trend || 'STABLE') + '</div>');
+        body.html(lines.join(''));
+    }
+
+    function whyRow(label, value, detail) {
+        return '<div class="cm-why-line"><span class="cm-why-label">' + escapeHtml(label) + ':</span> ' +
+            '<span class="cm-why-value">' + escapeHtml(String(value)) + '</span>' +
+            (detail ? ' <span class="cm-why-detail">(' + escapeHtml(detail) + ')</span>' : '') + '</div>';
     }
 
     function renderEvents() {
@@ -209,9 +283,16 @@
             min: 0, max: 100, accent: '#58a6ff',
             guides: [{ v: (cfg && cfg.conditionBands.warning) || 40, color: '#d29922' }]
         });
-        var vibScale = { min: 0, max: 0.15, divisions: 3 };
-        lineChart('cm-chart-vib', data.map(function (s) { return s.vibration; }), data, {
+        var band = latestAnalytics && latestAnalytics.baseline && latestAnalytics.baseline.vibration;
+        var vibValues = data.map(function (s) { return s.vibration; });
+        // Scale to fit both the samples and the learned normal band, so the band is always visible.
+        var vibScale = autoScale(
+            vibValues.concat(band ? [band.lower, band.upper, band.median] : []),
+            band ? Math.max(band.upper - band.lower, 0.02) : 0.05, true, 4);
+        lineChart('cm-chart-vib', vibValues, data, {
             min: vibScale.min, max: vibScale.max, divisions: vibScale.divisions, accent: '#d29922',
+            band: band ? { median: band.median, lower: band.lower, upper: band.upper,
+                           provisional: latestAnalytics.modelState !== 'READY' } : null,
             guides: [{ v: th.vibration.warn, color: '#d29922' }, { v: th.vibration.critical, color: '#f85149' }]
         });
         var tempScale = focusedTemperatureScale(data.map(function (s) { return s.temperature; }));
@@ -258,6 +339,22 @@
             var y = yOf(val);
             ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + w, y); ctx.stroke();
             ctx.fillText(formatAxis(val, range / divisions), 4, y + 3);
+        }
+        // learned normal band (shaded region between lower/upper + dashed median) — "this is normal for
+        // THIS asset". Drawn under the guides and value line. Dashed/fainter while the model is provisional.
+        if (opts.band && typeof opts.band.median === 'number') {
+            var bLo = yOf(clamp(opts.band.lower, opts.min, opts.max));
+            var bHi = yOf(clamp(opts.band.upper, opts.min, opts.max));
+            ctx.save();
+            ctx.fillStyle = dark ? 'rgba(63,185,80,0.14)' : 'rgba(63,185,80,0.12)';
+            ctx.fillRect(padL, bHi, w, Math.max(1, bLo - bHi));
+            if (opts.band.median >= opts.min && opts.band.median <= opts.max) {
+                ctx.strokeStyle = opts.band.provisional ? '#8a8f98' : '#3fb950';
+                ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+                var my = yOf(opts.band.median);
+                ctx.beginPath(); ctx.moveTo(padL, my); ctx.lineTo(padL + w, my); ctx.stroke();
+            }
+            ctx.restore();
         }
         // guide lines (thresholds)
         (opts.guides || []).forEach(function (guide) {

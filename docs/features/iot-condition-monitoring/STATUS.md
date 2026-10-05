@@ -1,6 +1,26 @@
 # STATUS — IoT / Condition Monitoring
 
-_Last updated: 2026-08-12_
+_Last updated: 2026-10-05_
+
+## AI Phase 1 — Learned Condition Monitoring added (2026-10-05, `npm test` = 61/61, branch `feature/iot-predictive-ai-phase1`)
+- New **`services/iot/analytics.js`**: per-asset learned baseline (rolling **median + MAD** + normal
+  band), robust-Z **anomaly score 0..1**, primary driver, hysteresis, trend, update gate. Pure and
+  hardware-independent (behind the canonical boundary → simulator + Dragino + future sensors share it).
+- **`bridge.js`** folds it in additively: threshold health/condition unchanged; `effectiveHealth =
+  min(threshold, anomaly)`, `finalCondition = worst(threshold, stabilized-anomaly)`; update gate stops
+  a fault from being learned as normal; **history bootstrap** seeds the model on restart (normal points
+  only); OFF machines are not flagged. **Unit fix**: condition reasons use mm/s (Netvox) vs g (Dragino).
+- **UI extended in place**: AI-model + Anomaly + Trend tiles, learned-normal **band on the vibration
+  chart**, and a **WHY panel** (facts only, no LLM). `/iot/state|tick|config` now carry analytics.
+- **12 new tests** (`test/iot/analytics.test.js`) + full simulator arc verified headless
+  (`LEARNING→READY→WARNING→CRITICAL→recovery`). No new FM fields created; FM stays business-state.
+- Full design, config, algorithm, limitations & verification: **`AI-PHASE1.md`**.
+- **Not verified**: live browser UI (server is user-started) — restart required for
+  `/condition-monitoring?wsId=904&dmsId=30057`.
+
+---
+
+_Earlier history below (last updated 2026-08-12):_
 
 ## Implemented & tested (automated, `npm test` = 23/23 green)
 - **Canonical model** (`services/iot/canonical.js`) — versioned schema, validation, unknown-metric rejection.

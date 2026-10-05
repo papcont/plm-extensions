@@ -84,7 +84,17 @@
 }
 .cm-chart-card { padding: 12px; border-radius: 8px; }
 .cm-chart-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; opacity: 0.85; }
+.cm-chart-hint { font-weight: 400; opacity: 0.55; }
 .cm-chart { width: 100%; display: block; }
+
+/* analytics: tile sub-labels + why panel */
+.cm-tile-sub { font-size: 11px; opacity: 0.6; }
+#cm-why { padding: 16px; border-radius: 8px; }
+.cm-why-head { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.cm-why-line { font-size: 13px; line-height: 1.6; }
+.cm-why-label { font-weight: 600; opacity: 0.85; }
+.cm-why-value { font-weight: 500; }
+.cm-why-detail { opacity: 0.6; }
 
 /* events */
 #cm-events { padding: 16px; border-radius: 8px; }

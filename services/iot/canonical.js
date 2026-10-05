@@ -84,7 +84,14 @@ function vibrationMagnitude(metrics) {
     return 0;
 }
 
+// The unit of vibrationMagnitude for THIS reading — it depends on the device: velocity mm/s (Netvox
+// R718E) or peak acceleration g (Dragino LHT65N-VIB). Used so reasons/UI never label a g value as mm/s.
+function vibrationUnit(metrics) {
+    if ('velocityX' in metrics || 'velocityY' in metrics || 'velocityZ' in metrics) return 'mm/s';
+    return 'g';
+}
+
 module.exports = {
     SCHEMA_VERSION, CORE_METRICS, DETAIL_METRICS, KNOWN_METRICS,
-    createEvent, validate, vibrationMagnitude,
+    createEvent, validate, vibrationMagnitude, vibrationUnit,
 };

@@ -76,6 +76,30 @@ const config = {
     // Health -> condition bands (health score 0-100).
     conditionBands : { normal: 80, observe: 60, warning: 40 }, // >=80 NORMAL, 60-79 OBSERVE, 40-59 WARNING, <40 CRITICAL
 
+    // Learned-baseline analytics (services/iot/analytics.js). Per-asset: learns each asset's own normal
+    // vibration/temperature band and scores how far the current reading deviates (robust median/MAD).
+    // Units-agnostic (works on the canonical amplitude, mm/s or g). All knobs documented in analytics.js
+    // DEFAULTS; override per deployment via environment.js `exports.iot.analytics`.
+    analytics : {
+        enabled           : bool(process.env.IOT_ANALYTICS_ENABLED, true),
+        minimumSamples    : Number(process.env.IOT_ANALYTICS_MIN_SAMPLES) || 20,
+        historyWindow     : Number(process.env.IOT_ANALYTICS_HISTORY_WINDOW) || 200,
+        bandFactor        : 3,
+        zLow              : 2,
+        zHigh             : 8,
+        epsilonVibration  : 0.01,
+        epsilonTemperature: 0.5,
+        learningThreshold : 0.35,
+        observeThreshold  : 0.40,
+        warningThreshold  : 0.60,
+        criticalThreshold : 0.85,
+        escalationSamples : Number(process.env.IOT_ANALYTICS_ESCALATION_SAMPLES) || 3,
+        recoverySamples   : Number(process.env.IOT_ANALYTICS_RECOVERY_SAMPLES) || 3,
+        trendWindow       : 12,
+        trendDelta        : 0.08,
+        weights           : { vibration: 1, temperature: 0.6 },
+    },
+
     // Simulation cadence. tickMs = wall interval between emitted readings; timeScale compresses
     // simulated time so a long run demos fast (each tick advances timeScale*tickMs of sim time).
     simulation : {
@@ -116,6 +140,7 @@ config.applyDeployment = function(env) {
     // g-scale vibration bands for a Dragino deployment, etc. Shallow per-metric merge so overriding
     // vibration alone keeps the default temperature band.
     if (iot.thresholds) config.thresholds = Object.assign({}, config.thresholds, iot.thresholds);
+    if (iot.analytics) config.analytics = Object.assign({}, config.analytics, iot.analytics);
     if (iot.ttnMqtt) config.ttnMqtt = Object.assign({}, config.ttnMqtt, iot.ttnMqtt);
     return config;
 };
