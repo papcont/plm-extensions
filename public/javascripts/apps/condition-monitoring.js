@@ -305,17 +305,10 @@
         $('#cm-asset').show();
         $('#cm-asset-name').text(desc || (ws + '/' + dms));
         $('#cm-asset-link').attr('href', assetUrl(ws, dms));
-        var assetLink = '/api/v3/workspaces/' + ws + '/items/' + dms;
-        insertDetails(assetLink, {
-            id: 'cm-asset-details', hideHeader: true, hideComputed: true,
-            sectionsIn: [
-                'Header', 'Asset Configuration', 'Customer Details & Asset Location',
-                'Asset Images', 'Warranty', 'Last Service & Operating Hours', 'IoT'
-            ]
-        });
         $.getJSON('/plm/details?wsId=' + ws + '&dmsId=' + dms, function (res) {
             var d = res.data || res;
             if (!desc && d.title) $('#cm-asset-name').text(d.title);
+            renderAssetInfo(d);
             var link = findFieldLink(d, 'SENSORS_LIST');
             var m = link && link.match(/workspaces\/(\d+)\/items\/(\d+)/);
             if (!m) { renderSensors([], 'This asset has no linked sensor.'); return; }
@@ -351,6 +344,23 @@
         var f = findField(details, fieldId);
         if (!f || f.value == null) return null;
         return (typeof f.value === 'object') ? (f.value.title || f.value.descriptor || null) : String(f.value);
+    }
+
+    function renderAssetInfo(details) {
+        var values = {
+            'cm-info-id': findFieldValue(details, 'ID'),
+            'cm-info-title': details.title || findFieldValue(details, 'TITLE'),
+            'cm-info-customer': findFieldValue(details, 'CUSTOMER'),
+            'cm-info-project': findFieldValue(details, 'PROJECT_TYPE'),
+            'cm-info-asset-bom': findFieldValue(details, 'ASSET_BOM'),
+            'cm-info-operational': findFieldValue(details, 'IS_OPERATIONAL'),
+            'cm-info-description': findFieldValue(details, 'DESCRIPTION')
+        };
+        Object.keys(values).forEach(function (id) { $('#' + id).text(values[id] || '-'); });
+        var imageFields = ['IMAGE_1', 'IMAGE_2', 'IMAGE_3', 'IMAGE_4', 'IMAGE_5'];
+        var images = imageFields.filter(function (id) { return findFieldValue(details, id); }).length;
+        $('#cm-info-images').text(images ? images + ' hinterlegt' : 'Keine hinterlegt');
+        $('#cm-asset-info').show();
     }
 
     function renderSensors(sensors, emptyMsg) {

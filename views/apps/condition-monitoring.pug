@@ -32,8 +32,33 @@ block body
                     #cm-sensors-list
                         .cm-events-empty Loading…
 
-            .cm-asset-panels
-                #cm-asset-details.surface-level-2
+            #cm-asset-info.surface-level-2(style='display:none')
+                .cm-section-title Asset information
+                .cm-asset-info-grid
+                    .cm-info-item
+                        .cm-info-label ID
+                        .cm-info-value#cm-info-id -
+                    .cm-info-item
+                        .cm-info-label Title
+                        .cm-info-value#cm-info-title -
+                    .cm-info-item
+                        .cm-info-label Customer
+                        .cm-info-value#cm-info-customer -
+                    .cm-info-item
+                        .cm-info-label Project type
+                        .cm-info-value#cm-info-project -
+                    .cm-info-item
+                        .cm-info-label Asset BOM
+                        .cm-info-value#cm-info-asset-bom -
+                    .cm-info-item
+                        .cm-info-label Operational
+                        .cm-info-value#cm-info-operational -
+                    .cm-info-item.cm-info-wide
+                        .cm-info-label Description
+                        .cm-info-value#cm-info-description -
+                    .cm-info-item
+                        .cm-info-label Images
+                        .cm-info-value#cm-info-images -
 
             #cm-summary.surface-level-2
                 .cm-tile#cm-tile-status
