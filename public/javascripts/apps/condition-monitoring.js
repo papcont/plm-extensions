@@ -214,7 +214,7 @@
             min: vibScale.min, max: vibScale.max, divisions: vibScale.divisions, accent: '#d29922',
             guides: [{ v: th.vibration.warn, color: '#d29922' }, { v: th.vibration.critical, color: '#f85149' }]
         });
-        var tempScale = { min: 20, max: 35, divisions: 15 };
+        var tempScale = focusedTemperatureScale(data.map(function (s) { return s.temperature; }));
         lineChart('cm-chart-temp', data.map(function (s) { return s.temperature; }), data, {
             min: tempScale.min, max: tempScale.max, divisions: tempScale.divisions, accent: '#ff7b72',
             guides: []
@@ -402,6 +402,18 @@
         if (floorAtZero) min = Math.max(0, min);
         if (max <= min) max = min + step;
         return { min: min, max: max, divisions: Math.round((max - min) / step) };
+    }
+    function focusedTemperatureScale(values) {
+        var finite = values.filter(function (v) { return typeof v === 'number' && Number.isFinite(v); });
+        if (!finite.length) return { min: 20, max: 35, divisions: 30 };
+        var low = Math.max(20, Math.min.apply(Math, finite));
+        var high = Math.min(35, Math.max.apply(Math, finite));
+        var center = (low + high) / 2;
+        var span = Math.max(high - low, 2);
+        var min = Math.max(20, Math.floor((center - span / 2) * 2) / 2);
+        var max = Math.min(35, Math.ceil((center + span / 2) * 2) / 2);
+        if (max - min < 2) max = Math.min(35, min + 2);
+        return { min: min, max: max, divisions: Math.round((max - min) * 2) };
     }
     function formatAxis(value, step) {
         var decimals = step >= 1 ? 0 : step >= 0.1 ? 1 : step >= 0.01 ? 2 : 3;
