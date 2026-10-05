@@ -224,11 +224,14 @@ function createBridge({ config, tandem, fusionManage, resolveDeviceAsset = null,
             temperature: p.metrics && p.metrics.temperature,
         }));
         // Baseline bootstrap: seed the learned-normal window from persisted history so a server restart
-        // doesn't throw the model back to sample 0. Only NORMAL/unlabelled points are learned — a stored
-        // WARNING/CRITICAL point must not teach the model that a fault is "normal".
+        // doesn't throw the model back to sample 0. Only explicitly NORMAL-labelled points are learned.
         bootstrapLearnSamples(state, points);
-        state.anomalyStable = analytics.ORDER.includes(state.condition) && state.condition !== 'OFF'
-            ? state.condition : 'NORMAL';
+        // The analytics hysteresis state is NOT the combined business condition. The stored condition may
+        // have been WARNING/CRITICAL purely from the absolute-threshold path while analytics was NORMAL;
+        // restoring anomalyStable from it would hold a healthy-again asset in WARNING for recoverySamples.
+        // Always restart analytics hysteresis from NORMAL — the threshold path still derives the final
+        // condition independently from the live telemetry. (candidate/count already null/0 from newAssetState.)
+        state.anomalyStable = 'NORMAL';
         state.analytics = initialAnalyticsSnapshot(state, metrics);
         state.events = points.map(p => p.conditionEvent).filter(Boolean)
             .filter(event => allowOff || (event.severity !== 'OFF' && event.from !== 'OFF')).slice(-50);
@@ -249,13 +252,17 @@ function createBridge({ config, tandem, fusionManage, resolveDeviceAsset = null,
         return state;
     }
 
-    // Seed the learned-normal window from persisted history (normal points only). Capped to historyWindow.
+    // Seed the learned-normal window from persisted history. Capped to historyWindow. Bootstrap trusts
+    // ONLY explicitly NORMAL-labelled points: unlabelled history (condition null/undefined, pre-dating
+    // condition labelling) may contain abnormal behavior and must not contaminate the learned baseline.
+    // OBSERVE/WARNING/CRITICAL/OFF are likewise excluded. (Live LEARNING still learns normally — the
+    // update gate governs that; this stricter rule is the trusted-normal bootstrap only.)
     function bootstrapLearnSamples(state, points) {
         initAnalyticsState(state);
         const window = (config.analytics && config.analytics.historyWindow) || analytics.DEFAULTS.historyWindow;
         const learned = [];
         for (const p of points) {
-            if (p.condition && p.condition !== 'NORMAL') continue;   // never learn a stored fault
+            if (p.condition !== 'NORMAL') continue;   // trusted-normal labelled history only
             const m = p.metrics || {};
             const vibration = (p.vibration == null) ? canonical.vibrationMagnitude(m) : p.vibration;
             if (typeof vibration !== 'number' || !Number.isFinite(vibration)) continue;

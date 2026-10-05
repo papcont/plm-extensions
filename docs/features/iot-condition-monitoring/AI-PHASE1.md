@@ -36,7 +36,14 @@ automatic root cause, fleet learning. Those are later phases (see STATUS.md "NEX
   - **Update gate:** readings are learned into the baseline only while genuinely NORMAL and quiet
     (`anomaly < learningThreshold`), so a developing fault never teaches itself as "normal".
   - **History bootstrap:** on cold start the learned window is seeded from persisted Tandem history,
-    filtering out any stored non-NORMAL point — a restart does not relearn from sample 0.
+    trusting **only points explicitly labelled `NORMAL`** — unlabelled (pre-labelling) and
+    OBSERVE/WARNING/CRITICAL/OFF points are excluded so abnormal history cannot contaminate the baseline.
+    A restart does not relearn from sample 0.
+  - **Restart hysteresis is independent of the stored condition:** the persisted business condition may
+    have been WARNING/CRITICAL purely from the absolute-threshold path while analytics was NORMAL, so the
+    analytics hysteresis (`anomalyStable`) always restarts from `NORMAL`. The threshold path still derives
+    the final condition from the live telemetry immediately — a genuinely-normal reading after a
+    threshold-driven restart recovers at once instead of being held for `recoverySamples`.
   - **OFF guard:** a stopped machine (vibration ≈ 0, far below its running median) is not flagged
     anomalous — analytics is skipped while the threshold path reports OFF.
 - **`services/iot/condition.js`** — reason strings now use the **device-correct unit**

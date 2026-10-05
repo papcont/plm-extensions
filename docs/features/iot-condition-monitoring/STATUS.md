@@ -15,6 +15,10 @@ _Last updated: 2026-10-05_
 - **12 new tests** (`test/iot/analytics.test.js`) + full simulator arc verified headless
   (`LEARNING→READY→WARNING→CRITICAL→recovery`). No new FM fields created; FM stays business-state.
 - Full design, config, algorithm, limitations & verification: **`AI-PHASE1.md`**.
+- **Review fixes (PR #1, `npm test` = 66/66):** independent review found two restart defects, now fixed —
+  (1) analytics hysteresis no longer restored from the combined stored condition (a threshold-driven
+  WARNING/CRITICAL no longer holds a healthy-again asset for `recoverySamples` after restart); (2) history
+  bootstrap now trusts **only explicitly `NORMAL`** points (unlabelled history excluded). +5 regression tests.
 - **Not verified**: live browser UI (server is user-started) — restart required for
   `/condition-monitoring?wsId=904&dmsId=30057`.
 

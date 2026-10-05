@@ -185,3 +185,94 @@ test('HISTORY BOOTSTRAP: a restart restores READY from persisted normal history 
     // The CRITICAL point was filtered out of the learned window, so learned normal stays ~1.2.
     assert.ok(Math.abs(st.analytics.baseline.vibration.median - 1.2) < 0.3, 'fault point not learned');
 });
+
+// ---------------- review regressions: restart hysteresis + bootstrap trust ----------------
+
+function iso(i) { return new Date(Date.UTC(2026, 0, 1) + i * 60000).toISOString(); }
+function tandemStub(points) {
+    return {
+        tandem: { push: async () => ({ delivered: 'stored' }), history: () => points,
+                  latest: () => (points.length ? points[points.length - 1] : null) },
+        fusionManage: { upsertConditionSummary: async s => ({ mode: 'dry-run', summary: s }),
+                        recordConditionEvent: async e => ({ mode: 'dry-run', event: e }) },
+    };
+}
+function normalPoints(n, device) {
+    const pts = [];
+    for (let i = 0; i < n; i++) pts.push({ t: iso(i), metrics: { velocityX: 1.2, temperature: 30 },
+        vibration: 1.2, healthScore: 98, condition: 'NORMAL', deviceId: device });
+    return pts;
+}
+function liveNormal(device, i) {
+    return canonical.createEvent({ deviceId: device, source: 'test', timestamp: iso(i),
+        metrics: { velocityX: 1.2, velocityY: 0, velocityZ: 0, temperature: 30 } });
+}
+
+// P1: a threshold-driven WARNING/CRITICAL in history must NOT seed analytics recovery hysteresis on
+// restart. The first genuinely-normal reading must recover immediately, not be held for recoverySamples.
+for (const storedSeverity of ['WARNING', 'CRITICAL']) {
+    test('P1 regression: threshold-driven ' + storedSeverity + ' in history does not stick after restart', async () => {
+        const device = 'P1-' + storedSeverity;
+        const points = normalPoints(baseConfig.analytics.minimumSamples + 2, device);
+        // Latest stored point: threshold-driven severity (high vibration); analytics was NEVER elevated.
+        const sev = storedSeverity === 'CRITICAL' ? 12 : 6;
+        points.push({ t: iso(100), metrics: { velocityX: sev, temperature: 30 }, vibration: sev,
+            healthScore: storedSeverity === 'CRITICAL' ? 5 : 40, condition: storedSeverity, deviceId: device });
+
+        const bridge = createBridge({ config: baseConfig, ...tandemStub(points) });
+        const cold = bridge.getAssetState(device);
+        assert.strictEqual(cold.condition, storedSeverity, 'business condition restored from history');
+        assert.strictEqual(cold.analytics.modelState, 'READY', 'baseline bootstrapped from the NORMAL history');
+
+        // One clearly-normal live reading. With the bug (anomalyStable restored from the stored
+        // condition) final would stay ' + storedSeverity + ' for recoverySamples. It must be NORMAL now.
+        const r = await bridge.ingest(liveNormal(device, 101));
+        assert.strictEqual(r.condition.condition, 'NORMAL',
+            'first normal sample recovers immediately (analytics hysteresis started from NORMAL)');
+        assert.ok(r.analytics.anomalyScore < baseConfig.analytics.observeThreshold, 'anomaly low on the normal reading');
+        assert.ok(r.conditionEvent && r.conditionEvent.type === 'RECOVERY', 'emits a RECOVERY event, not a stale hold');
+    });
+}
+
+// P2: automatic bootstrap learns ONLY explicitly NORMAL points. An unlabelled abnormal point between two
+// NORMAL points must be excluded so it cannot move the learned median/MAD/band.
+test('P2 regression: unlabelled abnormal history point is excluded from the baseline bootstrap', async () => {
+    const device = 'P2';
+    const points = [
+        { t: iso(0), metrics: { velocityX: 1.0, temperature: 30 }, vibration: 1.0, healthScore: 99, condition: 'NORMAL', deviceId: device },
+        { t: iso(1), metrics: { velocityX: 10, temperature: 30 }, vibration: 10, healthScore: 10, /* no condition label */ deviceId: device },
+        { t: iso(2), metrics: { velocityX: 1.2, temperature: 30 }, vibration: 1.2, healthScore: 99, condition: 'NORMAL', deviceId: device },
+    ];
+    const bridge = createBridge({ config: baseConfig, ...tandemStub(points) });
+    const st = bridge.getAssetState(device);
+    const vb = st.analytics.baseline.vibration;
+    assert.strictEqual(vb.n, 2, 'only the two explicitly-NORMAL points were learned (abnormal unlabelled excluded)');
+    assert.ok(vb.median >= 1.0 && vb.median <= 1.2, 'median reflects only the normal points, got ' + vb.median);
+    assert.ok(vb.upper < 10, 'the abnormal 10 g point cannot reach the learned normal band');
+});
+
+// Edge D: only unlabelled history -> no trusted bootstrap -> LEARNING with zero learned samples.
+test('bootstrap edge: only unlabelled history -> LEARNING, nothing learned', async () => {
+    const device = 'D';
+    const points = [];
+    for (let i = 0; i < baseConfig.analytics.minimumSamples + 5; i++) {
+        points.push({ t: iso(i), metrics: { velocityX: 1.2, temperature: 30 }, vibration: 1.2, healthScore: 98, deviceId: device });
+    }
+    const bridge = createBridge({ config: baseConfig, ...tandemStub(points) });
+    const st = bridge.getAssetState(device);
+    assert.strictEqual(st.analytics.modelState, 'LEARNING', 'unlabelled history is not trusted for bootstrap');
+    assert.strictEqual(st.analytics.sampleCount, 0, 'nothing learned from unlabelled history');
+});
+
+// Edges E/F: labelled-NORMAL count drives LEARNING vs READY.
+test('bootstrap edge: < minimumSamples NORMAL -> LEARNING; >= minimumSamples NORMAL -> READY', async () => {
+    const few = createBridge({ config: baseConfig, ...tandemStub(normalPoints(baseConfig.analytics.minimumSamples - 1, 'E')) });
+    const stFew = few.getAssetState('E');
+    assert.strictEqual(stFew.analytics.modelState, 'LEARNING');
+    assert.strictEqual(stFew.analytics.sampleCount, baseConfig.analytics.minimumSamples - 1);
+
+    const enough = createBridge({ config: baseConfig, ...tandemStub(normalPoints(baseConfig.analytics.minimumSamples, 'F')) });
+    const stEnough = enough.getAssetState('F');
+    assert.strictEqual(stEnough.analytics.modelState, 'READY');
+    assert.strictEqual(stEnough.analytics.sampleCount, baseConfig.analytics.minimumSamples);
+});
