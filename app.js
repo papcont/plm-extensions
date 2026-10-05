@@ -1,4 +1,7 @@
 let pathEnvironment = './environment.js';
+if (!require('fs').existsSync(pathEnvironment) && process.env.NODE_ENV === 'production') {
+    pathEnvironment = './environments/template.js';
+}
 if (process.argv.length > 2) {
     let fileEnvironment = process.argv[2];
     if(!fileEnvironment.endsWith('.js')) fileEnvironment += '.js';
