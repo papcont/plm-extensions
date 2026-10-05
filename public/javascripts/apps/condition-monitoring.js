@@ -304,6 +304,9 @@
         $('#cm-asset').show();
         $('#cm-asset-name').text(desc || (ws + '/' + dms));
         $('#cm-asset-link').attr('href', assetUrl(ws, dms));
+        var assetLink = '/api/v3/workspaces/' + ws + '/items/' + dms;
+        insertImages(assetLink, { id: 'cm-asset-images', hideHeader: true });
+        insertDetails(assetLink, { id: 'cm-asset-details', hideHeader: true, hideComputed: true });
         $.getJSON('/plm/details?wsId=' + ws + '&dmsId=' + dms, function (res) {
             var d = res.data || res;
             if (!desc && d.title) $('#cm-asset-name').text(d.title);
