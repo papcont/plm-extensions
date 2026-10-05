@@ -231,8 +231,12 @@
             (abnormal ? 'Primary deviation: ' + escapeHtml(a.primaryDriver || 'vibration') : 'Within learned normal') +
             ' · anomaly ' + (a.anomalyScore != null ? a.anomalyScore.toFixed(2) : '0.00') + '</div>');
         if (vb) {
+            // Vibration amplitude is non-negative: a median−3σ lower bound can go below 0 for a near-zero
+            // baseline. Clamp only the DISPLAYED value to 0 (the chart already floors at 0); the learned
+            // baseline math is untouched.
+            var vbLower = Math.max(0, vb.lower);
             lines.push(whyRow('Vibration', (vd ? vd.current : '?') + ' ' + unit,
-                'learned median ' + vb.median + ' ' + unit + ', normal ' + vb.lower + '–' + vb.upper + ' ' + unit +
+                'learned median ' + vb.median + ' ' + unit + ', normal ' + vbLower + '–' + vb.upper + ' ' + unit +
                 (vd ? ', deviation ' + vd.z + ' MAD' : '')));
         }
         if (td) {
