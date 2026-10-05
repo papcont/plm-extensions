@@ -34,13 +34,23 @@ function createBridge({ config, tandem, fusionManage, resolveDeviceAsset = null,
         registry.markSeen(event.deviceId, event.timestamp);
 
         // 5. merge metrics (a device sends velocity+temp and acceleration in separate frames)
-        const state = assets.get(assetId) || newAssetState();
+        const state = assets.get(assetId) || restoreAssetState(assetId);
         state.mergedMetrics = Object.assign({}, state.mergedMetrics, event.metrics);
         const metrics = state.mergedMetrics;
 
+        // VIBMOD=4 supplies sparse acceleration samples, not a reliable running/stopped signal.
+        // Do not manufacture OFF states from a single low sample, and hide prior OFF/NORMAL flaps
+        // produced before this distinction existed. Raw telemetry remains untouched.
+        const allowOff = !event.meta || event.meta.activityInference !== 'unsupported';
+        if (!allowOff) {
+            state.events = state.events.filter(event => event.severity !== 'OFF' && event.from !== 'OFF');
+            if (state.condition === 'OFF') state.condition = null;
+            if (state.last) state.last.lastEvent = state.events.length ? state.events[state.events.length - 1].timestamp : null;
+        }
+
         // 6. health + condition
         const h = health.compute(metrics, config.thresholds, state.history);
-        const c = condition.evaluate(h.score, metrics, config.thresholds, config.conditionBands);
+        const c = condition.evaluate(h.score, metrics, config.thresholds, config.conditionBands, { allowOff });
 
         // 7. condition event on any change after the first reading (skip initial NORMAL establishment)
         let conditionEvent = null;
@@ -61,11 +71,23 @@ function createBridge({ config, tandem, fusionManage, resolveDeviceAsset = null,
         }
 
         // 8. persist: Tandem (time series) always; Fusion Manage summary + events (gated in repo)
-        const tandemResult = await tandem.push(assetId, event.timestamp, metrics, h.score);
+        const tandemResult = await tandem.push(assetId, event.timestamp, metrics, h.score, {
+            deviceId: event.deviceId,
+            deviceType: event.deviceType,
+            source: event.source,
+            fPort: event.meta && event.meta.fPort,
+            vibrationModel: event.meta && event.meta.vibrationModel,
+            activityInference: event.meta && event.meta.activityInference,
+            observedMetrics: Object.keys(event.metrics),
+            condition: c.condition,
+            conditionEvent,
+            vibration: h.vibration,
+        });
         const summary = {
             assetId, deviceId: event.deviceId,
             condition: c.condition, healthScore: h.score,
-            vibration: h.vibration, temperature: metrics.temperature,
+            vibration: h.vibration, temperature: metrics.temperature, humidity: metrics.humidity,
+            activityInference: event.meta && event.meta.activityInference,
             lastTelemetry: event.timestamp,
             lastEvent: conditionEvent ? conditionEvent.timestamp : (state.last && state.last.lastEvent) || null,
             tandemRef: assetId,
@@ -98,9 +120,52 @@ function createBridge({ config, tandem, fusionManage, resolveDeviceAsset = null,
     }
 
     function getAssetState(assetId) {
-        const s = assets.get(assetId);
-        if (!s) return null;
+        let s = assets.get(assetId);
+        if (!s) {
+            s = restoreAssetState(assetId);
+            if (!s.last) return null;
+            assets.set(assetId, s);
+        }
         return { summary: s.last, condition: s.condition, health: s.health, events: s.events.slice(-50) };
+    }
+
+    function restoreAssetState(assetId) {
+        const state = newAssetState();
+        if (!tandem.latest) return state;
+        const latest = tandem.latest(assetId);
+        if (!latest) return state;
+        const points = tandem.history ? tandem.history(assetId, 0) : [latest];
+        const metrics = latest.metrics || {};
+        const vibration = (latest.vibration == null) ? canonical.vibrationMagnitude(metrics) : latest.vibration;
+        state.mergedMetrics = Object.assign({}, metrics);
+        const allowOff = latest.activityInference !== 'unsupported';
+        state.condition = latest.condition || condition.evaluate(
+            latest.healthScore, metrics, config.thresholds, config.conditionBands).condition;
+        if (!allowOff && state.condition === 'OFF') state.condition = 'NORMAL';
+        state.health = { score: latest.healthScore, vibration, temperature: metrics.temperature };
+        state.history = points.slice(-5).map(p => ({
+            t: p.t,
+            vibration: (p.vibration == null) ? canonical.vibrationMagnitude(p.metrics || {}) : p.vibration,
+            health: p.healthScore,
+            temperature: p.metrics && p.metrics.temperature,
+        }));
+        state.events = points.map(p => p.conditionEvent).filter(Boolean)
+            .filter(event => allowOff || (event.severity !== 'OFF' && event.from !== 'OFF')).slice(-50);
+        const lastEvent = state.events.length ? state.events[state.events.length - 1].timestamp : null;
+        state.last = {
+            assetId: String(assetId),
+            deviceId: latest.deviceId,
+            condition: state.condition,
+            healthScore: latest.healthScore,
+            vibration,
+            temperature: metrics.temperature,
+            humidity: metrics.humidity,
+            activityInference: latest.activityInference || null,
+            lastTelemetry: latest.t,
+            lastEvent,
+            tandemRef: String(assetId),
+        };
+        return state;
     }
 
     return { ingest, getAssetState, registry };

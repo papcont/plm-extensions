@@ -14,6 +14,7 @@ router.get('/config', function(req, res) {
         deviceId          : rt.deviceId,
         source            : rt.config.source,
         tandemEnabled     : rt.config.tandemEnabled,
+        telemetryPersistenceEnabled: rt.config.telemetryPersistenceEnabled,
         fusionManageWrites: rt.config.fusionManageWrites,
         thresholds        : rt.config.thresholds,
         conditionBands    : rt.config.conditionBands,
@@ -28,16 +29,21 @@ router.post('/tick', async function(req, res) {
     } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-// Current asset condition summary + recent condition events.
+// Current asset condition summary + recent condition events. Pass ?assetId=<id> to read a specific
+// asset (the live-sensor dashboard mode); omit for the simulator's demo asset.
 router.get('/state', function(req, res) {
-    res.json({ success: true, data: service.getShared().getState() });
+    res.json({ success: true, data: service.getShared().getState(req.query.assetId || null) });
 });
 
 // Time series for the charts. range in ms (default 1h of sim time is many points; UI slices).
 router.get('/history', function(req, res) {
     const rangeMs = Number(req.query.rangeMs) || 0;
-    const points = service.getShared().getHistory(rangeMs).map(function(p) {
-        return { t: p.t, healthScore: p.healthScore, metrics: p.metrics };
+    const points = service.getShared().getHistory(rangeMs, req.query.assetId || null).map(function(p) {
+        return {
+            t: p.t, healthScore: p.healthScore, metrics: p.metrics,
+            deviceId: p.deviceId, condition: p.condition, conditionEvent: p.conditionEvent,
+            vibration: p.vibration,
+        };
     });
     res.json({ success: true, data: points });
 });

@@ -13,6 +13,8 @@
     var events = [];                // condition events, newest first
     var paused = false;
     var timer = null;
+    var liveAsset = null;           // FM asset id when bound to a real sensor; null => simulator demo
+    var liveSeenT = null;           // last uplink timestamp already sampled (dedupe live polls)
 
     $(document).ready(function () {
         initAssetContext();
@@ -35,7 +37,9 @@
         $('#cm-reset').on('click', function () {
             $.post('/iot/reset', function () { samples = []; events = []; renderEvents(); });
         });
-        $('#cm-range').on('change', renderCharts);
+        $('#cm-range').on('change', function () {
+            if (liveAsset) loadLiveHistory(); else renderCharts();
+        });
         $(window).on('resize', renderCharts);
     });
 
@@ -52,6 +56,7 @@
 
     function poll() {
         if (paused) return;
+        if (liveAsset) return pollLive();
         $.ajax({ url: '/iot/tick', method: 'POST' }).done(function (res) {
             if (!res.success || !res.data.accepted) return;
             var d = res.data;
@@ -60,6 +65,7 @@
                 health: d.health.score,
                 vibration: d.health.vibration,
                 temperature: d.summary.temperature,
+                humidity: d.summary.humidity,
                 condition: d.condition.condition
             });
             if (samples.length > 5000) samples.splice(0, samples.length - 5000);
@@ -69,6 +75,87 @@
         });
     }
 
+    // Live mode: read the real asset's condition (written by the TTN->MQTT->bridge path). Read-only —
+    // no /tick. Uplinks are sparse (~20 min), so one sample is added per new lastTelemetry; polling the
+    // same uplink repeatedly is deduped. The selected persisted history is loaded separately.
+    function pollLive() {
+        $.getJSON('/iot/state?assetId=' + encodeURIComponent(liveAsset), function (res) {
+            var st = res && res.data;
+            if (!st || !st.summary) { $('#cm-source').text('source: live · asset ' + liveAsset + ' · waiting for first uplink'); return; }
+            var sm = st.summary;
+            if (sm.lastTelemetry !== liveSeenT) {
+                liveSeenT = sm.lastTelemetry;
+                if (sm.deviceId) $('#cm-source').text('source: live · ' + sm.deviceId + ' · asset ' + liveAsset);
+                samples.push({
+                    t: sm.lastTelemetry,
+                    health: sm.healthScore,
+                    vibration: sm.vibration,
+                    temperature: sm.temperature,
+                    humidity: sm.humidity,
+                    condition: st.condition
+                });
+                if (samples.length > 5000) samples.splice(0, samples.length - 5000);
+            }
+            events = (st.events || []).slice().reverse();   // bridge stores oldest-first; UI wants newest-first
+            renderEvents();
+            renderTiles();
+            renderCharts();
+        });
+    }
+
+    // Bind the dashboard to a real asset: stop simulating, drop any sim samples. Idempotent — re-calling
+    // with the same asset only refreshes the label (e.g. once the device id is known), no buffer wipe.
+    function goLive(assetId, deviceId) {
+        assetId = String(assetId);
+        var changed = liveAsset !== assetId;
+        if (changed) { liveAsset = assetId; samples = []; events = []; liveSeenT = null; renderEvents(); }
+        $('#cm-source').text('source: live · ' + (deviceId || 'sensor') + ' · asset ' + liveAsset);
+        if (changed) loadLiveHistory();
+    }
+
+    function loadLiveHistory() {
+        if (!liveAsset) return;
+        var hours = parseInt($('#cm-range').val(), 10) || 0;
+        var rangeMs = hours > 0 ? hours * 60 * 60 * 1000 : 0;
+        $.getJSON('/iot/history?assetId=' + encodeURIComponent(liveAsset) + '&rangeMs=' + rangeMs, function (res) {
+            var byTime = {};
+            (res && res.data || []).forEach(function (p) {
+                var m = p.metrics || {};
+                byTime[p.t] = {
+                    t: p.t,
+                    health: p.healthScore,
+                    vibration: historyVibration(p, m),
+                    temperature: m.temperature,
+                    humidity: m.humidity,
+                    condition: p.condition || 'NORMAL'
+                };
+            });
+            samples.forEach(function (sample) { byTime[sample.t] = sample; });
+            samples = Object.keys(byTime).map(function (key) { return byTime[key]; })
+                .sort(function (a, b) { return new Date(a.t) - new Date(b.t); });
+            if (samples.length > 5000) samples.splice(0, samples.length - 5000);
+            if (samples.length) liveSeenT = samples[samples.length - 1].t;
+            renderTiles();
+            renderCharts();
+        });
+    }
+
+    function historyVibration(point, metrics) {
+        var ax = Number(metrics.accelerationX), ay = Number(metrics.accelerationY), az = Number(metrics.accelerationZ);
+        var hasAxes = Number.isFinite(ax) && Number.isFinite(ay) && Number.isFinite(az);
+        // Legacy VIBMOD=4 points were stored before the gravity-compensated model was tagged.
+        // Recalculate their derived value from the retained raw axes without modifying the archive.
+        if (hasAxes && (point.fPort === 7 || !point.vibrationModel)) {
+            return Math.abs(Math.sqrt(ax * ax + ay * ay + az * az) - 1);
+        }
+        if (typeof point.vibration === 'number') return point.vibration;
+        if (typeof metrics.vibrationG === 'number') return metrics.vibrationG;
+        var x = Number(metrics.velocityX) || 0;
+        var y = Number(metrics.velocityY) || 0;
+        var z = Number(metrics.velocityZ) || 0;
+        return Math.sqrt(x * x + y * y + z * z);
+    }
+
     function renderTiles() {
         var s = samples[samples.length - 1];
         if (!s) return;
@@ -76,6 +163,7 @@
         $('#cm-status-text').text(s.condition).css('color', CONDITION_COLOR[s.condition] || '');
         $('#cm-health').text(s.health);
         $('#cm-temp').text(fmt(s.temperature, 1));
+        $('#cm-humidity').text(fmt(s.humidity, 1));
         $('#cm-vib').text(fmt(s.vibration, 2));
         $('#cm-updated').text(new Date(s.t).toLocaleTimeString());
 
@@ -107,8 +195,10 @@
     }
 
     function windowed() {
-        var n = parseInt($('#cm-range').val(), 10) || 0;
-        return (n > 0 && samples.length > n) ? samples.slice(samples.length - n) : samples;
+        var hours = parseInt($('#cm-range').val(), 10) || 0;   // 0 = All
+        if (hours <= 0) return samples;
+        var cutoff = Date.now() - hours * 3600 * 1000;
+        return samples.filter(function (s) { return new Date(s.t).getTime() >= cutoff; });
     }
 
     function renderCharts() {
@@ -118,15 +208,20 @@
             min: 0, max: 100, accent: '#58a6ff',
             guides: [{ v: (cfg && cfg.conditionBands.warning) || 40, color: '#d29922' }]
         });
-        var vibMax = Math.max((th.vibration.critical || 8) * 1.25, maxOf(data, 'vibration'));
+        var vibScale = autoScale(data.map(function (s) { return s.vibration; }), 0.25, true, 5);
         lineChart('cm-chart-vib', data.map(function (s) { return s.vibration; }), data, {
-            min: 0, max: vibMax, accent: '#d29922',
+            min: vibScale.min, max: vibScale.max, divisions: vibScale.divisions, accent: '#d29922',
             guides: [{ v: th.vibration.warn, color: '#d29922' }, { v: th.vibration.critical, color: '#f85149' }]
         });
-        var tMax = Math.max((th.temperature.critical || 80) * 1.1, maxOf(data, 'temperature'));
+        var tempScale = autoScale(data.map(function (s) { return s.temperature; }), 2, false, 8);
         lineChart('cm-chart-temp', data.map(function (s) { return s.temperature; }), data, {
-            min: 20, max: tMax, accent: '#ff7b72',
+            min: tempScale.min, max: tempScale.max, divisions: tempScale.divisions, accent: '#ff7b72',
             guides: [{ v: th.temperature.warn, color: '#d29922' }, { v: th.temperature.critical, color: '#f85149' }]
+        });
+        var humidityScale = autoScale(data.map(function (s) { return s.humidity; }), 4, true, 8);
+        lineChart('cm-chart-humidity', data.map(function (s) { return s.humidity; }), data, {
+            min: humidityScale.min, max: humidityScale.max, divisions: humidityScale.divisions,
+            accent: '#2a9d8f', guides: []
         });
     }
 
@@ -156,11 +251,12 @@
 
         // y axis labels + gridlines
         ctx.font = '10px sans-serif'; ctx.fillStyle = text; ctx.strokeStyle = grid; ctx.lineWidth = 1;
-        for (var g = 0; g <= 4; g++) {
-            var val = opts.min + (range * g / 4);
+        var divisions = opts.divisions || 4;
+        for (var g = 0; g <= divisions; g++) {
+            var val = opts.min + (range * g / divisions);
             var y = yOf(val);
             ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + w, y); ctx.stroke();
-            ctx.fillText(Math.round(val), 4, y + 3);
+            ctx.fillText(formatAxis(val, range / divisions), 4, y + 3);
         }
         // guide lines (thresholds)
         (opts.guides || []).forEach(function (guide) {
@@ -202,6 +298,9 @@
     function initAssetContext() {
         var dms = glob('dmsId'), ws = glob('wsId') || '904', desc = glob('descriptor');
         if (!dms) return;                                  // no asset context -> standalone demo
+        goLive(dms, null);                                 // asset context => live telemetry for THIS asset,
+                                                           // independent of the FM sensor link (device id is
+                                                           // refined below / from the backend state)
         $('#cm-asset').show();
         $('#cm-asset-name').text(desc || (ws + '/' + dms));
         $.getJSON('/plm/details?wsId=' + ws + '&dmsId=' + dms, function (res) {
@@ -214,7 +313,9 @@
             // IOT_DEVICE_ID directly — read that record's own fields, not a BOM.
             $.getJSON('/plm/details?wsId=' + m[1] + '&dmsId=' + m[2], function (sr) {
                 var s = sr.data || sr;
-                renderSensors([{ name: s.title || 'Sensor', deviceId: findFieldValue(s, 'IOT_DEVICE_ID') }], null);
+                var deviceId = findFieldValue(s, 'IOT_DEVICE_ID');
+                renderSensors([{ name: s.title || 'Sensor', deviceId: deviceId }], null);
+                if (deviceId) goLive(dms, deviceId);        // real sensor bound -> live telemetry for this asset
             }).fail(function () { renderSensors([], 'Could not read the linked sensor.'); });
         }).fail(function () { renderSensors([], 'Asset details unavailable.'); });
     }
@@ -252,6 +353,33 @@
     }
 
     function maxOf(arr, key) { return arr.reduce(function (m, s) { return Math.max(m, s[key] || 0); }, 0); }
+    function niceCeil(value) {
+        if (!(value > 0)) return 0.1;
+        var power = Math.pow(10, Math.floor(Math.log(value) / Math.LN10));
+        var fraction = value / power;
+        var nice = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 2.5 ? 2.5 : fraction <= 5 ? 5 : 10;
+        return nice * power;
+    }
+    function autoScale(values, minimumSpan, floorAtZero, targetDivisions) {
+        targetDivisions = targetDivisions || 4;
+        var finite = values.filter(function (v) { return typeof v === 'number' && Number.isFinite(v); });
+        if (!finite.length) return { min: 0, max: minimumSpan || 1, divisions: targetDivisions };
+        var low = Math.min.apply(Math, finite), high = Math.max.apply(Math, finite);
+        var span = Math.max(high - low, minimumSpan || 0);
+        var center = (low + high) / 2;
+        var paddedLow = center - span * 0.6, paddedHigh = center + span * 0.6;
+        if (floorAtZero) paddedLow = Math.max(0, paddedLow);
+        var step = niceCeil((paddedHigh - paddedLow) / targetDivisions);
+        var min = Math.floor(paddedLow / step) * step;
+        var max = Math.ceil(paddedHigh / step) * step;
+        if (floorAtZero) min = Math.max(0, min);
+        if (max <= min) max = min + step;
+        return { min: min, max: max, divisions: Math.round((max - min) / step) };
+    }
+    function formatAxis(value, step) {
+        var decimals = step >= 1 ? 0 : step >= 0.1 ? 1 : step >= 0.01 ? 2 : 3;
+        return value.toFixed(decimals);
+    }
     function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
     function fmt(v, d) { return (typeof v === 'number') ? v.toFixed(d) : '-'; }
     function escapeHtml(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }

@@ -1739,7 +1739,9 @@ exports.applications = {
         },
         fieldIds : {
             number         : 'NUMBER',            // identity used as the leaf fingerprint
-            variantAllowed : 'VARIANT_ALLOWED',   // checkbox: item is variant-eligible (part OR assembly)
+            variantAllowed : 'VARIANT_ALLOWED',   // legacy checkbox, no longer the eligibility gate (see genTitle1/3)
+            genTitle1      : 'GENTITLE1POSI',     // eligibility: item is variant-eligible when genTitle1 AND genTitle2 are both filled
+            genTitle2      : 'GENTITLE2POSI',     // (replaces the VARIANT_ALLOWED checkbox); GENTITLE3POSI stays optional/free
             bomFingerprint : 'BOM_FINGERPRINT',   // searchable text: canonical BOM hash for dedup
             material       : 'MATERIAL',          // freetext: material value written on a material variant
             materialart    : 'MATERIALART',       // freetext: material category, part of the leaf identity
@@ -1755,6 +1757,67 @@ exports.applications = {
         panels : {
             insertBOM     : { collapsed : false, hideDetails : false },
             insertDetails : { editable : true, collapsed : true }
+        },
+        viewerFeatures : {
+            views : true
+        }
+    },
+
+    // Mechatronic BOM Editor (dev/mebom) — evolution of the `instances` app (BOM Instances Editor).
+    // Context = an Asset (Asset Management); the Engineering BOM is the mechanical side + 3D viewer,
+    // the electrical/unique side is decomposed into per-instance lists (Serial Numbers, Motors,
+    // Sensors, Control Elements) shown as alignment tabs. Instance uniqueness = INSTANCE_ID / serial.
+    // Tenant mapping is for contelosuxdemo (Assets WS 904; test asset A000019 - Unterbau).
+    mebom : {
+        labels : {
+            appTitle : 'Mechatronic BOM Editor',
+            syncMCAD : 'Synchronize Mechanical BOM'
+        },
+        bomViewName    : 'Instance Editor',    // same BOM view the instances app uses
+        exportFileName : 'Mechatronic-BOM',
+        wsContext : {
+            workspaceId : null,                // null -> common.workspaceIds.assets (Assets = 904)
+            fieldIds : {
+                mcad : 'ENGINEERING_BOM',      // link -> mechanical design BOM (Items WS 57) + viewer
+                ecad : 'ASSET_BOM'             // link -> as-built Asset BOM on the right (no ELECTRICAL_BOM in this tenant)
+            }
+        },
+        ecad : {
+            fieldsIn : ['NUMBER', 'ITEM_TITLE'],
+            fieldIds : {
+                partNumber   : 'NUMBER',
+                tag          : 'ITEM_TITLE',
+                location     : 'LOCATION',
+                manufacturer : 'SUPPLIER',
+                mpn          : 'SERIAL_NUMBER'
+            }
+        },
+        // Instance-list tabs (verified grid columns on 901/967/968/969). Same field mapping for all.
+        tabs : [
+            { label : 'Serial Numbers',   fieldId : 'SERIAL_NUMBERS_LIST',   workspaceId : 901,  colorIndex : 1, bomIcon : 'icon-tag',
+              groupBy : 'NUMBER',
+              fieldsIn : ['Serial #', 'Installation Date', 'Item Title', 'Rev', '#', 'Instance Path'],
+              fieldIds : { partNumber : 'NUMBER', title : 'ITEM_TITLE', revision : 'ITEM_REV', path : 'LOCATION', instanceId : 'INSTANCE_ID', locViewer : 'INSTANCE_PATH', boundingBox : 'BOUNDING_BOX', tag : 'ITEM_TITLE' } },
+            { label : 'Motors',           fieldId : 'MOTORS_LIST',           workspaceId : 967,  colorIndex : 5, bomIcon : 'icon-cpu',
+              groupBy : 'NUMBER',
+              fieldsIn : ['Serial #', 'Installation Date', 'Item Title', 'Rev', '#', 'Instance Path'],
+              fieldIds : { partNumber : 'NUMBER', title : 'ITEM_TITLE', revision : 'ITEM_REV', path : 'LOCATION', instanceId : 'INSTANCE_ID', locViewer : 'INSTANCE_PATH', boundingBox : 'BOUNDING_BOX', tag : 'ITEM_TITLE' } },
+            { label : 'Sensors',          fieldId : 'SENSORS_LIST',          workspaceId : 968,  colorIndex : 7, bomIcon : 'icon-cpu',
+              groupBy : 'NUMBER',
+              fieldsIn : ['Serial #', 'Installation Date', 'Item Title', 'Rev', '#', 'Instance Path'],
+              fieldIds : { partNumber : 'NUMBER', title : 'ITEM_TITLE', revision : 'ITEM_REV', path : 'LOCATION', instanceId : 'INSTANCE_ID', locViewer : 'INSTANCE_PATH', boundingBox : 'BOUNDING_BOX', tag : 'ITEM_TITLE' } },
+            { label : 'Control Elements', fieldId : 'CONTROL_ELEMENTS_LIST', workspaceId : 969,  colorIndex : 3, bomIcon : 'icon-cpu',
+              groupBy : 'NUMBER',
+              fieldsIn : ['Serial #', 'Installation Date', 'Item Title', 'Rev', '#', 'Instance Path'],
+              fieldIds : { partNumber : 'NUMBER', title : 'ITEM_TITLE', revision : 'ITEM_REV', path : 'LOCATION', instanceId : 'INSTANCE_ID', locViewer : 'INSTANCE_PATH', boundingBox : 'BOUNDING_BOX', tag : 'ITEM_TITLE' } }
+        ],
+        panels : {
+            landingViews  : { },
+            landingSearch : { },
+            bomMCAD       : { useCache : true, bomViewName : 'Tree Navigator' },   // narrow view (Descriptor/Number/Quantity); default view crams 27 columns into the panel
+            bomECAD       : { groupBy : 'NUMBER', useCache : true },
+            alignmentGrids: { },
+            itemDetails   : { editable : false, collapsed : false, sectionsEx : ['Harmonia Memory'] }   // hide the raw-JSON AI-memory section
         },
         viewerFeatures : {
             views : true
@@ -2729,6 +2792,7 @@ exports.server = {
         instances      : true,  // BOM Instances Editor
         'launch-readiness' : true,  // NPI Launch Readiness Board
         mbom           : true,  // Manufacturing BOM Editor
+        mebom          : true,  // Mechatronic BOM Editor (dev)
         navigator      : true,  // Workspace Navigator
         portal         : true,  // PLM POrtal
         portfolio      : true,  // Product Portfoliio Catalog

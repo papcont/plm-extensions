@@ -100,6 +100,11 @@ if ((process.argv.length > 2) && (!fs.existsSync(pathEnvironment))) {
     // config singleton, then start the optional unattended server ticker (off unless serverTickMs set).
     require('./services/iot/config').applyDeployment(environment);
     require('./services/iot/service').startServerTicker();
+    // Optional TTN MQTT ingestion (pull): local client subscribes to The Things Stack and pumps real
+    // sensor uplinks into the bridge. No public URL. Gated off unless environment.iot.ttnMqtt.enabled.
+    require('./services/iot/ttnMqtt').start(
+        require('./services/iot/config'),
+        function(evt) { return require('./services/iot/service').getShared().ingestUplink(evt); });
 
     // Re-registers the Lean Change Order webhooks if the configured callbackUrl changed since
     // last run (e.g. tunnel restarted) - never blocks server startup, just logs on failure.

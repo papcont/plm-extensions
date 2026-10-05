@@ -5,24 +5,29 @@
 :root {
     --vb-padding-v : 24px;
     --vb-padding-h : 36px;
-    --vb-item-w    : 520px;
-    --vb-viewer-h  : 380px;
+    --vb-bom-w     : 666px;   /* content width; the 2x padding-h border is added on top (content-box) */
+    --vb-item-w    : 480px;
+    /* total on-screen width of a column = content width + its left+right border (gutter) */
+    --vb-bom-total  : calc(var(--vb-bom-w)  + (2 * var(--vb-padding-h)));
+    --vb-item-total : calc(var(--vb-item-w) + (2 * var(--vb-padding-h)));
 }
 
-/* Left column: viewer on top, BOM below. Right column: item details, full height. */
+/* Three full-height columns: BOM (left, compact), viewer (middle, gets the space), item (right).
+   These divs are content-box, so the viewer offsets must clear each side column's FULL width
+   (content + border), otherwise the viewer slides under the BOM and item panels. */
+#bom {
+    top          : 0px;
+    bottom       : 0px;
+    left         : 0px;
+    width        : var(--vb-bom-w);
+    border-width : var(--vb-padding-v) var(--vb-padding-h);
+}
+
 .viewer {
     top    : 0px;
-    left   : 0px;
-    right  : calc((2 * var(--vb-padding-h)) + var(--vb-item-w));
-    height : var(--vb-viewer-h);
-}
-
-#bom {
-    top          : var(--vb-viewer-h);
-    left         : 0px;
-    bottom       : 0px;
-    right        : calc((2 * var(--vb-padding-h)) + var(--vb-item-w));
-    border-width : var(--vb-padding-v) var(--vb-padding-h);
+    bottom : 0px;
+    left   : var(--vb-bom-total);
+    right  : var(--vb-item-total);
 }
 
 #item {
@@ -33,10 +38,24 @@
     border-width : var(--vb-padding-v) var(--vb-padding-h) var(--vb-padding-h) var(--vb-padding-h);
 }
 
-/* Details toggled off: viewer + BOM take full width, item panel slides out. */
-body.no-details .viewer,
-body.no-details #bom  { right : 0px; }
-body.no-details #item { right : calc(0px - (2 * var(--vb-padding-h)) - var(--vb-item-w)); }
+/* Details toggled off: viewer stretches into the item space; BOM stays a fixed left column. */
+body.no-details .viewer { right : 0px; }
+body.no-details #item   { right : calc(0px - var(--vb-item-total)); }
+
+/* Compact BOM for the narrow left column. The Number column is dropped because the descriptor
+   (Item) already starts with the number ("FEOD-00392794 - Grundrahmen"), so it was pure redundancy
+   and wasted width. Descriptor takes all remaining space; Quantity is "1.0"-narrow. Tighter row
+   padding raises density. (Re-show Number by deleting the display:none rule if a distinct column
+   is wanted later.) */
+#bom .bom-column-number,   #bom .tree-column-number   { display : none !important; }
+#bom .tree-color                                      { width : 8px  !important; }
+#bom .bom-column-quantity, #bom .tree-column-quantity { width : 48px !important; }
+#bom td, #bom th { padding-top : 4px; padding-bottom : 4px; }
+
+/* In the narrow left column the panel header's search box (208px) crushed the "BOM" title down to
+   ~20px ("BC"). Cap the search and guarantee the title enough room to render in full. */
+#bom .panel-header .panel-title  { min-width : 3.2em; flex : none; }
+#bom .panel-header .panel-search { max-width : 150px; }
 
 /* Filter on: show only rows marked variant-eligible.
    ponytail: flat row hide; tree parents of a hidden node also vanish — acceptable per spec

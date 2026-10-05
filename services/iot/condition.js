@@ -7,13 +7,14 @@ const { vibrationMagnitude } = require('./canonical');
 
 const ORDER = ['OFF', 'NORMAL', 'OBSERVE', 'WARNING', 'CRITICAL'];
 
-function evaluate(health, metrics, thresholds, bands) {
+function evaluate(health, metrics, thresholds, bands, options = {}) {
     const vibration = vibrationMagnitude(metrics);
     const temperature = metrics.temperature;
     const hasTemp = typeof temperature === 'number';
 
     // OFF: essentially no vibration and near-ambient — machine not running.
-    if (vibration < thresholds.vibration.baseline * 0.2 &&
+    if (options.allowOff !== false &&
+        vibration < thresholds.vibration.baseline * 0.2 &&
         (!hasTemp || temperature <= thresholds.temperature.baseline * 0.7)) {
         return { condition: 'OFF', reason: 'no vibration signal (machine off)' };
     }

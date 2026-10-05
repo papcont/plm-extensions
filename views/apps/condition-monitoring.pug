@@ -48,10 +48,15 @@ block body
                         span#cm-temp -
                         span.cm-unit  °C
                 .cm-tile
+                    .cm-label Humidity
+                    .cm-value
+                        span#cm-humidity -
+                        span.cm-unit  %
+                .cm-tile
                     .cm-label Vibration
                     .cm-value
                         span#cm-vib -
-                        span.cm-unit  mm/s
+                        span.cm-unit  g
                         span#cm-vib-trend.cm-trend
                 .cm-tile
                     .cm-label Last update
@@ -63,9 +68,11 @@ block body
             #cm-controls.surface-level-2
                 .cm-control-label Time range
                 select#cm-range
-                    option(value='60') Last 60
-                    option(value='300' selected) Last 300
-                    option(value='900') Last 900
+                    option(value='1') Last 1h
+                    option(value='6') Last 6h
+                    option(value='12') Last 12h
+                    option(value='24' selected) Last 24h
+                    option(value='168') Last 7d
                     option(value='0') All
                 .cm-legend
                     span.cm-legend-item
@@ -83,11 +90,14 @@ block body
                     .cm-chart-title Health trend
                     canvas.cm-chart#cm-chart-health(height='160')
                 .cm-chart-card.surface-level-2
-                    .cm-chart-title Vibration trend (mm/s)
+                    .cm-chart-title Vibration trend (g)
                     canvas.cm-chart#cm-chart-vib(height='160')
                 .cm-chart-card.surface-level-2
                     .cm-chart-title Temperature trend (°C)
                     canvas.cm-chart#cm-chart-temp(height='160')
+                .cm-chart-card.surface-level-2
+                    .cm-chart-title Humidity trend (%)
+                    canvas.cm-chart#cm-chart-humidity(height='160')
 
             #cm-events.surface-level-2
                 .cm-section-title Condition events

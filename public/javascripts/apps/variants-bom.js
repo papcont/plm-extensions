@@ -28,7 +28,8 @@ $(document).ready(function() {
     getFeatureSettings('variants-bom', [], function() {
 
         if(isBlank(dmsId)) {
-            $('#header-subtitle').html('Open an assembly to start editing variants.');
+            $('#header-subtitle').html('Search for an assembly to start editing variants.');
+            vbOpenSearch();
         } else {
             vb.itemLink = '/api/v3/workspaces/' + wsId + '/items/' + dmsId;
             openAssembly(vb.itemLink);
@@ -55,24 +56,56 @@ function setUIEvents() {
         let on = !$('body').hasClass('variant-filter');
         $('body').toggleClass('variant-filter', on);
         $(this).toggleClass('filled', on);
-        if(on) ensureVariantFlags();
+        if(on) ensureVariantFlags(function() { vbHighlightVariantParts(true); });
+        else   vbHighlightVariantParts(false);
     });
+
+    $('#button-open').click(function() { vbOpenSearch(); });
 
 }
 
 
-// Tag every BOM row whose item is VARIANT_ALLOWED with class .variant-allowed.
+// Entry search: pick any item in the item workspace to open for editing. Mounted when the app
+// is launched without a dmsId, and re-openable via the header "Open Item" button. Reuses the same
+// insertWorkspaceSearch panel the replace picker uses - click a result -> openAssembly(link).
+function vbOpenSearch() {
+
+    $('#bom').removeClass().addClass('surface-level-1').html('');
+    let elem = $('#item').removeClass().addClass('surface-level-3').html('');
+    $('<div></div>').appendTo(elem).attr('id', 'vb-open');
+
+    insertWorkspaceSearch(vb.ws.id, {
+        id             : 'vb-open',
+        headerLabel    : 'Open an item to edit',
+        searchInFields : ['DESCRIPTOR'],
+        tileTitle      : 'DESCRIPTOR',
+        tileSubtitle   : vb.fieldIds.number,
+        onClickItem    : function(picked) {
+            let link = picked.attr('data-link');
+            if(isBlank(link)) return;
+            appendOverlay(false);
+            openAssembly(link);
+        }
+    });
+}
+
+
+// Tag every variant-eligible BOM row with class .variant-allowed.
+// Eligibility = GEN_TITLE1 and GEN_TITLE2 are BOTH filled (replaces the old VARIANT_ALLOWED checkbox).
 // Used by the filter (CSS hides the rest) and by the fingerprint tree builder.
-// One indexed /plm/search (comparator 13 = boolean-is-true) returns the flagged dmsIds for
-// the whole workspace; we intersect by data-dmsid. Scales to thousand-row BOMs (Trancheur).
-// ponytail: matches by dmsId (the exact item version the BOM references). Ceiling: if a flag
-// lives on a different revision than the one in the BOM, match by NUMBER instead.
+// One indexed /plm/search (comparator 21 = not-blank, AND'd) returns the eligible dmsIds for the
+// whole workspace; we intersect by data-dmsid. Scales to thousand-row BOMs (Trancheur).
+// ponytail: matches by dmsId (the exact item version the BOM references). Ceiling: if the titles
+// live on a different revision than the one in the BOM, match by NUMBER instead.
 function ensureVariantFlags(callback) {
 
     $.post('/plm/search', {
         wsId   : vb.ws.id,
         fields : [ vb.fieldIds.number ],
-        filter : [{ field : vb.fieldIds.variantAllowed, type : 0, comparator : 13, value : 'true' }]
+        filter : [
+            { field : vb.fieldIds.genTitle1, type : 0, comparator : 21, value : '' },   // 21 = not-blank
+            { field : vb.fieldIds.genTitle2, type : 0, comparator : 21, value : '' }
+        ]
     }).done(function(r) {
         let flagged = {};
         let rows = (r.data && r.data.row) ? r.data.row : [];
@@ -92,6 +125,27 @@ function ensureVariantFlags(callback) {
 }
 
 
+// When the filter is on, isolate the variant-eligible (VARIANT_ALLOWED) components in the viewer:
+// they stay solid and tinted light blue, everything else is greyed out (ghosted) so the variation
+// points stand out in 3D - the analog of the service portal's spare-part highlight. Part numbers
+// are read off the already-tagged .variant-allowed BOM rows (dmsId->row tagging lives in
+// ensureVariantFlags). Turning the filter off clears the tint, un-ghosts and shows all again.
+function vbHighlightVariantParts(on) {
+    if(!on) {
+        let [ viewerInstance, viewer, proceed ] = getViewerInstanceRunning(null, true);
+        if(proceed) viewer.setGhosting(false);
+        viewerResetSelection({ fitToView : false });
+        return;
+    }
+    let numbers = [];
+    $('#bom tr.variant-allowed[data-part-number]').each(function() {
+        let n = $(this).attr('data-part-number');
+        if(!isBlank(n) && numbers.indexOf(n) < 0) numbers.push(n);
+    });
+    if(numbers.length) viewerSetColors(numbers, { color : [0.55, 0.80, 0.95, 0.9], isolate : true, ghosting : true, fitToView : false });
+}
+
+
 // Load the launched assembly: render its BOM tree, show item details on node click.
 // Node swapping + upward propagation + fingerprint dedup land in phases 2b-4.
 function openAssembly(link) {
@@ -107,7 +161,8 @@ function openAssembly(link) {
             number         : getSectionFieldValue(response.data.sections, vb.fieldIds.number),
             title          : response.data.title,                                                       // for the derived variant title
             variantAllowed : (rootAllowed === true || rootAllowed === 'true'),
-            fingerprint    : getSectionFieldValue(response.data.sections, vb.fieldIds.bomFingerprint)   // '' if none yet
+            fingerprint    : getSectionFieldValue(response.data.sections, vb.fieldIds.bomFingerprint),  // '' if none yet
+            baseNumber     : getSectionFieldValue(response.data.sections, config.fieldIds.baseItemNumber || 'BASE_ITEM_NUMBER') || ''   // set if this machine is itself a variant
         };
 
         insertBOM(link, {
@@ -125,7 +180,12 @@ function openAssembly(link) {
             afterCompletion  : function(id, data) { onBOMLoaded(id, data); }
         });
 
-        insertViewer(link, { features : config.viewerFeatures });
+        // Tool-created variants are field/BOM clones and carry no CAD attachment of their own, so
+        // their own item has no viewable. Point the viewer at the base item (DMS_ID_BASE_ITEM) whose
+        // model IS translated - geometry is identical for material variants, close enough for swaps.
+        let baseDmsId  = getSectionFieldValue(response.data.sections, config.fieldIds.dmsIdBaseItem || 'DMS_ID_BASE_ITEM');
+        let viewerLink = isBlank(baseDmsId) ? link : '/api/v3/workspaces/' + vb.ws.id + '/items/' + baseDmsId;
+        insertViewer(viewerLink, { features : config.viewerFeatures });
 
         vbShowItemPlaceholder();
 
@@ -143,7 +203,49 @@ function vbShowItemPlaceholder() {
     let box  = $('<div></div>').appendTo(elem).addClass('vb-placeholder');
     $('<div></div>').appendTo(box).addClass('vb-placeholder-title').html('No part selected');
     $('<div></div>').appendTo(box).addClass('vb-placeholder-text')
-        .html('Select a variant-eligible part in the BOM to change its material or replace it.');
+        .html('Select a part in the BOM to swap it for an existing module, or change its material (variant-eligible parts).');
+    vbListRootVariants(elem);
+}
+
+
+// Show the existing variants of the WHOLE opened machine/plant (top assembly), so the user sees
+// at a glance whether and which variants of this family already exist. Same BASE_ITEM_NUMBER
+// back-reference as the per-node catalogue, but keyed on the ROOT - and a click OPENS the variant
+// (openAssembly) instead of recording a swap. Keyed on the base number: if the opened machine is
+// itself a variant, its siblings share the same BASE_ITEM_NUMBER; if it is the base, its own
+// number is the key. ponytail: nothing is drawn when no variants exist yet - panel stays clean.
+function vbListRootVariants(elem) {
+
+    if(!vb.root) return;
+    let baseField  = config.fieldIds.baseItemNumber || 'BASE_ITEM_NUMBER';
+    let baseNumber = vb.root.baseNumber || vb.root.number;
+    if(isBlank(baseNumber)) return;
+
+    $.post('/plm/search', {
+        wsId   : vb.ws.id,
+        fields : [ vb.fieldIds.number, 'DESCRIPTOR' ],
+        filter : [{ field : baseField, type : 0, comparator : 15, value : baseNumber }]
+    }).done(function(r) {
+
+        let rows = (r.data && r.data.row) ? r.data.row : [];
+        if(rows.length === 0) return;
+
+        let box = $('<div></div>').appendTo(elem).addClass('vb-root-variants').css({ padding : '12px' });
+        $('<div></div>').appendTo(box).css({ marginBottom : '6px', fontWeight : 'bold' })
+            .html('Existing variants of this machine (' + baseNumber + ')');
+
+        for(let row of rows) {
+            let link      = '/api/v3/workspaces/' + vb.ws.id + '/items/' + row.dmsId;
+            let desc      = getSearchResultFieldValue(row, 'DESCRIPTOR', '') ||
+                            getSearchResultFieldValue(row, vb.fieldIds.number, String(row.dmsId));
+            let isCurrent = (link === vb.root.link);
+            let line = $('<div></div>').appendTo(box).addClass('button').css({ marginTop : '4px', width : '100%' })
+                .html((isCurrent ? '● ' : '→ ') + desc + (isCurrent ? '  (current)' : ''));
+            if(isCurrent) line.addClass('disabled');
+            else          line.click(function() { appendOverlay(false); openAssembly(link); });
+        }
+
+    });
 }
 
 
@@ -168,18 +270,12 @@ function selectNodeForSwap(elemClicked) {
     let link = elemClicked.attr('data-link');
     if(isBlank(link)) return;
 
-    // Selection gate: only VARIANT_ALLOWED items are variation points. Fail-open while the flag
-    // search is still in flight (vb.flagged === null) - the gate is UX guidance, not a hard lock.
-    let dmsId = elemClicked.attr('data-dmsid');
-    if(vb.flagged !== null && !vb.flagged[dmsId]) {
-        $('#bom tr.swap-selected').removeClass('swap-selected');
-        elemClicked.addClass('swap-selected');
-        let elem = $('#item').removeClass().addClass('surface-level-3').html('');
-        $('<div></div>').appendTo(elem).css({ padding : '16px', opacity : 0.75 })
-            .html('"' + (elemClicked.attr('data-part-number') || 'This item') + '" is not marked variant-eligible ' +
-                  '(VARIANT_ALLOWED). Flag it to vary it.');
-        return;
-    }
+    // Eligibility: GEN-TITLE1 + GEN-TITLE2 both filled marks the variation-point PARTS - only they may spawn a NEW
+    // material variant. Every node, flagged or not, may still be swapped for an EXISTING module
+    // (a plain replace, which propagates upward anyway). Fail-open while the flag search is still
+    // in flight (vb.flagged === null). So the gate now hides the material box, it no longer blocks.
+    let dmsId    = elemClicked.attr('data-dmsid');
+    let eligible = (vb.flagged === null) || !!vb.flagged[dmsId];
 
     vb.selected = {
         row         : elemClicked,
@@ -193,19 +289,39 @@ function selectNodeForSwap(elemClicked) {
     $('#bom tr.swap-selected').removeClass('swap-selected');
     elemClicked.addClass('swap-selected');
 
-    // Rebuild #item: material selector on top, existing-part picker mounted in #vb-replace below.
-    let elem = $('#item').removeClass().addClass('surface-level-3').html('');
-    let box  = $('<div></div>').appendTo(elem).addClass('vb-material-box').css({ padding : '12px' });
-    $('<div></div>').appendTo(box).css({ marginBottom : '6px', fontWeight : 'bold' })
-        .html('Change material of "' + vb.selected.partNumber + '"');
-    let select = $('<select></select>').appendTo(box).attr('id', 'vb-material').css({ width : '100%' });
-    $('<option></option>').appendTo(select).val('').html('- select material -');
-    for(let label of (vb.materials || [])) $('<option></option>').appendTo(select).val(label).html(label);
-    $('<div></div>').appendTo(box).addClass('button').addClass('default').css({ marginTop : '8px' })
-        .html('Apply material')
-        .click(function() { recordMaterialSwap($('#vb-material').val()); });
+    // Highlight the clicked component in the viewer (colour + zoom, keep the rest for context).
+    // Same partNumber->component mapping the stock service portal uses; safe no-op if no model.
+    viewerSelectModel(vb.selected.partNumber, { highlight : true, isolate : false, fitToView : true });
 
-    $('<div></div>').appendTo(elem).attr('id', 'vb-replace');
+    // Rebuild #item: material selector (flagged parts only), catalogue + replace picker (any node),
+    // then the item details panel with an open-in-FM link. Scrollable so the details fit below.
+    let elem = $('#item').removeClass().addClass('surface-level-3').html('').css({ overflowY : 'auto' });
+
+    if(eligible) {
+        let box = $('<div></div>').appendTo(elem).addClass('vb-material-box').css({ padding : '12px' });
+        $('<div></div>').appendTo(box).css({ marginBottom : '6px', fontWeight : 'bold' })
+            .html('Change material of "' + vb.selected.partNumber + '"');
+        let select = $('<select></select>').appendTo(box).attr('id', 'vb-material').css({ width : '100%' });
+        $('<option></option>').appendTo(select).val('').html('- select material -');
+        for(let label of (vb.materials || [])) $('<option></option>').appendTo(select).val(label).html(label);
+        $('<div></div>').appendTo(box).addClass('button').addClass('default').css({ marginTop : '8px' })
+            .html('Apply material')
+            .click(function() { recordMaterialSwap($('#vb-material').val()); });
+    } else {
+        $('<div></div>').appendTo(elem).css({ padding : '12px', opacity : 0.75 })
+            .html('"' + vb.selected.partNumber + '" is not variant-eligible - pick an existing module below, ' +
+                  'or fill GEN-TITLE1 and GEN-TITLE2 on the item to change its material.');
+    }
+
+    // Existing variants already derived from this part (BASE_ITEM_NUMBER back-reference).
+    // Own container placed BEFORE the replace picker, synchronously, so the async search result
+    // can't land under the picker's overlapping panel-actions bar (which would swallow the clicks).
+    let variantsBox = $('<div></div>').appendTo(elem).attr('id', 'vb-variants');
+    vbListExistingVariants(vb.selected.partNumber, variantsBox);
+
+    // min-height reserves flow space for the picker's absolutely-positioned search bar (it overflows
+    // its own 46px box by ~66px), so the item details panel appended below it doesn't get overlapped.
+    $('<div></div>').appendTo(elem).attr('id', 'vb-replace').css({ marginTop : '8px', minHeight : '116px' });
 
     // Prefill the current material and grab MATERIALART (identity component). Best-effort.
     $.get('/plm/details', { link : link, useCache : true }).done(function(r) {
@@ -224,6 +340,63 @@ function selectNodeForSwap(elemClicked) {
         onClickItem    : function(picked) { recordSwap(picked); }
     });
 
+    // Item details of the selected node with an "open in Fusion Manage" toolbar link, so it can be
+    // viewed and edited in FM like the stock item apps. insertDetails self-loads sections/fields.
+    // Placed at the very bottom - below the material change and replace picker, not between them.
+    // Its content is absolutely positioned, so the container needs a definite height to fill/scroll.
+    $('<div></div>').appendTo(elem).attr('id', 'vb-details').css({ position : 'relative', height : '420px', marginTop : '8px' });
+    insertDetails(link, { id : 'vb-details', headerLabel : 'Item Details', openInPLM : true, toggles : true, useCache : true });
+
+}
+
+
+// List variants already derived from this part and let the user swap to one directly.
+// Every tool-created variant carries BASE_ITEM_NUMBER = its base part's number, so one
+// text-equals search (comparator 15) returns the existing variant catalogue for this node.
+// Clicking a result records a plain replace swap - a variant is just another existing part,
+// so it flows through recordSwap unchanged (fed a minimal elem carrying data-link/data-descriptor).
+// ponytail: no panel is drawn when the part has no variants yet - keeps #item lean.
+function vbListExistingVariants(partNumber, elem) {
+
+    if(isBlank(partNumber)) return;
+    let baseField = config.fieldIds.baseItemNumber || 'BASE_ITEM_NUMBER';
+
+    $.post('/plm/search', {
+        wsId   : vb.ws.id,
+        fields : [ vb.fieldIds.number, 'DESCRIPTOR' ],
+        filter : [{ field : baseField, type : 0, comparator : 15, value : partNumber }]
+    }).done(function(r) {
+
+        let rows = (r.data && r.data.row) ? r.data.row : [];
+        if(rows.length === 0) return;
+
+        let box = $('<div></div>').appendTo(elem).addClass('vb-variants-box').css({ padding : '12px' });
+        $('<div></div>').appendTo(box).css({ marginBottom : '6px', fontWeight : 'bold' })
+            .html('Existing variants of "' + partNumber + '"');
+
+        for(let row of rows) {
+            let link = '/api/v3/workspaces/' + vb.ws.id + '/items/' + row.dmsId;
+            let desc = getSearchResultFieldValue(row, 'DESCRIPTOR', '') ||
+                       getSearchResultFieldValue(row, vb.fieldIds.number, String(row.dmsId));
+            $('<div></div>').appendTo(box).addClass('button').css({ marginTop : '4px', width : '100%' })
+                .html('→ ' + desc)
+                .click(function() {
+                    recordSwap($('<div></div>').attr('data-link', link).attr('data-descriptor', desc));
+                });
+        }
+
+    });
+}
+
+
+// Paint the just-varied component GREEN in the viewer (overlay on the light-blue selection
+// highlight), so applying a material/replace shows "this part is now a variant" in 3D.
+// resetColors:false keeps the current isolation/highlight state intact.
+// ponytail: marks the CURRENTLY selected part only - a following node click resets theming
+// colors (viewerSelectModel). Repaint every swapped row on BOM reload if persistent green is needed.
+function vbMarkPartVaried(partNumber) {
+    if(isBlank(partNumber)) return;
+    viewerSetColors([partNumber], { color : [0.30, 0.69, 0.31, 1], resetColors : false, isolate : false, fitToView : false });
 }
 
 
@@ -247,6 +420,8 @@ function recordMaterialSwap(material) {
     row.addClass('swapped');
     row.find('.swap-badge').remove();
     $('<span></span>').addClass('swap-badge').html('→ Material: ' + material).appendTo(row.find('.tree-descriptor').closest('td'));
+
+    vbMarkPartVaried(vb.selected.partNumber);   // varied part turns green in the viewer
 
     $('#button-save').removeClass('disabled');
 }
@@ -278,6 +453,8 @@ function recordSwap(picked) {
     row.addClass('swapped');
     row.find('.swap-badge').remove();
     $('<span></span>').addClass('swap-badge').html('→ ' + toTitle).appendTo(row.find('.tree-descriptor').closest('td'));
+
+    vbMarkPartVaried(vb.selected.partNumber);   // varied part turns green in the viewer
 
     $('#button-save').removeClass('disabled');
 }

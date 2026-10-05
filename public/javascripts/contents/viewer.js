@@ -1210,9 +1210,20 @@ function viewerHighlightInstances(partNumber, dbIds, instancePaths, params) {
     if(dbIds.length === 0) {
         if(!isBlank(instancePaths)) {
             for(let instancePath of instancePaths) {
+                let matched = false;
                 for(let dataInstance of viewerInstance.dataInstances) {
                     if(dataInstance.instancePath === instancePath) {
                         dbIds.push(dataInstance.dbId);
+                        matched = true;
+                    }
+                }
+                // ponytail: flat-derivative fallback — when the viewer built no hierarchical
+                // instancePath (parents empty, e.g. a flattened SVF), match by the leaf node name:
+                // the last '|'-segment of the PLM path equals the viewer node name ("10148244:2").
+                if(!matched) {
+                    let leaf = String(instancePath).split('|').pop();
+                    for(let dataInstance of viewerInstance.dataInstances) {
+                        if(dataInstance.name === leaf) dbIds.push(dataInstance.dbId);
                     }
                 }
             }

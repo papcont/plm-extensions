@@ -59,6 +59,8 @@ test('condition maps threshold crossings intuitively', () => {
     assert.strictEqual(c(1.0, 62), 'WARNING');   // temp past warn 60
     assert.strictEqual(c(1.0, 80), 'CRITICAL');  // temp past critical 75
     assert.strictEqual(c(0.0, 22), 'OFF');       // no signal
+    const uncertainActivity = condition.evaluate(100, { vibrationG: 0, temperature: 22 }, T, B, { allowOff: false });
+    assert.strictEqual(uncertainActivity.condition, 'NORMAL');
 });
 
 test('condition isEscalation orders severities', () => {

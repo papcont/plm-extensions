@@ -23,6 +23,7 @@
     "express-session": "*",
     "form-data": "*",
     "morgan": "*",
+    "mqtt": "^5.15.2",
     "pug": "*",
     "serve-favicon": "*",
     "serve-index": "^1.9.1"

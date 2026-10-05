@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A self-hosted Node.js/Express server that delivers ~30 web applications (and Vault/Inventor add-ins) layered on top of Autodesk Fusion Manage (PLM) via the PLM and APS REST APIs. The server is stateless with respect to PLM data — it proxies REST calls, but does not persist tenant data. There is no build step, no test suite, and no linter configured.
+A self-hosted Node.js/Express server that delivers ~30 web applications (and Vault/Inventor add-ins) layered on top of Autodesk Fusion Manage (PLM) via the PLM and APS REST APIs. The server is stateless with respect to PLM data — it proxies REST calls, but does not persist tenant data. There is no build step and no linter configured; the only automated tests are the IoT unit suite (`npm test` → `node --test test/iot/**`).
 
 ## Commands
 
 - `npm install` — install dependencies.
+- `npm test` — run the IoT unit suite (`node --test test/iot/**/*.test.js`); the only automated tests in the repo. Run it after touching anything under `services/iot/`.
 - `npm start` — launch using `./environment.js` (the default connection settings).
 - `npm start <name>` — launch using `./environments/<name>.js` instead. Used to run the same server against multiple Fusion Manage tenants. Example: `npm start adsktenant` loads `environments/adsktenant.js`. If the file is missing the server prints a setup hint and exits.
 - HTTPS is auto-selected when `redirectUri` uses `https://` and `keys/privkey.pem` + `keys/fullchain.pem` exist; otherwise HTTP is used. The listen port is parsed out of `redirectUri` (or taken from `PORT` env var).
@@ -41,6 +42,7 @@ The `common.workspaceIds` block in `settings/custom.js` is the most commonly ten
 - `/vault` → `routes/pdm.js` — Vault REST passthrough for the Vault/Inventor add-ins.
 - `/services` → `routes/services.js` — misc service endpoints.
 - `/erp` → `routes/erp.js` — ERP Integration: transfers BOMs from Fusion Manage to Dolibarr (`services/erp*.js`), history persisted as JSON in `storage/erp/`. Requires `dolibarrApiUrl`/`dolibarrApiKey` in `environment.js` (or `DOLIBARR_API_URL`/`DOLIBARR_API_KEY`).
+- `/iot` → `routes/iot.js` — IoT / Condition Monitoring: ingests LoRaWAN sensor uplinks (`POST /iot/uplink`), derives health + condition (`services/iot/*`), writes back to the Asset in Fusion Manage. See the IoT subsystem section below.
 - `/storage` → static + directory listing of `./storage/` (download cache, exports, uploads).
 
 `routes/landing.js` is the routing table for all user-facing apps. Each app is one line that calls `launch(view, appSettingsKey, title, req, res, next)`. `launch()`:
@@ -53,6 +55,22 @@ The `common.workspaceIds` block in `settings/custom.js` is the most commonly ten
 Adding a new standard app means: one line in `routes/landing.js`, one Pug view extending `views/framework/layout.pug`, one JS file in `public/javascripts/apps/`, an entry under `exports.applications` in `settings.js`, and a `servicesEnabled` flag.
 
 **`/variants-bom` (Variant BOM Editor)** — app for variant-driven BOM editing (`apps/variants-bom`, settings key `variantsBom`). A `VARIANT_ALLOWED` checkbox flags any item (part or assembly) as variant-eligible; swapping a BOM node and saving creates new variants **bottom-up** for every flagged ancestor (propagation stops+blocks at the first unflagged parent), while a recursive NUMBER-based `BOM_FINGERPRINT` (stored per variant, searched via `/plm/search` comparator 15) **deduplicates** exact-match assemblies so identical variants are reused, not re-created. Both fields are per-tenant and UI-created. Design + decisions + verification: `docs/VARIANTS-BOM-PLAN.md`. Distinct from the older option-based `dev/configurator` and the `apps/variants` manager, which both remain.
+
+**`/condition-monitoring` (Condition Monitoring)** — dashboard app (`apps/condition-monitoring`, settings key `conditionMonitoring`) for the IoT subsystem below; status tiles + Health/Vibration/Temperature charts, condition coloring, events list.
+
+**`/mebom` (Mechatronic BOM Editor)** — **`dev/` work-in-progress** (`dev/mebom`, settings key `mebom`), an evolution of the `instances` app: context is an Asset (WS 904), with the mechanical Engineering BOM + 3D viewer on one side and per-instance lists (serials, motors, sensors, control elements) as alignment tabs. Tenant setup: `docs/MEBOM-TENANT-SETUP.md`.
+
+### IoT / Condition Monitoring subsystem (`/iot`)
+
+Ingests LoRaWAN sensor uplinks, derives a 0-100 health score + condition, and writes it back to the Asset in Fusion Manage (plus a Tandem time-series stand-in that feeds the `/condition-monitoring` dashboard). This is the **only part of the app with automated tests** (`npm test`, `test/iot/**`) — keep them green when changing anything here.
+
+- **`routes/iot.js`** (mounted `/iot` in `app.js`): `/config /tick /state /history /reset /ticker` drive the simulator/runtime; **`POST /iot/uplink`** is the real-hardware entry (a TTN/TTS or ChirpStack/Dragino uplink envelope).
+- **`services/iot/bridge.js`** — the pipeline: validate → identify device → map to canonical → merge → dedupe → health → condition → events → Tandem + Fusion Manage. Central acceptance criterion: a simulator reading and a raw hardware uplink produce the *same* canonical structure.
+- **`canonical.js`** — versioned canonical metric schema; **adapters**: `netvoxR718E.js` (velocity mm/s + temp), `draginoLHT65VIB.js` (peak-g amplitude + vib counts), `bfloat16.js`, `tts.js`, `chirpstack.js`. `service.ingestUplink` auto-detects the envelope (`deviceInfo` → ChirpStack, `uplink_message` → TTS).
+- **`health.js` / `condition.js`** — weakest-link health; OFF/NORMAL/OBSERVE/WARNING/CRITICAL condition. **`simulator.js`** — deterministic demo sensor (`serverTickMs:0` turns it off so a real sensor owns the asset).
+- **`tandemRepository.js` / `fusionManageRepository.js`** — persistence targets, both default to dry-run; live writes are gated (`TANDEM_ENABLED`; admin 2-legged creds + tenant link for FM). **`deviceRegistry.js` + `sensorDirectory.js`** — DevEUI→asset resolution (static `deviceAssetMap` > FM directory via Sensors WS 968 `IOT_DEVICE_ID`→`ASSET` > identity), FM lookup gated on `IOT_RESOLVE_FROM_FM`.
+- **`ttnMqtt.js`** — pulls uplinks from The Things Stack's MQTT broker (no public URL needed), started in `app.js`, gated on `environment.iot.ttnMqtt.enabled` (adds the `mqtt` dep). **`config.js` `applyDeployment(environment)`** folds the per-deployment `exports.iot` block (`deviceAssetMap`, `serverTickMs`, g-scale vibration `thresholds`, `source`, `ttnMqtt`) into the runtime at startup.
+- **Any IoT env/wiring change needs a server restart.** Full status/history + device specs: `docs/features/iot-condition-monitoring/` (STATUS.md, GOAL.md, HANDOVER.md).
 
 ### Server-to-client config bridge
 
@@ -147,6 +165,28 @@ Each `insertXxx` has matching `insertXxxDone(id)` and `insertXxxDataDone(id, dat
 **Panel-builder primitives** live in `utils.js` as `genPanelTop`, `genPanelToolbar`, `genPanelHeader`, `genPanelSearchInput`, `genPanelFilterSelect`, `genPanelResizeButton`, etc. — use these instead of writing raw HTML when extending an `insertXxx` or building a custom panel. `getPanelSettings(link, params, defaults, additional)` is the canonical way to merge user-supplied params with registry defaults and produce the runtime `settings[id]` entry.
 
 **Common globals to know**: `userAccount`, `urlParameters`, `viewerFeatures`, `applicationFeatures`, `responseCache`, `allWorkspaces`, `settings` (keyed by panel id, holds runtime state), and the server-injected `tenant`/`config`/`common`/`menu`/`colors`/`theme`/`wsId`/`dmsId`/... from `layout.pug`.
+
+### Reuse existing building blocks before building new (check first)
+
+**Before writing a new panel or app, search the framework catalog for a module that already does it — do not reinvent a panel that exists.** This is the intended way to build here: apps are compositions of shared `insertXxx` panels, not bespoke UI.
+
+Where the catalog lives:
+
+- **`/docs`** (route `routes/landing.js:29` → `views/framework/docs.pug`, content assembled from `views/docs/*.pug`) — the Developer Guide: tutorials (create an app, adjust params, multiple elements, header toggle, details/attachments, context app, viewer interactions) plus one documented block per module.
+- **`/gallery`** — live demo of every panel.
+- **`/studio`** — click-to-configure a panel and copy its runtime settings.
+- **`public/javascripts/framework/registry.js`** — the source of truth `/docs`, `/gallery`, `/studio` all read from: every `insertXxx` with its `description`, `usage`, required inputs, default options, and supported filters. **Read this first when picking a panel.**
+
+Available panels (grouped as in the registry). Mount by adding a `config.panels.insertXxx` block in `settings.js` and calling `insertXxx(params)`:
+
+- *Navigation* (`contents/nav.js`): `insertMOW` (user's outstanding workflow tasks), `insertRecentItems`, `insertBookmarks`, `insertWorkspaceViews` (a workspace's saved Views), `insertWorkspaceSearch` (search one workspace by field values), `insertSearch` (cross-workspace find-any-item), `insertResults` (fixed-query list, no search box).
+- *Creation* (`contents/item.js`): `insertCreate` (create form — prefill, clone, context links, workflow-on-create).
+- *Item contents* (`contents/item.js`): `insertDetails` (field sections + inline edit), `insertImages` (image fields as thumbnails), `insertAttachments` (files, preview, upload, Vault), `insertGrid` (editable grid table), `insertBOM` (multi-level tree), `insertBOMPartsList`/`insertFlatBOM` (flattened, rolled-up qty), `insertRootParents` (where-used roots), `insertParents` (immediate parents), `insertBOMChanges` (new/changed children), `insertManagedItems`, `insertChangeProcesses` (+create), `insertProject`, `insertRelationships`, `insertSourcing`, `insertWorkflowHistory`, `insertRevisions`, `insertChangeLog`, `insertItemSummary` (full self-contained item page).
+- *Classification* (`contents/classification.js`): `insertClasses` (tree), `insertClassContents`, `insertClassFilters`, `insertItemClassification`, `insertSimilarItems`.
+- *Admin*: `insertUsers`.
+- *Viewer interactions* (`contents/viewer.js`, documented under `/docs` → Viewer): basic events, component selection, colors, visibility.
+
+If a needed capability truly has no matching panel, prefer extending the closest `insertXxx` (via its `insertXxxDone`/`insertXxxDataDone` hooks) and composing from the panel-builder primitives below over writing raw markup.
 
 ### Shape of `app.locals.applications[<key>]` (the `config` global)
 

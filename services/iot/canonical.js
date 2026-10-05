@@ -5,10 +5,14 @@ const crypto = require('node:crypto');
 
 const SCHEMA_VERSION = '1.0';
 
-// Core condition-monitoring metrics (from the Netvox R718E 0x02 velocity+temp frame).
-const CORE_METRICS = ['velocityX', 'velocityY', 'velocityZ', 'temperature'];
-// Optional detail metrics (0x01 accel+battery frame).
-const DETAIL_METRICS = ['accelerationX', 'accelerationY', 'accelerationZ', 'battery'];
+// Core condition-monitoring metrics. Velocity (mm/s) + temperature come from the Netvox R718E
+// velocity+temp frame; vibrationG (peak-acceleration magnitude, g) + vibrationCount come from the
+// Dragino LHT65N-VIB. Each is a valid standalone core signal so a device that reports only one of
+// them still produces a valid event.
+const CORE_METRICS = ['velocityX', 'velocityY', 'velocityZ', 'temperature', 'vibrationG', 'vibrationCount'];
+// Optional detail metrics. accelerationX/Y/Z are bfloat16 g (Netvox) or peak g (Dragino);
+// humidity + battery are secondary readings shown but not scored.
+const DETAIL_METRICS = ['accelerationX', 'accelerationY', 'accelerationZ', 'battery', 'humidity'];
 const KNOWN_METRICS = [...CORE_METRICS, ...DETAIL_METRICS];
 
 // Build a canonical event. Unknown metric keys are rejected so a bad adapter can't leak a
@@ -63,10 +67,21 @@ function validate(event) {
     return { valid: errors.length === 0, errors };
 }
 
-// Overall vibration velocity magnitude (mm/s) — one understandable number for UI/health.
+// Overall vibration amplitude — one understandable number for UI/health. Prefers velocity (mm/s,
+// Netvox); falls back to the Dragino peak-acceleration amplitude (vibrationG, or the raw g axes).
+// The unit therefore depends on the reporting device — thresholds must match (see config.thresholds).
+// vibrationCount is deliberately NOT used here: it's an event tally, not an amplitude.
 function vibrationMagnitude(metrics) {
-    const x = metrics.velocityX || 0, y = metrics.velocityY || 0, z = metrics.velocityZ || 0;
-    return Math.sqrt(x * x + y * y + z * z);
+    if ('velocityX' in metrics || 'velocityY' in metrics || 'velocityZ' in metrics) {
+        const x = metrics.velocityX || 0, y = metrics.velocityY || 0, z = metrics.velocityZ || 0;
+        return Math.sqrt(x * x + y * y + z * z);
+    }
+    if (typeof metrics.vibrationG === 'number') return metrics.vibrationG;
+    if ('accelerationX' in metrics || 'accelerationY' in metrics || 'accelerationZ' in metrics) {
+        const x = metrics.accelerationX || 0, y = metrics.accelerationY || 0, z = metrics.accelerationZ || 0;
+        return Math.sqrt(x * x + y * y + z * z);
+    }
+    return 0;
 }
 
 module.exports = {

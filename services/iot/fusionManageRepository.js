@@ -15,12 +15,13 @@ const axios = require('axios');
 // PLM v3 rejects bare numbers for Float fields ("Invalid field value") — they must be sent as STRINGS,
 // capped to the field's decimal precision (a string with MORE decimals than the field allows is also
 // rejected). Integers accept a number. Condition/timestamps are strings. `kind` drives the formatting;
-// float precision is config-driven (config.floatDecimals) so it matches the tenant field.
+// float precision is config-driven so it matches each tenant field.
 const FIELD = {
     IOT_CONDITION      : { title: 'IOT Condition',      kind: 'raw',      pick: s => s.condition },
     IOT_HEALTH_SCORE   : { title: 'IOT Health Score',   kind: 'int',      pick: s => s.healthScore },
     IOT_VIBRATION      : { title: 'IOT Vibration',      kind: 'float',    pick: s => s.vibration },
     IOT_TEMPERATURE    : { title: 'IOT Temperature',    kind: 'float',    pick: s => s.temperature },
+    IOT_HUMIDITY       : { title: 'IOT Humidity',       kind: 'float',    pick: s => s.humidity },
     IOT_LAST_TELEMETRY : { title: 'IOT Last Telemetry', kind: 'datetime', pick: s => s.lastTelemetry },
     IOT_LAST_ALERT     : { title: 'IOT Last Alert',     kind: 'datetime', pick: s => s.lastEvent },
 };
@@ -50,17 +51,23 @@ function formatValue(kind, raw, decimals) {
     return raw;
 }
 
-function createFusionManageRepository(config, logger = console) {
+function decimalsForField(config, id) {
+    const configured = config.floatDecimalsByField && config.floatDecimalsByField[id];
+    return (configured == null) ? ((config.floatDecimals == null) ? 2 : config.floatDecimals) : Number(configured);
+}
+
+function createFusionManageRepository(config, logger = console, http = axios) {
     const summaries = new Map();   // assetId -> latest summary object
     const events = [];             // recorded condition events (newest last)
     const lastWriteAt = new Map(); // assetId -> ms of last live write (throttle)
+    const lastWrittenSignature = new Map(); // assetId -> last business state sent to FM
 
     // ponytail: bearer duplicates sensorDirectory's token dance. Kept local to avoid refactoring the
     // tested resolver; unify into an fmAuth helper if a third caller ever needs it.
     let token = null, tokenExpMs = 0;
     async function bearer() {
         if (token && Date.now() < tokenExpMs) return token;
-        const r = await axios.post(
+        const r = await http.post(
             'https://developer.api.autodesk.com/authentication/v2/token',
             { grant_type: 'client_credentials', scope: 'data:read data:write' },
             { headers: {
@@ -82,15 +89,14 @@ function createFusionManageRepository(config, logger = console) {
     async function patchAsset(summary) {
         const prefix = '/api/v3/workspaces/' + config.assetWorkspaceId + '/items/' + summary.assetId;
         const sectionLink = prefix + '/views/1/sections/' + config.conditionSectionId;
-        const decimals = (config.floatDecimals == null) ? 2 : config.floatDecimals;
         const fields = [];
         for (const [id, def] of Object.entries(FIELD)) {
-            const value = formatValue(def.kind, def.pick(summary), decimals);
+            const value = formatValue(def.kind, def.pick(summary), decimalsForField(config, id));
             if (value === undefined || value === null) continue;   // don't clobber with blanks
             fields.push({ __self__: prefix + '/views/1/fields/' + id, title: def.title, value });
         }
         const body = { sections: [{ link: sectionLink, fields }] };
-        await axios.patch(config.tenantLink + prefix, body, {
+        await http.patch(config.tenantLink + prefix, body, {
             headers: {
                 Authorization : 'Bearer ' + await bearer(),
                 'X-user-id'   : config.impersonateUser,   // 2-legged apps write by impersonating this user
@@ -108,12 +114,22 @@ function createFusionManageRepository(config, logger = console) {
             logger.log(' IoT/FM: live writes enabled but mapping/creds not configured - skipping');
             return { written: false, mode: 'blocked-no-mapping', summary };
         }
+        // Last telemetry changes on every uplink and must not turn Fusion Manage into a time-series
+        // store. Compare the formatted business values instead, using the same precision as the PATCH.
+        // The timestamp is still included whenever another value causes a real write.
+        const signature = JSON.stringify(Object.entries(FIELD)
+            .filter(([id]) => id !== 'IOT_LAST_TELEMETRY')
+            .map(([id, def]) => [id, formatValue(def.kind, def.pick(summary), decimalsForField(config, id))]));
+        if (lastWrittenSignature.get(summary.assetId) === signature) {
+            return { written: false, mode: 'unchanged', summary };
+        }
         const now = Date.now();
         const last = lastWriteAt.get(summary.assetId) || 0;
         if (now - last < (config.writeMinIntervalMs || 0)) return { written: false, mode: 'throttled', summary };
         try {
             await patchAsset(summary);
             lastWriteAt.set(summary.assetId, now);
+            lastWrittenSignature.set(summary.assetId, signature);
             return { written: true, mode: 'live', summary };
         } catch (e) {
             // never break ingestion on a write error; surface it in the log

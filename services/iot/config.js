@@ -11,11 +11,13 @@ function json(v, def) {
 }
 
 const config = {
-    // simulator | tts
+    // simulator | tts | chirpstack  (only gates simulator ticking; /iot/uplink accepts either envelope)
     source : (process.env.IOT_SOURCE || 'simulator').toLowerCase(),
 
     tandemEnabled       : bool(process.env.TANDEM_ENABLED, false),
     tandemIngestionUrl  : process.env.TANDEM_INGESTION_URL || '',   // real Tandem stream URL; empty = stand-in only
+    telemetryPersistenceEnabled: bool(process.env.IOT_TELEMETRY_PERSISTENCE, false),
+    telemetryStorePath  : process.env.IOT_TELEMETRY_STORE_PATH || 'storage/iot/telemetry',
     fusionManageWrites  : bool(process.env.FUSION_MANAGE_IOT_WRITES, false),
 
     // device id -> Fusion Manage asset id. Default: identity for the demo motor.
@@ -42,12 +44,30 @@ const config = {
     impersonateUser    : process.env.IOT_IMPERSONATE_USER || '',
     writeMinIntervalMs : Number(process.env.IOT_WRITE_MIN_INTERVAL_MS) || 30000,  // FM is not a time-series DB: throttle upserts
     floatDecimals      : (process.env.IOT_FLOAT_DECIMALS != null) ? Number(process.env.IOT_FLOAT_DECIMALS) : 2,  // must match the FM Float field precision
+    floatDecimalsByField: json(process.env.IOT_FLOAT_DECIMALS_BY_FIELD, {}),
 
     // Optional unattended driver: tick the simulator server-side every N ms (default off = client-driven only).
     serverTickMs       : Number(process.env.IOT_SERVER_TICK_MS) || 0,
 
-    // Health/condition thresholds. Vibration is overall velocity magnitude (mm/s), roughly
-    // ISO 10816 medium-machine bands; temperature in °C. Tune per asset later — NOT universal truth.
+    // TTN MQTT ingestion (pull): a local client subscribes to The Things Stack's broker and feeds
+    // uplinks into the bridge. No public URL needed. GATED OFF; enable per deployment via environment.js
+    // `exports.iot.ttnMqtt = { enabled:true, username:'<app-id>@ttn', apiKey:'<ttn-app-api-key>' }`.
+    ttnMqtt : {
+        enabled  : bool(process.env.IOT_TTN_MQTT_ENABLED, false),
+        host     : process.env.IOT_TTN_MQTT_HOST || 'eu1.cloud.thethings.network',
+        username : process.env.IOT_TTN_MQTT_USERNAME || '',   // e.g. contelos-iot@ttn
+        apiKey   : process.env.IOT_TTN_MQTT_API_KEY || '',    // TTN application API key with uplink read
+        topic    : process.env.IOT_TTN_MQTT_TOPIC || 'v3/+/devices/+/up',
+    },
+
+    // Health/condition thresholds. Vibration is the amplitude from canonical.vibrationMagnitude — its
+    // UNIT depends on the device: velocity mm/s (Netvox R718E, defaults below, ~ISO 10816 medium-machine)
+    // or peak acceleration g (Dragino LHT65N-VIB). A Dragino deployment MUST override vibration with
+    // g-scale bands via environment.js `exports.iot.thresholds`, e.g.
+    //   thresholds: { vibration: { baseline: 0.5, warn: 2, critical: 4 } }
+    // Temperature in °C. Tune per asset later — NOT universal truth.
+    // ponytail: one global vibration band per deployment; a deployment mixing mm/s + g sensors on
+    // different assets would need per-device thresholds — not built until a deployment actually mixes them.
     thresholds : {
         vibration   : { baseline: 1.5, warn: 4.5, critical: 7.1 },
         temperature : { baseline: 40,  warn: 60,  critical: 75  },
@@ -85,9 +105,18 @@ config.applyDeployment = function(env) {
     if (process.env.IOT_CONDITION_SECTION_ID == null && iot.conditionSectionId   !== undefined) config.conditionSectionId = String(iot.conditionSectionId);
     if (process.env.IOT_ASSET_WS_ID          == null && iot.assetWorkspaceId     !== undefined) config.assetWorkspaceId   = String(iot.assetWorkspaceId);
     if (process.env.IOT_SERVER_TICK_MS       == null && iot.serverTickMs         !== undefined) config.serverTickMs       = Number(iot.serverTickMs);
+    if (process.env.IOT_TELEMETRY_PERSISTENCE == null && iot.telemetryPersistenceEnabled !== undefined) config.telemetryPersistenceEnabled = !!iot.telemetryPersistenceEnabled;
+    if (process.env.IOT_TELEMETRY_STORE_PATH == null && iot.telemetryStorePath) config.telemetryStorePath = String(iot.telemetryStorePath);
     if (process.env.IOT_WRITE_MIN_INTERVAL_MS== null && iot.writeMinIntervalMs   !== undefined) config.writeMinIntervalMs = Number(iot.writeMinIntervalMs);
     if (process.env.IOT_FLOAT_DECIMALS       == null && iot.floatDecimals        !== undefined) config.floatDecimals      = Number(iot.floatDecimals);
+    if (process.env.IOT_FLOAT_DECIMALS_BY_FIELD == null && iot.floatDecimalsByField) {
+        config.floatDecimalsByField = Object.assign({}, config.floatDecimalsByField, iot.floatDecimalsByField);
+    }
     if (iot.deviceAssetMap) config.deviceAssetMap = Object.assign({}, config.deviceAssetMap, iot.deviceAssetMap);
+    // g-scale vibration bands for a Dragino deployment, etc. Shallow per-metric merge so overriding
+    // vibration alone keeps the default temperature band.
+    if (iot.thresholds) config.thresholds = Object.assign({}, config.thresholds, iot.thresholds);
+    if (iot.ttnMqtt) config.ttnMqtt = Object.assign({}, config.ttnMqtt, iot.ttnMqtt);
     return config;
 };
 

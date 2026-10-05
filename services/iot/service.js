@@ -7,6 +7,10 @@ const baseConfig = require('./config');
 const simulator = require('./simulator');
 const netvox = require('./netvoxR718E');
 const tts = require('./tts');
+const chirpstack = require('./chirpstack');
+const dragino = require('./draginoLHT65VIB');
+const canonical = require('./canonical');
+const condition = require('./condition');
 const { createBridge } = require('./bridge');
 const { createTandemRepository } = require('./tandemRepository');
 const { createFusionManageRepository } = require('./fusionManageRepository');
@@ -68,21 +72,81 @@ function createRuntime(overrides = {}) {
         return Object.assign({ tick: tickIndex, simState: reading.state }, result);
     }
 
-    // Real-hardware / TTS ingestion path: a The Things Stack uplink (from SenseCAP M2 -> TTS)
-    // decoded by the same Netvox adapter, into the same bridge. This is the endpoint the future
-    // webhook will call — it already works today with replayed/fixture uplinks.
+    // Real-hardware ingestion path. Two envelope shapes are auto-detected on the same /iot/uplink door:
+    //   - ChirpStack v4 event (SenseCAP M2's internal ChirpStack HTTP integration): has `deviceInfo`.
+    //     ChirpStack already decoded via the Dragino codec, so we map its `object` -> canonical.
+    //   - The Things Stack uplink (has `uplink_message`): raw Netvox bytes decoded by the Netvox adapter.
+    // Both feed the same bridge — nothing downstream knows which transport delivered the reading.
     async function ingestUplink(envelope) {
+        if (envelope && envelope.deviceInfo) {
+            const parsed = chirpstack.parseUplink(envelope);
+            const event = dragino.objectToCanonical(parsed.object, {
+                deviceId: parsed.deviceId, timestamp: parsed.receivedAt, source: 'chirpstack', fPort: parsed.fPort,
+            });
+            return bridge.ingest(event);
+        }
         const parsed = tts.parseUplink(envelope);
+        // Dragino over TTS. Two sub-cases:
+        //   a) a payload formatter is set in TTS -> decoded object present -> map it.
+        //   b) no formatter -> only raw bytes; decode them ourselves on the Dragino data ports.
+        // fPort discriminates from Netvox (which is fPort 6): Dragino data is on 2/9/10.
+        if (dragino.isDraginoObject(parsed.decodedPayload)) {
+            const event = dragino.objectToCanonical(parsed.decodedPayload, {
+                deviceId: parsed.deviceId, timestamp: parsed.receivedAt, source: 'tts', fPort: parsed.fPort,
+            });
+            return bridge.ingest(event);
+        }
+        if (parsed.bytes && dragino.DATA_PORTS.includes(parsed.fPort)) {
+            const decoded = dragino.decode(parsed.fPort, parsed.bytes);
+            if (decoded) {
+                const event = dragino.objectToCanonical(decoded, {
+                    deviceId: parsed.deviceId, timestamp: parsed.receivedAt, source: 'tts', fPort: parsed.fPort,
+                });
+                return bridge.ingest(event);
+            }
+            return { accepted: false, stage: 'decode', reason: 'unsupported Dragino frame' };
+        }
         if (!parsed.bytes) throw new Error('uplink missing frm_payload (raw bytes)');
         const decoded = netvox.decode(parsed.fPort, parsed.bytes);
         const event = netvox.toCanonical(decoded, { deviceId: parsed.deviceId, timestamp: parsed.receivedAt, source: 'tts' });
         return bridge.ingest(event);
     }
 
+    function getState(assetId) {
+        const resolvedAsset = assetId || bridge.registry.resolveAsset(deviceId);
+        const current = bridge.getAssetState(resolvedAsset);
+        if (current) return current;
+        const latest = tandem.latest(resolvedAsset);
+        if (!latest) return null;
+        const points = tandem.history(resolvedAsset, 0);
+        const events = points.map(p => p.conditionEvent).filter(Boolean).slice(-50);
+        const metrics = latest.metrics || {};
+        const vibration = (latest.vibration == null) ? canonical.vibrationMagnitude(metrics) : latest.vibration;
+        const evaluated = latest.condition || condition.evaluate(
+            latest.healthScore, metrics, config.thresholds, config.conditionBands).condition;
+        return {
+            summary: {
+                assetId: String(resolvedAsset),
+                deviceId: latest.deviceId,
+                condition: evaluated,
+                healthScore: latest.healthScore,
+                vibration,
+                temperature: metrics.temperature,
+                humidity: metrics.humidity,
+                lastTelemetry: latest.t,
+                lastEvent: events.length ? events[events.length - 1].timestamp : null,
+                tandemRef: String(resolvedAsset),
+            },
+            condition: evaluated,
+            health: { score: latest.healthScore, vibration, temperature: metrics.temperature },
+            events,
+        };
+    }
+
     return {
         config, deviceId, tick, bridge, ingestUplink,
-        getState : () => bridge.getAssetState(bridge.registry.resolveAsset(deviceId)),
-        getHistory : rangeMs => tandem.history(bridge.registry.resolveAsset(deviceId), rangeMs),
+        getState,
+        getHistory : (rangeMs, assetId) => tandem.history(assetId || bridge.registry.resolveAsset(deviceId), rangeMs),
         reset : () => { tickIndex = 0; },
     };
 }

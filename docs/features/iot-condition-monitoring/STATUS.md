@@ -109,6 +109,62 @@ _Last updated: 2026-08-12_
 - **Live Fusion Manage writes** — target workspace/field IDs undefined. Required structure in
   `fusion-manage-mapping.md`; enable via `FUSION_MANAGE_IOT_WRITES=true` after IDs are filled in.
 
+## Dragino LHT65N-VIB over SenseCAP M2 → ChirpStack path added (2026-08-19, `npm test` = 37/37)
+- **Decisive finding (from the user's setup video):** the SenseCAP M2 gateway routes third-party
+  devices through its **internal ChirpStack**, NOT the `sensecap.seeed.cc` consumer portal (Seeed
+  sensors only) and NOT The Things Stack. Onboarding in ChirpStack: Device Profile (region + JS codec =
+  the official Dragino `LHT65N-VIB_v1.4.0_Chirpstack_Decoder`) → Application → Device (DevEUI/AppKey,
+  OTAA) → physically activate the sensor (hold button >3 s, green LED blinks 5× → status "active") →
+  ChirpStack decodes → an **HTTP integration** POSTs uplinks to our `/iot/uplink`.
+- Because ChirpStack decodes with the pasted codec, we do **not** port the decoder. New code maps
+  ChirpStack's decoded `object` → canonical:
+  - `services/iot/chirpstack.js` — v4 event envelope parser (`deviceInfo.devEui` upper-cased, base64
+    `data` → bytes, `object` passed through). Analogue of `tts.js`.
+  - `services/iot/draginoLHT65VIB.js` — `objectToCanonical`: `TempC_SHT→temperature`, `Hum_SHT→humidity`,
+    `vib_count→vibrationCount`, `BatV→battery`, `max_acc_{x,y,z}_g` (peak g) → `accelerationX/Y/Z` +
+    `vibrationG` = 3-axis magnitude (the amplitude health scores). Vendor keys dropped.
+  - `canonical.js` — `vibrationG`/`vibrationCount` added as core metrics, `humidity` as detail;
+    `vibrationMagnitude` now prefers velocity, falls back to `vibrationG`, then accel magnitude.
+  - `service.js ingestUplink` — auto-detects envelope: `deviceInfo` → ChirpStack/Dragino path;
+    `uplink_message` → existing TTS/Netvox path. Same bridge downstream (unchanged).
+  - `config.js` — deployment can override `thresholds` (Dragino MUST set **g-scale** vibration bands,
+    e.g. `{ baseline:0.5, warn:2, critical:4 }`); `source` may be `chirpstack`.
+- **Vibration reality:** the LHT65N-VIB gives peak-g amplitude + event counts, NOT ISO-10816 velocity
+  mm/s or a spectrum. Good for trend/threshold ("running / vibrating more than normal"), not bearing
+  spectral diagnostics. Velocity sensor (R718E) still the path for that.
+- Tests: `test/iot/chirpstack.test.js` — envelope parse, both fPort mappings, vibrationMagnitude
+  fallback, hardware-swap parity (ChirpStack uplink == direct canonical), bridge escalation on high g.
+- **Still needs the user:** ChirpStack URL + login (gateway-local or Seeed-hosted), the physical pairing,
+  the ChirpStack HTTP integration pointed at a public `/iot/uplink`, and DevEUI→asset mapping
+  (`IOT_DEVICE_ID` on Sensors 968, or static `deviceAssetMap`). No hardware decode needed on our side.
+
+## LIVE hardware wired via The Things Stack + MQTT (2026-08-19, `npm test` = 44/44)
+- **The SenseCAP portal cannot onboard the third-party Dragino** (Seeed devices only, paid per-device
+  service). Confirmed in-portal. So the M2 gateway was repointed off the SenseCAP cloud onto **The Things
+  Stack (Community, eu1)** — a hosted, vendor-neutral LNS. Decisive over the gateway's internal ChirpStack
+  (single point of failure) for "cloud + future-proof + any sensor".
+- **Gateway**: reached via the SenseCAP portal's **Tunnel Connection** → the M2's OpenWrt LuCI (`…luci.sensecap-fleet.seeed.cc`).
+  LoRa → LoRa Network → Mode **`Packet Forwarder`** → `eu1.cloud.thethings.network:1700` (UDP). Registered in
+  TTN as gateway `contelos-sensecap-m2` (EUI `2CF7F1108010032E`, EU868). **Verified online in TTN** (uplinks
+  forwarding, UDP).
+- **Device**: TTN app `contelos-iot`, device `lht65n-vib-01` (manual, LoRaWAN 1.0.3 / RP001 1.0.3-A, OTAA).
+  Keys from the box label: DevEUI `A8404198D65F3D36`, JoinEUI `A840410000000100`, AppKey on label.
+  **Paired + joined + first uplink VERIFIED** in TTN Live data (fPort 2, `0CAE06…`, battery 3.246 V, VIBMOD=1).
+- **No public URL needed** — chose **MQTT pull**: new `services/iot/ttnMqtt.js` connects OUT to TTN's broker
+  (`eu1.cloud.thethings.network:8883`, user `contelos-iot@ttn`, app API key w/ uplink-read), subscribes
+  `v3/+/devices/+/up`, feeds each message to `service.getShared().ingestUplink()` (same JSON as the webhook).
+  Wired in `app.js` after `applyDeployment`; gated via `environment.iot.ttnMqtt.enabled`. Dependency `mqtt` added.
+  **MQTT connect + subscribe VERIFIED live** with the real key (headless conn test).
+- **No TTN payload formatter needed**: the backend now also decodes raw Dragino bytes itself
+  (`dragino.decode` for fPort 2/9/10), so the pipeline works with or without a TTS formatter. Routing:
+  decoded_payload(Dragino) → map; else raw bytes on a Dragino data port → decode → map; else Netvox.
+- **environment.js** (gitignored) `exports.iot` updated: `deviceAssetMap {'lht65n-vib-01':'30057'}`,
+  **`serverTickMs:0`** (simulator OFF so the real sensor owns asset 30057), g-scale vibration thresholds
+  `{baseline:0.5,warn:2,critical:4}`, and the `ttnMqtt` block. **Server restart required** to start MQTT.
+- **Open**: (1) restart the server → MQTT connects → next uplink (~20 min cadence) writes condition to
+  asset 30057. (2) Sensor currently VIBMOD=1 (vib_count only, no amplitude) — send a downlink/AT
+  `AT+VIBMOD` to enable **fPort-9 peak-acceleration (g)** reports for real vibration amplitude.
+
 ## After R718E + SenseCAP M2 are delivered (DoD #14 — the only remaining steps)
 1. Onboard the R718E in The Things Stack; point the SenseCAP M2 at it.
 2. Add a TTS webhook/integration that POSTs uplinks to `POST /iot/uplink` (raw `frm_payload`) — the

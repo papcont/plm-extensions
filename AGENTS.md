@@ -7,7 +7,8 @@ Guidance for AI coding agents working in this repository.
 A self-hosted Node.js/Express server that delivers ~30 web applications (and Vault/Inventor
 add-ins) layered on top of Autodesk Fusion Manage (PLM) via the PLM and APS REST APIs. The server
 is stateless with respect to PLM data — it proxies REST calls, but does not persist tenant data.
-There is no build step, no test suite, and no linter configured.
+There is no build step and no linter configured. The only automated tests are the IoT unit
+suite (`npm test` → `node --test test/iot/**`); the rest of the app is verified manually.
 
 ## Commands
 
@@ -18,8 +19,9 @@ There is no build step, no test suite, and no linter configured.
   `environments/adsktenant.js`).
 - HTTPS is auto-selected when `redirectUri` uses `https://` and `keys/privkey.pem` +
   `keys/fullchain.pem` exist; otherwise HTTP is used. Port comes from `redirectUri` or `PORT`.
-- No automated tests exist. Verification is manual: start the server, drive the real page in a
-  browser, check the console/network tab and the actual PLM/ERP data, not just `node --check`.
+- `npm test` — runs the IoT unit suite (`node --test test/iot/**/*.test.js`). This is the only
+  automated coverage; everything else is verified manually by driving the real page in a browser
+  and checking the console/network tab and the actual PLM/ERP data, not just `node --check`.
 
 Any setting in `environment.js` can be overridden by an uppercase-snake-case env var
 (`TENANT`, `CLIENT_ID`, `REDIRECT_URI`, `SETTINGS`, `DEFAULT_THEME`, `ENABLE_CACHE`,
@@ -52,6 +54,7 @@ For multiple tenants: paired `environments/<tenant>.js` + `settings/<tenant>.js`
 - `/vault` → `routes/pdm.js` — Vault REST passthrough for the Vault/Inventor add-ins.
 - `/services` → `routes/services.js`.
 - `/erp` → `routes/erp.js` — ERP Integration (see below).
+- `/iot` → `routes/iot.js` — IoT / Condition Monitoring (see below).
 - `/storage` → static + directory listing of `./storage/`.
 
 `routes/landing.js` is the routing table for user-facing apps: one line calling
@@ -78,6 +81,39 @@ bare globals — do not introduce ES module imports in app scripts.
   default options) — source of truth, also powers `/gallery`.
 - `public/javascripts/contents/*.js` — shared "content panel" modules (item, nav, bom, viewer,
   vault, classification, analytics, aps) that apps mount and configure via `config.panels.insertXxx`.
+
+## Reuse existing building blocks before building new (check first)
+
+**Before writing a new panel or app, search the framework catalog for a module that already does
+it — do not reinvent a panel that exists.** Apps here are compositions of shared `insertXxx`
+panels, not bespoke UI. Where the catalog lives:
+
+- **`/docs`** (`routes/landing.js:29` → `views/framework/docs.pug`, assembled from
+  `views/docs/*.pug`) — the Developer Guide: tutorials + one documented block per module.
+- **`/gallery`** — live demo of every panel. **`/studio`** — click-to-configure a panel and copy
+  its settings.
+- **`public/javascripts/framework/registry.js`** — the source of truth all three read from: every
+  `insertXxx` with its `description`, `usage`, inputs, default options and filters. **Read this
+  first when picking a panel.**
+
+Available panels (mount via a `config.panels.insertXxx` block + `insertXxx(params)`):
+
+- *Navigation* (`contents/nav.js`): `insertMOW`, `insertRecentItems`, `insertBookmarks`,
+  `insertWorkspaceViews`, `insertWorkspaceSearch`, `insertSearch` (cross-workspace),
+  `insertResults` (fixed query, no search box).
+- *Creation* (`contents/item.js`): `insertCreate`.
+- *Item* (`contents/item.js`): `insertDetails`, `insertImages`, `insertAttachments`, `insertGrid`,
+  `insertBOM`, `insertBOMPartsList`/`insertFlatBOM`, `insertRootParents`, `insertParents`,
+  `insertBOMChanges`, `insertManagedItems`, `insertChangeProcesses`, `insertProject`,
+  `insertRelationships`, `insertSourcing`, `insertWorkflowHistory`, `insertRevisions`,
+  `insertChangeLog`, `insertItemSummary`.
+- *Classification* (`contents/classification.js`): `insertClasses`, `insertClassContents`,
+  `insertClassFilters`, `insertItemClassification`, `insertSimilarItems`.
+- *Admin*: `insertUsers`. *Viewer* (`contents/viewer.js`, `/docs` → Viewer): events, selection,
+  colors, visibility.
+
+If nothing matches, extend the closest `insertXxx` via its `insertXxxDone`/`insertXxxDataDone`
+hooks and compose from the `genPanel*` primitives in `utils.js` — don't hand-roll markup.
 
 ## Conventions worth knowing
 
@@ -161,11 +197,64 @@ know these before changing anything here:
   request responding fast is not proof the system tolerates load; verify against a realistic
   large BOM before trusting a performance fix.
 
+## IoT / Condition Monitoring subsystem (`/iot`)
+
+Ingests LoRaWAN sensor uplinks, derives a health score + condition, and writes it back to the
+Asset in Fusion Manage (plus a Tandem time-series stand-in feeding the dashboard). This is the one
+part of the app with real automated tests (`npm test`, `test/iot/**`) — keep them green.
+
+- **`routes/iot.js`** (mounted `/iot` in `app.js`): `/config /tick /state /history /reset /ticker`
+  drive the simulator/runtime; **`POST /iot/uplink`** is the real-hardware entry point (accepts a
+  TTN/TTS or ChirpStack/Dragino uplink envelope).
+- **`services/iot/bridge.js`** — the pipeline: validate → identify device → map to canonical →
+  merge → dedupe → health → condition → events → Tandem + Fusion Manage. Structured JSON logs,
+  no secrets. Central acceptance criterion: a simulator reading and a raw hardware uplink must
+  produce the *same* canonical structure (asserted in `test/iot/bridge.test.js`).
+- **`canonical.js`** — versioned canonical metric schema (validation, unknown-metric rejection).
+- **Device adapters**: `netvoxR718E.js` (velocity mm/s + temp, fPort 6), `draginoLHT65VIB.js`
+  (peak-g amplitude + vib counts, fPort 2/9/10), `bfloat16.js` (Netvox word codec), `tts.js`
+  (The Things Stack envelope), `chirpstack.js` (ChirpStack/Dragino envelope). `service.ingestUplink`
+  auto-detects the envelope (`deviceInfo` → ChirpStack path, `uplink_message` → TTS path).
+- **`health.js` / `condition.js`** — 0-100 weakest-link health score; OFF/NORMAL/OBSERVE/WARNING/
+  CRITICAL condition from threshold crossings + health.
+- **`simulator.js`** — deterministic state-machine sensor for demos; `serverTickMs:0` turns it off
+  so a real sensor owns the asset.
+- **`tandemRepository.js` / `fusionManageRepository.js`** — persistence targets; both default to
+  dry-run and only do live writes when explicitly gated on (`TANDEM_ENABLED`, and admin 2-legged
+  creds + tenant link for FM writes).
+- **`deviceRegistry.js` + `sensorDirectory.js`** — DevEUI→asset resolution. Order: static
+  `deviceAssetMap` > learned FM directory (Sensors WS 968 `IOT_DEVICE_ID` → `ASSET`) > identity.
+  FM resolution is gated (`IOT_RESOLVE_FROM_FM=true` + admin creds + `IOT_TENANT_LINK`); default
+  off → static map, resolver errors never break ingestion.
+- **`ttnMqtt.js`** — pulls uplinks from The Things Stack's MQTT broker (no public URL needed),
+  feeds each to `service.ingestUplink`. Started in `app.js`, gated on `environment.iot.ttnMqtt.enabled`.
+  Adds the `mqtt` dependency.
+- **`config.js`** — `applyDeployment(environment)` folds the per-deployment `exports.iot` block
+  (`deviceAssetMap`, `serverTickMs`, g-scale vibration `thresholds`, `source`, `ttnMqtt`) into the
+  runtime; called once at startup.
+- **Dashboard**: app `conditionMonitoring`, route `/condition-monitoring`
+  (`views/apps/condition-monitoring.pug` + `public/javascripts/apps/condition-monitoring.js`).
+- Full status/history: `docs/features/iot-condition-monitoring/` (STATUS.md, GOAL.md, HANDOVER.md,
+  device specs). **A server restart is required** for any IoT env/wiring change (MQTT, deployment).
+
+## Recently added apps (beyond the README's ~30)
+
+- **`/condition-monitoring`** (`conditionMonitoring`) — IoT dashboard, see the subsystem above.
+- **`/variants-bom`** (`variantsBom`) — Variant BOM Editor: a `VARIANT_ALLOWED` flag marks
+  variant-eligible items; swapping+saving a BOM node creates new variants bottom-up for every
+  flagged ancestor, and a recursive NUMBER-based `BOM_FINGERPRINT` dedupes identical assemblies.
+  Design + verification: `docs/VARIANTS-BOM-PLAN.md`, handover `docs/VARIANTS-BOM-HANDOVER.md`.
+- **`/mebom`** (`mebom`, **`dev/` — work in progress**) — Mechatronic BOM Editor: evolution of the
+  `instances` app; context is an Asset (WS 904), mechanical Engineering BOM + viewer on one side,
+  per-instance lists (serials, motors, sensors, control elements) as alignment tabs. Tenant setup:
+  `docs/MEBOM-TENANT-SETUP.md`.
+
 ## Verification pattern for this repo
 
-There is no test suite. The established loop for a live server you can't directly inspect:
+Only the IoT subsystem has automated tests (`npm test`). For everything else, the established loop
+for a live server you can't directly inspect:
 
-1. Edit → `node --check <file>` for syntax.
+1. Edit → `node --check <file>` for syntax (and `npm test` if you touched `services/iot/**`).
 2. Ask the user to restart the server (env/route/service changes need a process restart; Pug
    views, client JS/CSS are served fresh per request).
 3. Drive the actual page in a browser (or via browser automation) — re-run a known-good
@@ -178,6 +267,8 @@ There is no test suite. The established loop for a live server you can't directl
 
 ## Hard rules
 
+- **Reuse before building**: check `/docs` + `registry.js` for an existing `insertXxx` panel before
+  writing a new one (see "Reuse existing building blocks").
 - Keep diffs small and scoped to what was asked.
 - Do not edit `settings.js` — tenant-specific values belong in `settings/<tenant>.js`.
 - Do not introduce a bundler or ES module imports in client app scripts.
