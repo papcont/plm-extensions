@@ -213,12 +213,12 @@
             min: vibScale.min, max: vibScale.max, divisions: vibScale.divisions, accent: '#d29922',
             guides: [{ v: th.vibration.warn, color: '#d29922' }, { v: th.vibration.critical, color: '#f85149' }]
         });
-        var tempScale = autoScale(data.map(function (s) { return s.temperature; }), 2, false, 8);
+        var tempScale = { min: 20, max: 35, divisions: 6 };
         lineChart('cm-chart-temp', data.map(function (s) { return s.temperature; }), data, {
             min: tempScale.min, max: tempScale.max, divisions: tempScale.divisions, accent: '#ff7b72',
-            guides: [{ v: th.temperature.warn, color: '#d29922' }, { v: th.temperature.critical, color: '#f85149' }]
+            guides: []
         });
-        var humidityScale = autoScale(data.map(function (s) { return s.humidity; }), 4, true, 8);
+        var humidityScale = { min: 0, max: 100, divisions: 5 };
         lineChart('cm-chart-humidity', data.map(function (s) { return s.humidity; }), data, {
             min: humidityScale.min, max: humidityScale.max, divisions: humidityScale.divisions,
             accent: '#2a9d8f', guides: []
@@ -303,6 +303,7 @@
                                                            // refined below / from the backend state)
         $('#cm-asset').show();
         $('#cm-asset-name').text(desc || (ws + '/' + dms));
+        $('#cm-asset-link').attr('href', assetUrl(ws, dms));
         $.getJSON('/plm/details?wsId=' + ws + '&dmsId=' + dms, function (res) {
             var d = res.data || res;
             if (!desc && d.title) $('#cm-asset-name').text(d.title);
@@ -317,7 +318,9 @@
                 renderSensors([{ name: s.title || 'Sensor', deviceId: deviceId }], null);
                 if (deviceId) goLive(dms, deviceId);        // real sensor bound -> live telemetry for this asset
             }).fail(function () { renderSensors([], 'Could not read the linked sensor.'); });
-        }).fail(function () { renderSensors([], 'Asset details unavailable.'); });
+        }).fail(function (xhr) {
+            renderSensors([], 'Asset details unavailable (' + (xhr.status || 'request failed') + ').');
+        });
     }
 
     function findField(details, fieldId) {
@@ -330,7 +333,11 @@
         }
         return null;
     }
-    function findFieldLink(details, fieldId) { var f = findField(details, fieldId); return (f && f.value && f.value.link) || null; }
+    function findFieldLink(details, fieldId) {
+        var f = findField(details, fieldId);
+        if (!f || f.value == null) return null;
+        return (typeof f.value === 'object') ? (f.value.link || null) : String(f.value);
+    }
     function findFieldValue(details, fieldId) {
         var f = findField(details, fieldId);
         if (!f || f.value == null) return null;
@@ -382,6 +389,10 @@
     }
     function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
     function fmt(v, d) { return (typeof v === 'number') ? v.toFixed(d) : '-'; }
+    function assetUrl(ws, dms) {
+        if (typeof genItemURL === 'function') return genItemURL({ wsId: ws, dmsId: dms });
+        return (typeof tenantLink === 'string' ? tenantLink : '') + '/plm/workspaces/' + ws + '/items/' + dms;
+    }
     function escapeHtml(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
 
 })();
