@@ -209,12 +209,12 @@
             min: 0, max: 100, accent: '#58a6ff',
             guides: [{ v: (cfg && cfg.conditionBands.warning) || 40, color: '#d29922' }]
         });
-        var vibScale = autoScale(data.map(function (s) { return s.vibration; }), 0.25, true, 5);
+        var vibScale = { min: 0, max: 0.15, divisions: 3 };
         lineChart('cm-chart-vib', data.map(function (s) { return s.vibration; }), data, {
             min: vibScale.min, max: vibScale.max, divisions: vibScale.divisions, accent: '#d29922',
             guides: [{ v: th.vibration.warn, color: '#d29922' }, { v: th.vibration.critical, color: '#f85149' }]
         });
-        var tempScale = { min: 20, max: 35, divisions: 6 };
+        var tempScale = { min: 20, max: 35, divisions: 15 };
         lineChart('cm-chart-temp', data.map(function (s) { return s.temperature; }), data, {
             min: tempScale.min, max: tempScale.max, divisions: tempScale.divisions, accent: '#ff7b72',
             guides: []
