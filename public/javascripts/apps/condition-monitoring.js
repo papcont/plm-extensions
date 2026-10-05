@@ -305,6 +305,7 @@
         $('#cm-asset').show();
         $('#cm-asset-name').text(desc || (ws + '/' + dms));
         $('#cm-asset-link').attr('href', assetUrl(ws, dms));
+        $('#cm-info-link').attr('href', assetUrl(ws, dms));
         $.getJSON('/plm/details?wsId=' + ws + '&dmsId=' + dms, function (res) {
             var d = res.data || res;
             if (!desc && d.title) $('#cm-asset-name').text(d.title);
