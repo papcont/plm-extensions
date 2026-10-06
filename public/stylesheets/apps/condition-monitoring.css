@@ -131,4 +131,6 @@
 .cm-ai-status { font-size: 12px; opacity: 0.7; margin-bottom: 10px; }
 .cm-ai-summary { font-weight: 600; margin-bottom: 10px; }
 .cm-ai-list-title { font-size: 12px; font-weight: 600; margin-top: 12px; opacity: 0.85; }
+#cm-ai-insight .cm-ai-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+#cm-ai-briefing-result { margin-top: 14px; }
 #cm-ai-insight ul { margin: 4px 0 0 18px; padding: 0; font-size: 13px; }

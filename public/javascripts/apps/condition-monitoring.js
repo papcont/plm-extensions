@@ -21,6 +21,7 @@
         initAssetContext();
         loadMaintenanceCase();
         $('#cm-ai-explain').on('click', loadAiInsight);
+        $('#cm-ai-briefing').on('click', loadBriefing);
         $.getJSON('/iot/config', function (res) {
             cfg = res.data;
             if (!liveAsset) $('#cm-source').text('source: ' + cfg.source);
@@ -171,7 +172,8 @@
         $('#cm-temp').text(fmt(s.temperature, 1));
         $('#cm-humidity').text(fmt(s.humidity, 1));
         $('#cm-vib').text(fmt(s.vibration, 2));
-        $('#cm-updated').text(new Date(s.t).toLocaleTimeString());
+        var stale = (liveAsset ? cmFormat.staleText(s.t, Date.now()) : '');
+        $('#cm-updated').text(new Date(s.t).toLocaleTimeString() + (stale ? ' · ' + stale : ''));
 
         var prev = samples[samples.length - 2];
         var trend = $('#cm-vib-trend');
@@ -199,7 +201,7 @@
             $('#cm-anomaly').text(a.anomalyScore.toFixed(2)).css('color', anomalyColor(a.anomalyScore));
             $('#cm-anomaly-driver').text(a.primaryDriver ? ('driver: ' + a.primaryDriver) : '');
         } else {
-            $('#cm-anomaly').text(ready ? '0.00' : '–').css('color', '');
+            $('#cm-anomaly').text(cmFormat.anomalyText(a.anomalyScore)).css('color', '');
             $('#cm-anomaly-driver').text(ready ? '' : 'learning');
         }
         $('#cm-trend').text(a.trend || '-');
@@ -228,16 +230,17 @@
         var td = a.drivers && a.drivers.temperature;
         var unit = a.unit || '';
         var lines = [];
+        var scored = typeof a.anomalyScore === 'number';
         var abnormal = typeof a.anomalyScore === 'number' && a.anomalyScore >= (cfg && cfg.analytics ? cfg.analytics.observeThreshold : 0.4);
         lines.push('<div class="cm-why-head" style="color:' + anomalyColor(a.anomalyScore || 0) + '">' +
-            (abnormal ? 'Primary deviation: ' + escapeHtml(a.primaryDriver || 'vibration') : 'Within learned normal') +
-            ' · anomaly ' + (a.anomalyScore != null ? a.anomalyScore.toFixed(2) : '0.00') + '</div>');
+            (abnormal ? 'Primary deviation: ' + escapeHtml(a.primaryDriver || 'vibration') : scored ? 'Within learned normal' : 'Anomaly score not available') +
+            ' · anomaly ' + cmFormat.anomalyText(a.anomalyScore) + '</div>');
         if (vb) {
             // Vibration amplitude is non-negative: a median−3σ lower bound can go below 0 for a near-zero
             // baseline. Clamp only the DISPLAYED value to 0 (the chart already floors at 0); the learned
             // baseline math is untouched.
             var vbLower = Math.max(0, vb.lower);
-            lines.push(whyRow('Vibration', (vd ? vd.current : '?') + ' ' + unit,
+            lines.push(whyRow('Vibration', cmFormat.vibrationText(vd && vd.current, unit),
                 'learned median ' + vb.median + ' ' + unit + ', normal ' + vbLower + '–' + vb.upper + ' ' + unit +
                 (vd ? ', deviation ' + vd.z + ' MAD' : '')));
         }
@@ -500,27 +503,48 @@
     }
 
     // Model output is untrusted text: render with .text() only, never .html().
-    function loadAiInsight() {
-        var assetId = glob('dmsId');
-        var btn = $('#cm-ai-explain').prop('disabled', true);
-        $('#cm-ai-status').text('Generating explanation…');
-        $.ajax({ url: '/iot/ai/explain', method: 'POST', contentType: 'application/json',
-            data: JSON.stringify({ assetId: String(assetId) }), dataType: 'json' }).done(function (res) {
-            var i = res.data.insight;
-            $('#cm-ai-summary').text(i.summary);
-            $('#cm-ai-current').text(i.currentStateExplanation);
-            $('#cm-ai-historical').text(i.historicalContext);
-            $('#cm-ai-human').text(i.humanAssessmentContext);
-            ['checks', 'limitations'].forEach(function (k) {
-                var ul = $('#cm-ai-' + k).empty();
-                (k === 'checks' ? i.suggestedChecks : i.limitations).forEach(function (t) { ul.append($('<li>').text(t)); });
-            });
-            $('#cm-ai-confidence').text('Confidence: ' + i.confidence + '. AI-generated explanation, not a diagnosis. Human assessment takes precedence.');
+    function loadAiInsight() { runAi('/iot/ai/explain', renderExplain); }
+    function loadBriefing() { runAi('/iot/ai/technician-briefing', renderBriefing); }
+
+    // One POST, body exactly { assetId }. Both buttons are locked while a request is in flight.
+    function runAi(url, render) {
+        var btns = $('#cm-ai-explain, #cm-ai-briefing').prop('disabled', true);
+        $('#cm-ai-status').text('Generating…');
+        $.ajax({ url: url, method: 'POST', contentType: 'application/json',
+            data: JSON.stringify({ assetId: String(glob('dmsId')) }), dataType: 'json' }).done(function (res) {
+            $('#cm-ai-result, #cm-ai-briefing-result').hide();
+            render(res.data.insight);
             $('#cm-ai-status').text('Read-only explanation of the data shown above. Nothing is written to Fusion Manage.');
-            $('#cm-ai-result').show();
         }).fail(function (xhr) {
             $('#cm-ai-status').text((xhr.responseJSON && xhr.responseJSON.message) || 'AI Insight could not be generated.');
-        }).always(function () { btn.prop('disabled', false); });
+        }).always(function () { btns.prop('disabled', false); });
+    }
+
+    function fillList(sel, items) {
+        var ul = $(sel).empty();
+        items.forEach(function (t) { ul.append($('<li>').text(t)); });
+    }
+
+    function renderExplain(i) {
+        $('#cm-ai-summary').text(i.summary);
+        $('#cm-ai-current').text(i.currentStateExplanation);
+        $('#cm-ai-historical').text(i.historicalContext);
+        $('#cm-ai-human').text(i.humanAssessmentContext);
+        fillList('#cm-ai-checks', i.suggestedChecks);
+        fillList('#cm-ai-limitations', i.limitations);
+        $('#cm-ai-confidence').text('Confidence: ' + i.confidence + '. AI-generated explanation, not a diagnosis. Human assessment takes precedence.');
+        $('#cm-ai-result').show();
+    }
+
+    function renderBriefing(i) {
+        $('#cm-brief-headline').text(i.headline);
+        $('#cm-brief-situation').text(i.currentSituation);
+        fillList('#cm-brief-known', i.knownFacts);
+        fillList('#cm-brief-unknown', i.unknowns);
+        fillList('#cm-brief-checks', i.recommendedChecks);
+        $('#cm-brief-handover').text(i.handoverNote);
+        $('#cm-brief-confidence').text('Confidence: ' + i.confidence + '. AI-generated briefing, not a diagnosis. Recommended checks are suggestions. Human assessment takes precedence.');
+        $('#cm-ai-briefing-result').show();
     }
 
     function renderMaintenanceCaseError() {
