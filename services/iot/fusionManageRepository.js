@@ -10,6 +10,7 @@
 // events workspace is modeled yet — see fusion-manage-mapping.md).
 
 const axios = require('axios');
+const { createBearer } = require('./fmAuth');
 
 // Fixed field ids on the Assets IoT section (created via the admin UI). Values map from the summary.
 // PLM v3 rejects bare numbers for Float fields ("Invalid field value") — they must be sent as STRINGS,
@@ -62,23 +63,7 @@ function createFusionManageRepository(config, logger = console, http = axios) {
     const lastWriteAt = new Map(); // assetId -> ms of last live write (throttle)
     const lastWrittenSignature = new Map(); // assetId -> last business state sent to FM
 
-    // ponytail: bearer duplicates sensorDirectory's token dance. Kept local to avoid refactoring the
-    // tested resolver; unify into an fmAuth helper if a third caller ever needs it.
-    let token = null, tokenExpMs = 0;
-    async function bearer() {
-        if (token && Date.now() < tokenExpMs) return token;
-        const r = await http.post(
-            'https://developer.api.autodesk.com/authentication/v2/token',
-            { grant_type: 'client_credentials', scope: 'data:read data:write' },
-            { headers: {
-                accept: 'application/json',
-                authorization: 'Basic ' + Buffer.from(config.adminClientId + ':' + config.adminClientSecret).toString('base64'),
-                'content-type': 'application/x-www-form-urlencoded',
-            } });
-        token = r.data.access_token;
-        tokenExpMs = Date.now() + Math.max(0, (r.data.expires_in || 3600) - 60) * 1000;
-        return token;
-    }
+    const bearer = createBearer(config, http);
 
     function liveConfigured() {
         return config.fusionManageWrites && config.adminClientId && config.adminClientSecret

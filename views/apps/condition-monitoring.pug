@@ -62,6 +62,11 @@ block body
                     .cm-info-item
                         .cm-info-label Images
                         .cm-info-value#cm-info-images -
+            #cm-asset-info-message.surface-level-2(style='display:none')
+                .cm-section-title Asset information
+                .cm-events-empty Asset master data could not be loaded.
+
+            .cm-story-label Machine observation
 
             #cm-summary.surface-level-2
                 .cm-tile#cm-tile-status
@@ -115,6 +120,10 @@ block body
                 .cm-section-title Why is this unusual?
                 #cm-why-body
                     .cm-events-empty Learning this asset’s normal behavior…
+                #cm-learned-fixed
+                    .cm-why-head Learned baseline vs fixed threshold
+                    .cm-why-line Learned baseline: asset-specific normal behavior learned from recent healthy observations.
+                    .cm-why-line Fixed threshold: an absolute safety guardrail independent of learned behavior.
 
             #cm-controls.surface-level-2
                 .cm-control-label Time range
@@ -158,3 +167,40 @@ block body
                 .cm-section-title Condition events
                 #cm-events-list
                     .cm-events-empty No events yet.
+
+            #cm-maintenance-case.surface-level-2(style='display:none')
+                .cm-section-title Maintenance Case
+                .cm-case-columns
+                    .cm-case-block.cm-machine
+                        .cm-case-block-title Case context
+                        .cm-case-row
+                            span Case ID
+                            strong#cm-case-id -
+                        .cm-case-row
+                            span Condition Event ID
+                            strong#cm-case-event-id -
+                        .cm-case-row
+                            span Anomaly at Detection
+                            strong#cm-case-anomaly -
+                        .cm-case-row
+                            span Primary Driver
+                            strong#cm-case-driver -
+                    .cm-case-block.cm-human
+                        .cm-case-block-title Human assessment
+                        .cm-case-row
+                            span Workflow
+                            strong#cm-case-workflow -
+                        .cm-case-row
+                            span Urgency
+                            strong#cm-case-urgency -
+                        .cm-case-row
+                            span Assessment
+                            strong#cm-case-assessment -
+                        .cm-case-row
+                            span Confirmed Cause
+                            strong#cm-case-cause -
+                .cm-case-note Anomaly detection identifies deviations from learned normal behavior. It does not diagnose the cause.
+                a#cm-case-link.cm-asset-link(target='_blank' rel='noopener') Open Maintenance Case in Fusion Manage
+            #cm-maintenance-case-message.surface-level-2(style='display:none')
+                .cm-section-title Maintenance Case
+                .cm-events-empty Maintenance Case data could not be loaded.

@@ -141,7 +141,10 @@ config.applyDeployment = function(env) {
     // vibration alone keeps the default temperature band.
     if (iot.thresholds) config.thresholds = Object.assign({}, config.thresholds, iot.thresholds);
     if (iot.analytics) config.analytics = Object.assign({}, config.analytics, iot.analytics);
-    if (iot.ttnMqtt) config.ttnMqtt = Object.assign({}, config.ttnMqtt, iot.ttnMqtt);
+    if (iot.ttnMqtt) {
+        config.ttnMqtt = Object.assign({}, config.ttnMqtt, iot.ttnMqtt);
+        if (process.env.IOT_TTN_MQTT_ENABLED != null) config.ttnMqtt.enabled = bool(process.env.IOT_TTN_MQTT_ENABLED, false);
+    }
     return config;
 };
 

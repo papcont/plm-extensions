@@ -6,6 +6,80 @@
 const express = require('express');
 const router  = express.Router();
 const service = require('../services/iot/service');
+const iotConfig = require('../services/iot/config');
+const { createFusionManageReadRepository } = require('../services/iot/fusionManageReadRepository');
+let fmReadRepository;
+
+// Controlled demo mapping. Keep the reader GET-only; generalize to CONDITION_EVENT_ID lookup later.
+const DEMO_CASE_BY_ASSET = Object.freeze({ '30057': { workspaceId: '907', dmsId: '33979' } });
+
+function findField(details, fieldId) {
+    for (const section of (details && details.sections) || []) {
+        for (const field of section.fields || []) {
+            if ((field.__self__ || '').endsWith('/fields/' + fieldId)) return field;
+        }
+    }
+    return null;
+}
+
+function fieldValue(details, fieldId) {
+    const field = findField(details, fieldId);
+    if (!field || field.value == null) return null;
+    if (typeof field.value !== 'object') return String(field.value);
+    return field.value.title || field.value.name || field.value.descriptor || null;
+}
+
+function stateValue(details) {
+    const state = details && (details.currentState || details.workflowState
+        || (details.workflow && details.workflow.currentState));
+    if (!state) return null;
+    return typeof state === 'object' ? (state.title || state.name || null) : String(state);
+}
+
+function getFmReadRepository() {
+    if (!fmReadRepository) fmReadRepository = createFusionManageReadRepository(iotConfig);
+    return fmReadRepository;
+}
+
+function itemUrl(req, workspaceId, dmsId) {
+    const tenant = String(req.app.locals.tenant || '').toUpperCase();
+    const urn = 'urn`adsk,plm`tenant,workspace,item`' + tenant + ',' + workspaceId + ',' + dmsId;
+    return req.app.locals.tenantLink + '/plm/workspaces/' + workspaceId + '/items/itemDetails'
+        + '?view=full&tab=detail&mode=view&itemId=' + encodeURIComponent(urn);
+}
+
+function sanitizeCase(req, details, workspaceId, dmsId) {
+    return {
+        workspaceId,
+        dmsId,
+        itemUrl: itemUrl(req, workspaceId, dmsId),
+        caseId: fieldValue(details, 'ID'),
+        source: fieldValue(details, 'SOURCE'),
+        workflow: stateValue(details),
+        urgency: fieldValue(details, 'URGENCY'),
+        assessment: fieldValue(details, 'ASSESSMENT'),
+        confirmedCause: fieldValue(details, 'CONFIRMED_CAUSE'),
+        anomalyAtDetection: fieldValue(details, 'ANOMALY_AT_DETECTION'),
+        primaryDriver: fieldValue(details, 'PRIMARY_DRIVER'),
+        conditionEventId: fieldValue(details, 'CONDITION_EVENT_ID'),
+    };
+}
+
+function sanitizeAsset(details, workspaceId, dmsId) {
+    return {
+        workspaceId,
+        dmsId,
+        id: fieldValue(details, 'ID') || String(dmsId),
+        title: details && details.title || fieldValue(details, 'TITLE'),
+        description: fieldValue(details, 'DESCRIPTION'),
+        customer: fieldValue(details, 'CUSTOMER'),
+        operational: fieldValue(details, 'IS_OPERATIONAL'),
+    };
+}
+
+function readErrorStatus(error) {
+    return error && error.message === 'FM_READ_NOT_CONFIGURED' ? 503 : 502;
+}
 
 // Non-secret config the UI needs to render bands/labels. Never expose ingestion URLs/keys.
 router.get('/config', function(req, res) {
@@ -40,6 +114,30 @@ router.post('/tick', async function(req, res) {
 // asset (the live-sensor dashboard mode); omit for the simulator's demo asset.
 router.get('/state', function(req, res) {
     res.json({ success: true, data: service.getShared().getState(req.query.assetId || null) });
+});
+
+// Trusted server-side FM reads. The browser receives only sanitized business data.
+router.get('/asset', async function(req, res) {
+    const workspaceId = String(req.query.wsId || '');
+    const dmsId = String(req.query.assetId || '');
+    if (!workspaceId || !dmsId) return res.status(400).json({ success: false, message: 'Asset context required' });
+    try {
+        const details = await getFmReadRepository().getItem(workspaceId, dmsId);
+        res.json({ success: true, data: sanitizeAsset(details, workspaceId, dmsId) });
+    } catch (error) {
+        res.status(readErrorStatus(error)).json({ success: false, message: 'Asset could not be read' });
+    }
+});
+
+router.get('/maintenance-case', async function(req, res) {
+    const ref = DEMO_CASE_BY_ASSET[String(req.query.assetId || '')];
+    if (!ref) return res.status(404).json({ success: false, message: 'No maintenance case mapping for asset' });
+    try {
+        const details = await getFmReadRepository().getItem(ref.workspaceId, ref.dmsId);
+        res.json({ success: true, data: sanitizeCase(req, details, ref.workspaceId, ref.dmsId) });
+    } catch (error) {
+        res.status(readErrorStatus(error)).json({ success: false, message: 'Maintenance Case could not be read' });
+    }
 });
 
 // Time series for the charts. range in ms (default 1h of sim time is many points; UI slices).

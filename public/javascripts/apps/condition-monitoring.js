@@ -19,9 +19,10 @@
 
     $(document).ready(function () {
         initAssetContext();
+        loadMaintenanceCase();
         $.getJSON('/iot/config', function (res) {
             cfg = res.data;
-            $('#cm-source').text('source: ' + cfg.source);
+            if (!liveAsset) $('#cm-source').text('source: ' + cfg.source);
             start();
         }).fail(function () { $('#cm-source').text('source: unavailable'); });
 
@@ -258,7 +259,7 @@
 
     function renderEvents() {
         var list = $('#cm-events-list');
-        if (!events.length) { list.html('<div class="cm-events-empty">No events yet.</div>'); return; }
+        if (!events.length) { list.html('<div class="cm-events-empty">No local Condition Event history available.</div>'); return; }
         list.empty();
         events.forEach(function (e) {
             var color = CONDITION_COLOR[e.severity] || '#8a8f98';
@@ -407,8 +408,13 @@
         $('#cm-asset-name').text(desc || (ws + '/' + dms));
         $('#cm-asset-link').attr('href', assetUrl(ws, dms));
         $('#cm-info-link').attr('href', assetUrl(ws, dms));
-        $.getJSON('/plm/details?wsId=' + ws + '&dmsId=' + dms, function (res) {
+        $.getJSON('/iot/asset?wsId=' + encodeURIComponent(ws) + '&assetId=' + encodeURIComponent(dms), function (res) {
             var d = res.data || res;
+            if (d && (d.errorCode || d.error || d.status >= 400)) {
+                renderAssetInfoError();
+                renderSensors([], 'Sensor assignment could not be loaded.');
+                return;
+            }
             if (!desc && d.title) $('#cm-asset-name').text(d.title);
             renderAssetInfo(d);
             var link = findFieldLink(d, 'SENSORS_LIST');
@@ -449,20 +455,52 @@
     }
 
     function renderAssetInfo(details) {
+        if (!details || details.errorCode || details.error) return renderAssetInfoError();
         var values = {
-            'cm-info-id': findFieldValue(details, 'ID'),
-            'cm-info-title': details.title || findFieldValue(details, 'TITLE'),
-            'cm-info-customer': findFieldValue(details, 'CUSTOMER'),
-            'cm-info-project': findFieldValue(details, 'PROJECT_TYPE'),
-            'cm-info-asset-bom': findFieldValue(details, 'ASSET_BOM'),
-            'cm-info-operational': findFieldValue(details, 'IS_OPERATIONAL'),
-            'cm-info-description': findFieldValue(details, 'DESCRIPTION')
+            'cm-info-id': details.id,
+            'cm-info-title': details.title,
+            'cm-info-customer': details.customer,
+            'cm-info-project': details.projectType,
+            'cm-info-asset-bom': details.assetBom,
+            'cm-info-operational': details.operational,
+            'cm-info-description': details.description
         };
         Object.keys(values).forEach(function (id) { $('#' + id).text(values[id] || '-'); });
         var imageFields = ['IMAGE_1', 'IMAGE_2', 'IMAGE_3', 'IMAGE_4', 'IMAGE_5'];
         var images = imageFields.filter(function (id) { return findFieldValue(details, id); }).length;
         $('#cm-info-images').text(images ? images + ' hinterlegt' : 'Keine hinterlegt');
         $('#cm-asset-info').show();
+        $('#cm-asset-info-message').hide();
+    }
+
+    function renderAssetInfoError() {
+        $('#cm-asset-info').hide();
+        $('#cm-asset-info-message').show();
+    }
+
+    function loadMaintenanceCase() {
+        var assetId = glob('dmsId');
+        if (!assetId) return;
+        $.getJSON('/iot/maintenance-case?assetId=' + encodeURIComponent(assetId), function (res) {
+            var c = res && res.data;
+            if (!c) return renderMaintenanceCaseError();
+            $('#cm-case-id').text(c.caseId || '-');
+            $('#cm-case-event-id').text(c.conditionEventId || '-');
+            $('#cm-case-anomaly').text(c.anomalyAtDetection || '-');
+            $('#cm-case-driver').text(c.primaryDriver || '-');
+            $('#cm-case-workflow').text(c.workflow || '-');
+            $('#cm-case-urgency').text(c.urgency || '-');
+            $('#cm-case-assessment').text(c.assessment || '-');
+            $('#cm-case-cause').text(c.confirmedCause || '-');
+            $('#cm-case-link').attr('href', c.itemUrl || '#');
+            $('#cm-maintenance-case-message').hide();
+            $('#cm-maintenance-case').show();
+        }).fail(renderMaintenanceCaseError);
+    }
+
+    function renderMaintenanceCaseError() {
+        $('#cm-maintenance-case').hide();
+        $('#cm-maintenance-case-message').show();
     }
 
     function renderSensors(sensors, emptyMsg) {

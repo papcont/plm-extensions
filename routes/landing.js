@@ -75,7 +75,31 @@ router.get('/abom'          , function(req, res, next) { launch('apps/abom'     
 router.get('/classes'       , function(req, res, next) { launch('apps/classes'       , 'classes'       , 'Classification Browser'   , req, res, next); });
 router.get('/client'        , function(req, res, next) { launch('apps/client'        , ''              , 'Mobile PLM Client'        , req, res, next); });
 router.get('/compare'       , function(req, res, next) { launch('apps/compare'       , 'compare'       , 'BOM Comparison'           , req, res, next); });
-router.get('/condition-monitoring', function(req, res, next) { launch('apps/condition-monitoring', 'conditionMonitoring', 'Condition Monitoring', req, res, next); });
+// Condition Monitoring reads FM through the trusted server-side GET endpoints; it does not need a
+// browser FM session just to render the read-only dashboard.
+router.get('/condition-monitoring', function(req, res) {
+    if (isServiceDisabled('apps/condition-monitoring', req, res)) return;
+    res.render('apps/condition-monitoring', {
+        title: 'Condition Monitoring',
+        tenant: req.app.locals.tenant,
+        tenantLink: req.app.locals.tenantLink,
+        theme: req.query.theme || req.app.locals.defaultTheme,
+        wsId: req.query.wsId || '',
+        dmsId: req.query.dmsId || '',
+        descriptor: req.query.descriptor || '',
+        number: req.query.number || '',
+        fileId: req.query.fileId || '',
+        language: req.query.language || '',
+        type: req.query.type || '',
+        revisionBias: req.query.revisionBias || 'release',
+        options: String(req.query.options || '').split(','),
+        debugMode: req.app.locals.debugMode,
+        common: req.app.locals.common,
+        config: req.app.locals.applications.conditionMonitoring,
+        menu: req.app.locals.menu,
+        colors: req.app.locals.colors,
+    });
+});
 router.get('/dashboard'     , function(req, res, next) { launch('apps/dashboard'     , 'dashboard'     , 'Dashboard'                , req, res, next); });
 router.get('/bom-export-attachment-studio', function(req, res, next) { launch('apps/bom-export-attachment-studio', 'bomExportAttachmentStudio', 'BOM Export And Attachment Studio', req, res, next); });
 router.get('/supplier-package-center', function(req, res, next) { launch('apps/supplier-package-center', 'supplierPackageCenter', 'Supplier Package Center', req, res, next); });

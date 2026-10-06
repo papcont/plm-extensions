@@ -9,6 +9,7 @@
 // routes/plm.js use. No endpoints/secrets are invented; it hits the same /api/v3 REST as the proxy.
 
 const axios = require('axios');
+const { createBearer } = require('./fmAuth');
 
 // -> async (deviceId) => assetId | null, or null when not configured.
 function createFmResolver(config) {
@@ -16,21 +17,7 @@ function createFmResolver(config) {
                  && config.tenantLink && config.sensorWorkspaceId && config.deviceIdFieldId;
     if (!enabled) return null;
 
-    let token = null, tokenExpMs = 0;
-    async function bearer() {
-        if (token && Date.now() < tokenExpMs) return token;
-        const r = await axios.post(
-            'https://developer.api.autodesk.com/authentication/v2/token',
-            { grant_type: 'client_credentials', scope: 'data:read' },
-            { headers: {
-                accept: 'application/json',
-                authorization: 'Basic ' + Buffer.from(config.adminClientId + ':' + config.adminClientSecret).toString('base64'),
-                'content-type': 'application/x-www-form-urlencoded',
-            } });
-        token = r.data.access_token;
-        tokenExpMs = Date.now() + Math.max(0, (r.data.expires_in || 3600) - 60) * 1000;
-        return token;
-    }
+    const bearer = createBearer(config, axios, 'data:read');
 
     // ponytail: linear scan (list items -> read each -> match IOT_DEVICE_ID). Fine for a handful of
     // sensors; if a tenant grows to hundreds, switch to the v3 item search API with a field filter.

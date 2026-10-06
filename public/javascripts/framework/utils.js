@@ -552,14 +552,15 @@ function insertAvatar() {
 
     $.get('/plm/me', { useCache : false }, function(response) {
 
-        userAccount.displayName  = response.data.displayName;
-        userAccount.email        = response.data.email;
-        userAccount.organization = response.data.organization;
-        userAccount.fullName     = response.data.fullName;
-        userAccount.userId       = response.data.userId;
-        userAccount.userNumber   = response.data.userNumber;
+        let profile = (response && response.data) || {};
+        userAccount.displayName  = profile.displayName || '';
+        userAccount.email        = profile.email || '';
+        userAccount.organization = profile.organization || '';
+        userAccount.fullName     = profile.fullName || '';
+        userAccount.userId       = profile.userId || '';
+        userAccount.userNumber   = profile.userNumber || '';
 
-        if(isBlank(response.data.image.large)) {
+        if(!profile.image || isBlank(profile.image.large)) {
 
             elemAvatar.addClass('icon').addClass('icon-user').addClass('filled');
 
@@ -567,14 +568,14 @@ function insertAvatar() {
 
             elemAvatar.html('')
                 .addClass('no-icon')
-                .attr('title', response.data.displayName + ' @ ' + tenant)
-                .css('background', 'url(' + response.data.image.large + ')')
+                .attr('title', profile.displayName + ' @ ' + tenant)
+                .css('background', 'url(' + profile.image.large + ')')
                 .css('background-position', 'center')
                 .css('background-size', elemAvatar.css('height'));
 
         }
 
-        insertAvatarDone(response.data);
+        insertAvatarDone(profile);
 
     });
 

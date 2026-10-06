@@ -100,6 +100,19 @@
 #cm-events { padding: 16px; border-radius: 8px; }
 .cm-section-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; opacity: 0.85; }
 .cm-events-empty { font-size: 13px; opacity: 0.5; }
+.cm-story-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.55;
+    margin: 4px 0 -8px;
+}
+.cm-case-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.cm-case-block { padding: 12px; border-radius: 6px; border: 1px solid rgba(128, 128, 128, 0.18); }
+.cm-case-block-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.65; margin-bottom: 8px; }
+.cm-case-row { display: flex; justify-content: space-between; gap: 16px; padding: 5px 0; border-top: 1px solid rgba(128, 128, 128, 0.12); font-size: 13px; }
+.cm-case-row strong { text-align: right; overflow-wrap: anywhere; }
+.cm-case-note { margin-top: 14px; font-size: 12px; opacity: 0.7; }
+#cm-case-link { display: inline-block; margin-top: 12px; }
+#cm-maintenance-case { padding: 16px; border-radius: 8px; }
+#cm-maintenance-case-message { padding: 16px; border-radius: 8px; }
 .cm-event-row {
     display: grid;
     grid-template-columns: 16px 72px 90px 1fr auto;
