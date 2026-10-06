@@ -12,6 +12,8 @@ let fmReadRepository;
 
 // Controlled demo mapping. Keep the reader GET-only; generalize to CONDITION_EVENT_ID lookup later.
 const DEMO_CASE_BY_ASSET = Object.freeze({ '30057': { workspaceId: '907', dmsId: '33979' } });
+// /iot/asset reads with privileged 2-legged creds, so it is an allowlist, never a generic FM read proxy.
+const DEMO_ASSETS = Object.freeze({ '904': ['30057'] });
 
 function findField(details, fieldId) {
     for (const section of (details && details.sections) || []) {
@@ -121,6 +123,7 @@ router.get('/asset', async function(req, res) {
     const workspaceId = String(req.query.wsId || '');
     const dmsId = String(req.query.assetId || '');
     if (!workspaceId || !dmsId) return res.status(400).json({ success: false, message: 'Asset context required' });
+    if (!(DEMO_ASSETS[workspaceId] || []).includes(dmsId)) return res.status(403).json({ success: false, message: 'Asset not enabled for monitoring' });
     try {
         const details = await getFmReadRepository().getItem(workspaceId, dmsId);
         res.json({ success: true, data: sanitizeAsset(details, workspaceId, dmsId) });

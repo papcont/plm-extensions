@@ -111,6 +111,7 @@
 .cm-case-row strong { text-align: right; overflow-wrap: anywhere; }
 .cm-case-note { margin-top: 14px; font-size: 12px; opacity: 0.7; }
 #cm-case-link { display: inline-block; margin-top: 12px; }
+.cm-fm-link { color: inherit; opacity: 0.55; font-size: 11px; }
 #cm-maintenance-case { padding: 16px; border-radius: 8px; }
 #cm-maintenance-case-message { padding: 16px; border-radius: 8px; }
 .cm-event-row {

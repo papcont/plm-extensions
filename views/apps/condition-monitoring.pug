@@ -26,7 +26,7 @@ block body
                 .cm-asset-head
                     span.cm-label Asset
                     span#cm-asset-name.cm-asset-name -
-                    a#cm-asset-link.cm-asset-link(target='_blank' rel='noopener') Open in Fusion Manage
+                    a#cm-asset-link.cm-asset-link.cm-fm-link(target='_blank' rel='noopener') Open in Fusion Manage — login required
                 .cm-sensors
                     .cm-section-title Sensors on this asset
                     #cm-sensors-list
@@ -40,7 +40,7 @@ block body
                         .cm-info-value#cm-info-id -
                     .cm-info-item
                         .cm-info-label Fusion Manage
-                        a#cm-info-link.cm-info-value(target='_blank' rel='noopener') Open asset
+                        a#cm-info-link.cm-info-value.cm-fm-link(target='_blank' rel='noopener') Open in Fusion Manage — login required
                     .cm-info-item
                         .cm-info-label Title
                         .cm-info-value#cm-info-title -
@@ -66,7 +66,7 @@ block body
                 .cm-section-title Asset information
                 .cm-events-empty Asset master data could not be loaded.
 
-            .cm-story-label Machine observation
+            .cm-story-label Current machine state
 
             #cm-summary.surface-level-2
                 .cm-tile#cm-tile-status
@@ -169,10 +169,10 @@ block body
                     .cm-events-empty No events yet.
 
             #cm-maintenance-case.surface-level-2(style='display:none')
-                .cm-section-title Maintenance Case
+                .cm-section-title Historical detection / Maintenance Case
                 .cm-case-columns
                     .cm-case-block.cm-machine
-                        .cm-case-block-title Case context
+                        .cm-case-block-title Historical detection (at case creation)
                         .cm-case-row
                             span Case ID
                             strong#cm-case-id -
@@ -186,7 +186,7 @@ block body
                             span Primary Driver
                             strong#cm-case-driver -
                     .cm-case-block.cm-human
-                        .cm-case-block-title Human assessment
+                        .cm-case-block-title Human assessment (outranks the model)
                         .cm-case-row
                             span Workflow
                             strong#cm-case-workflow -
@@ -199,8 +199,8 @@ block body
                         .cm-case-row
                             span Confirmed Cause
                             strong#cm-case-cause -
-                .cm-case-note Anomaly detection identifies deviations from learned normal behavior. It does not diagnose the cause.
-                a#cm-case-link.cm-asset-link(target='_blank' rel='noopener') Open Maintenance Case in Fusion Manage
+                .cm-case-note Anomaly detection identifies deviations from learned normal behavior. It does not diagnose the cause. A current NORMAL state does not invalidate this historical detection.
+                a#cm-case-link.cm-asset-link.cm-fm-link(target='_blank' rel='noopener') Open in Fusion Manage — login required
             #cm-maintenance-case-message.surface-level-2(style='display:none')
                 .cm-section-title Maintenance Case
                 .cm-events-empty Maintenance Case data could not be loaded.

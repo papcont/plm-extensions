@@ -71,6 +71,7 @@ if ((process.argv.length > 2) && (!fs.existsSync(pathEnvironment))) {
     app.locals.tenantLink        = 'https://' + app.locals.tenant + '.autodeskplm360.net';
     app.locals.protocol          = process.env.PROTOCOL || app.locals.redirectUri.split('://')[0];
     app.locals.port              = process.env.PORT;
+    app.locals.host              = process.env.HOST || environment.host; // undefined = all interfaces (cloud default)
     app.locals.hubId             = '';
     
     app.locals.vaultGateway      = app.locals.vaultGateway.split('.vg.autodesk.com')[0];
