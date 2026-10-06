@@ -100,6 +100,15 @@ const config = {
         weights           : { vibration: 1, temperature: 0.6 },
     },
 
+    // AI Insight (read-only explanation). OFF by default; the key never leaves the server.
+    ai : {
+        enabled  : bool(process.env.IOT_AI_ENABLED, false),
+        provider : process.env.IOT_AI_PROVIDER || 'anthropic',
+        model    : process.env.IOT_AI_MODEL || 'claude-opus-5-5',
+        effort   : process.env.IOT_AI_EFFORT || 'medium',
+        apiKey   : process.env.IOT_AI_API_KEY || '',
+    },
+
     // Simulation cadence. tickMs = wall interval between emitted readings; timeScale compresses
     // simulated time so a long run demos fast (each tick advances timeScale*tickMs of sim time).
     simulation : {
@@ -141,6 +150,10 @@ config.applyDeployment = function(env) {
     // vibration alone keeps the default temperature band.
     if (iot.thresholds) config.thresholds = Object.assign({}, config.thresholds, iot.thresholds);
     if (iot.analytics) config.analytics = Object.assign({}, config.analytics, iot.analytics);
+    if (iot.ai) {
+        config.ai = Object.assign({}, config.ai, iot.ai);
+        if (process.env.IOT_AI_ENABLED != null) config.ai.enabled = bool(process.env.IOT_AI_ENABLED, false);
+    }
     if (iot.ttnMqtt) {
         config.ttnMqtt = Object.assign({}, config.ttnMqtt, iot.ttnMqtt);
         if (process.env.IOT_TTN_MQTT_ENABLED != null) config.ttnMqtt.enabled = bool(process.env.IOT_TTN_MQTT_ENABLED, false);

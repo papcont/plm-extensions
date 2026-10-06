@@ -204,3 +204,25 @@ block body
             #cm-maintenance-case-message.surface-level-2(style='display:none')
                 .cm-section-title Maintenance Case
                 .cm-events-empty Maintenance Case data could not be loaded.
+
+            #cm-ai-insight.surface-level-2
+                .cm-ai-head
+                    .cm-section-title AI Insight
+                    button#cm-ai-explain.button(type='button') Explain asset state
+                .cm-ai-status#cm-ai-status Read-only explanation of the data shown above. Nothing is written to Fusion Manage.
+                #cm-ai-result(style='display:none')
+                    .cm-ai-summary#cm-ai-summary
+                    .cm-case-row
+                        span Current state
+                        span#cm-ai-current
+                    .cm-case-row
+                        span Historical context
+                        span#cm-ai-historical
+                    .cm-case-row
+                        span Human assessment
+                        span#cm-ai-human
+                    .cm-ai-list-title Suggested checks (suggestions, not conclusions)
+                    ul#cm-ai-checks
+                    .cm-ai-list-title Limitations
+                    ul#cm-ai-limitations
+                    .cm-case-note#cm-ai-confidence

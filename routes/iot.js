@@ -8,7 +8,10 @@ const router  = express.Router();
 const service = require('../services/iot/service');
 const iotConfig = require('../services/iot/config');
 const { createFusionManageReadRepository } = require('../services/iot/fusionManageReadRepository');
+const { buildContext } = require('../services/iot/ai/contextBuilder');
+const { createAiService } = require('../services/iot/ai/aiService');
 let fmReadRepository;
+let aiService;
 
 // Controlled demo mapping. Keep the reader GET-only; generalize to CONDITION_EVENT_ID lookup later.
 const DEMO_CASE_BY_ASSET = Object.freeze({ '30057': { workspaceId: '907', dmsId: '33979' } });
@@ -79,6 +82,16 @@ function sanitizeAsset(details, workspaceId, dmsId) {
     };
 }
 
+function getAiService() {
+    if (!aiService) {
+        // ponytail: one provider today; add a providers/<name>.js + this switch when a second is needed.
+        if (iotConfig.ai.provider !== 'anthropic') throw new Error('AI_PROVIDER_UNKNOWN');
+        const provider = require('../services/iot/ai/providers/anthropic').createAnthropicProvider(iotConfig.ai);
+        aiService = createAiService({ config: iotConfig.ai, provider });
+    }
+    return aiService;
+}
+
 function readErrorStatus(error) {
     return error && error.message === 'FM_READ_NOT_CONFIGURED' ? 503 : 502;
 }
@@ -140,6 +153,37 @@ router.get('/maintenance-case', async function(req, res) {
         res.json({ success: true, data: sanitizeCase(req, details, ref.workspaceId, ref.dmsId) });
     } catch (error) {
         res.status(readErrorStatus(error)).json({ success: false, message: 'Maintenance Case could not be read' });
+    }
+});
+
+// AI Insight (explain_asset_state). Read-only: the server builds the context from its own sanitized
+// reads; nothing from the browser goes into the prompt except the allowlisted asset id.
+router.post('/ai/explain', async function(req, res) {
+    const body = req.body;
+    if (!body || typeof body !== 'object' || Object.keys(body).join() !== 'assetId' || typeof body.assetId !== 'string') {
+        return res.status(400).json({ success: false, message: 'Body must be exactly { assetId }' });
+    }
+    const dmsId = body.assetId;
+    const workspaceId = Object.keys(DEMO_ASSETS).find(ws => DEMO_ASSETS[ws].includes(dmsId));
+    if (!workspaceId) return res.status(403).json({ success: false, message: 'Asset not enabled for monitoring' });
+    if (!iotConfig.ai.enabled) return res.status(503).json({ success: false, message: 'AI Insight is disabled' });
+    try {
+        const caseRef = DEMO_CASE_BY_ASSET[dmsId];
+        const repo = getFmReadRepository();
+        const [assetDetails, caseDetails] = await Promise.all([
+            repo.getItem(workspaceId, dmsId),
+            caseRef ? repo.getItem(caseRef.workspaceId, caseRef.dmsId) : null,
+        ]);
+        const context = buildContext({
+            state: service.getShared().getState(dmsId),
+            asset: sanitizeAsset(assetDetails, workspaceId, dmsId),
+            kase: caseDetails ? sanitizeCase(req, caseDetails, caseRef.workspaceId, caseRef.dmsId) : null,
+        });
+        const insight = await getAiService().explainAssetState(context);
+        res.json({ success: true, data: { mode: 'explain_asset_state', insight } });
+    } catch (error) {
+        console.log(' /iot/ai/explain failed: ' + (error && (error.status || '') + ' ' + error.message));
+        res.status(502).json({ success: false, message: 'AI Insight could not be generated' });
     }
 });
 

@@ -20,6 +20,7 @@
     $(document).ready(function () {
         initAssetContext();
         loadMaintenanceCase();
+        $('#cm-ai-explain').on('click', loadAiInsight);
         $.getJSON('/iot/config', function (res) {
             cfg = res.data;
             if (!liveAsset) $('#cm-source').text('source: ' + cfg.source);
@@ -496,6 +497,30 @@
             $('#cm-maintenance-case-message').hide();
             $('#cm-maintenance-case').show();
         }).fail(renderMaintenanceCaseError);
+    }
+
+    // Model output is untrusted text: render with .text() only, never .html().
+    function loadAiInsight() {
+        var assetId = glob('dmsId');
+        var btn = $('#cm-ai-explain').prop('disabled', true);
+        $('#cm-ai-status').text('Generating explanation…');
+        $.ajax({ url: '/iot/ai/explain', method: 'POST', contentType: 'application/json',
+            data: JSON.stringify({ assetId: String(assetId) }), dataType: 'json' }).done(function (res) {
+            var i = res.data.insight;
+            $('#cm-ai-summary').text(i.summary);
+            $('#cm-ai-current').text(i.currentStateExplanation);
+            $('#cm-ai-historical').text(i.historicalContext);
+            $('#cm-ai-human').text(i.humanAssessmentContext);
+            ['checks', 'limitations'].forEach(function (k) {
+                var ul = $('#cm-ai-' + k).empty();
+                (k === 'checks' ? i.suggestedChecks : i.limitations).forEach(function (t) { ul.append($('<li>').text(t)); });
+            });
+            $('#cm-ai-confidence').text('Confidence: ' + i.confidence + '. AI-generated explanation, not a diagnosis. Human assessment takes precedence.');
+            $('#cm-ai-status').text('Read-only explanation of the data shown above. Nothing is written to Fusion Manage.');
+            $('#cm-ai-result').show();
+        }).fail(function (xhr) {
+            $('#cm-ai-status').text((xhr.responseJSON && xhr.responseJSON.message) || 'AI Insight could not be generated.');
+        }).always(function () { btn.prop('disabled', false); });
     }
 
     function renderMaintenanceCaseError() {

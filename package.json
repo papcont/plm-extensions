@@ -13,6 +13,7 @@
     "usecases:previews": "node tools/render-extension-previews.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
     "agentkeepalive": "*",
     "archiver": "*",
     "axios": "*",
