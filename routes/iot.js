@@ -212,6 +212,30 @@ router.get('/events', function(req, res) {
     res.json({ success: true, assetId: feed.assetId, events: feed.events });
 });
 
+// Operator re-baseline (localhost-only control). Gated OFF by default (IOT_REBASELINE_ENABLED), loopback
+// peers only, allowlisted assets, exact body { assetId, confirm:'REBASELINE', reason? }. Never automatic.
+router.post('/admin/rebaseline', function(req, res) {
+    if (!iotConfig.rebaselineEnabled) return res.status(404).json({ success: false, message: 'Not found' });
+    const peer = req.socket && req.socket.remoteAddress;
+    if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(peer)) return res.status(403).json({ success: false, message: 'Local access only' });
+    const b = req.body;
+    const keys = b && typeof b === 'object' ? Object.keys(b) : [];
+    if (!keys.length || keys.some(k => !['assetId', 'confirm', 'reason'].includes(k)) || typeof b.assetId !== 'string'
+        || b.confirm !== 'REBASELINE' || (b.reason !== undefined && typeof b.reason !== 'string')) {
+        return res.status(400).json({ success: false, message: 'Body must be { assetId, confirm: "REBASELINE", reason? }' });
+    }
+    if (!Object.keys(DEMO_ASSETS).some(ws => DEMO_ASSETS[ws].includes(b.assetId))) {
+        return res.status(403).json({ success: false, message: 'Asset not enabled for monitoring' });
+    }
+    try {
+        const r = service.getShared().rebaseline(b.assetId, { reason: b.reason });
+        res.json({ success: true, data: { assetId: b.assetId, baselineEpoch: r.baselineEpoch } });
+    } catch (e) {
+        console.log(' /iot/admin/rebaseline failed: ' + e.message);
+        res.status(500).json({ success: false, message: 'Re-baseline failed' });
+    }
+});
+
 router.post('/reset', function(req, res) {
     service.getShared().reset();
     res.json({ success: true });

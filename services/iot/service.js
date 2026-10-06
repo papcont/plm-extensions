@@ -15,6 +15,7 @@ const { createBridge } = require('./bridge');
 const { createTandemRepository } = require('./tandemRepository');
 const { createFusionManageRepository } = require('./fusionManageRepository');
 const { createEventRepository } = require('./eventRepository');
+const { createBaselineStore } = require('./baselineStore');
 const { createFmResolver } = require('./sensorDirectory');
 
 // Turn a logical simulator reading into a canonical event by going through Netvox encode -> TTS
@@ -40,9 +41,10 @@ function createRuntime(overrides = {}) {
     const tandem = createTandemRepository(config);
     const fusionManage = createFusionManageRepository(config);
     const events = overrides.events || createEventRepository(config);   // durable condition-event store
+    const baselines = overrides.baselines || createBaselineStore(config);   // per-asset re-baseline epoch (explicit, operator-set)
     // DevEUI -> asset resolver: test/override wins; otherwise the gated FM resolver (null unless configured).
     const resolveDeviceAsset = overrides.resolveDeviceAsset || createFmResolver(config);
-    const bridge = createBridge({ config, tandem, fusionManage, events, resolveDeviceAsset });
+    const bridge = createBridge({ config, tandem, fusionManage, events, baselines, resolveDeviceAsset });
 
     const deviceId = config.simulation.deviceId;
     const scenario = simulator.DEFAULT_SCENARIO;
@@ -164,6 +166,7 @@ function createRuntime(overrides = {}) {
         getHistory : (rangeMs, assetId) => tandem.history(assetId || bridge.registry.resolveAsset(deviceId), rangeMs),
         getEvents : (assetId, limit) => events.list(assetId || bridge.registry.resolveAsset(deviceId), limit),
         getEventsFeed,
+        rebaseline : (assetId, opts) => bridge.rebaseline(assetId, opts),
         reset : () => { tickIndex = 0; },
     };
 }

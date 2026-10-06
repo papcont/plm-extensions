@@ -12,7 +12,7 @@ const analytics = require('./analytics');
 const { EVENT_SCHEMA_VERSION } = require('./eventRepository');
 const { createRegistry } = require('./deviceRegistry');
 
-function createBridge({ config, tandem, fusionManage, events = null, resolveDeviceAsset = null, logger = console }) {
+function createBridge({ config, tandem, fusionManage, events = null, baselines = null, resolveDeviceAsset = null, logger = console }) {
     const registry = createRegistry(config.deviceAssetMap, resolveDeviceAsset);
     const assets = new Map(); // assetId -> { mergedMetrics, condition, health, history[], events[], last }
 
@@ -59,7 +59,7 @@ function createBridge({ config, tandem, fusionManage, events = null, resolveDevi
         // Never makes the asset look healthier than the threshold path; adds early, explainable detection
         // of "different from its own normal" before any absolute band is crossed. Skipped while OFF so a
         // stopped machine (vibration ~0, far below its running median) is not flagged as anomalous.
-        const analyticsResult = evaluateAnalytics(state, metrics, h, c.condition, allowOff);
+        const analyticsResult = evaluateAnalytics(state, metrics, h, c.condition, allowOff, assetId);
         h = analyticsResult.health;                      // effective health = min(threshold, anomaly) health
         const finalCondition = analyticsResult.finalCondition;
         const analyticsSnapshot = analyticsResult.snapshot;
@@ -173,7 +173,7 @@ function createBridge({ config, tandem, fusionManage, events = null, resolveDevi
     // Run the learned-baseline analytics for one reading and fold it into health + condition. Pure w.r.t.
     // the engine; mutates only `state` (learned-sample window, hysteresis counters, score history).
     // Returns the effective health, the final condition, a UI snapshot, and the anomaly reason/flag.
-    function evaluateAnalytics(state, metrics, h, thresholdCondition, allowOff) {
+    function evaluateAnalytics(state, metrics, h, thresholdCondition, allowOff, assetId) {
         const A = config.analytics;
         if (!A || !A.enabled || thresholdCondition === 'OFF') {
             return { health: h, finalCondition: thresholdCondition, snapshot: null, drivenByAnomaly: false, anomalyReason: null };
@@ -211,6 +211,7 @@ function createBridge({ config, tandem, fusionManage, events = null, resolveDevi
             modelState   : baseline.modelState,
             sampleCount  : baseline.sampleCount,
             minimumSamples: A.minimumSamples,
+            baselineEpoch: baselineEpochOf(assetId),
             anomalyScore : evalRes.score,
             primaryDriver: evalRes.primaryDriver,
             trend        : trend,
@@ -248,6 +249,8 @@ function createBridge({ config, tandem, fusionManage, events = null, resolveDevi
         state.condition = latest.condition || condition.evaluate(
             latest.healthScore, metrics, config.thresholds, config.conditionBands).condition;
         if (!allowOff && state.condition === 'OFF') state.condition = 'NORMAL';
+        const epoch = baselineEpochOf(assetId);
+        const preEpoch = !!epoch && String(latest.t) < epoch;      // last stored point predates the operator's re-baseline
         state.health = { score: latest.healthScore, vibration, temperature: metrics.temperature };
         state.history = points.slice(-5).map(p => ({
             t: p.t,
@@ -257,14 +260,24 @@ function createBridge({ config, tandem, fusionManage, events = null, resolveDevi
         }));
         // Baseline bootstrap: seed the learned-normal window from persisted history so a server restart
         // doesn't throw the model back to sample 0. Only explicitly NORMAL-labelled points are learned.
-        bootstrapLearnSamples(state, points);
+        bootstrapLearnSamples(state, epoch ? points.filter(p => String(p.t) >= epoch) : points);
         // The analytics hysteresis state is NOT the combined business condition. The stored condition may
         // have been WARNING/CRITICAL purely from the absolute-threshold path while analytics was NORMAL;
         // restoring anomalyStable from it would hold a healthy-again asset in WARNING for recoverySamples.
         // Always restart analytics hysteresis from NORMAL — the threshold path still derives the final
         // condition independently from the live telemetry. (candidate/count already null/0 from newAssetState.)
-        state.anomalyStable = 'NORMAL';
-        state.analytics = initialAnalyticsSnapshot(state, metrics);
+        // BUT an anomaly-DRIVEN stored condition (final worse than what the thresholds alone give for the same
+        // metrics) must be reconstructed, otherwise the first reading after a restart reads NORMAL, emits a
+        // false RECOVERY and then a second ESCALATION for the same ongoing episode. The persisted condition is
+        // the final one (threshold OR anomaly), so recompute the threshold part from the stored metrics: if the
+        // final is worse, the difference WAS the stabilized anomaly state. If it is not worse the anomaly state
+        // was <= the threshold condition and starting it at NORMAL changes nothing.
+        const thresholdCondition = thresholdConditionOf(metrics, allowOff);
+        const anomalyDriven = !preEpoch && analytics.ORDER.indexOf(state.condition) > analytics.ORDER.indexOf(thresholdCondition);
+        state.anomalyStable = anomalyDriven ? state.condition : 'NORMAL';
+        // Re-baselined and nothing stored since: the old anomaly episode belongs to the discarded baseline.
+        if (preEpoch) state.condition = thresholdCondition;
+        state.analytics = initialAnalyticsSnapshot(state, metrics, assetId);
         state.events = points.map(p => p.conditionEvent).filter(Boolean)
             .filter(event => allowOff || (event.severity !== 'OFF' && event.from !== 'OFF')).slice(-50);
         const lastEvent = state.events.length ? state.events[state.events.length - 1].timestamp : null;
@@ -304,19 +317,54 @@ function createBridge({ config, tandem, fusionManage, events = null, resolveDevi
     }
 
     // A baseline-only snapshot for a cold read (no live reading evaluated yet).
-    function initialAnalyticsSnapshot(state, metrics) {
+    function initialAnalyticsSnapshot(state, metrics, assetId) {
         const A = config.analytics;
         if (!A || !A.enabled) return null;
         const baseline = analytics.computeBaseline(state.learnSamples, A);
         return {
             modelState: baseline.modelState, sampleCount: baseline.sampleCount, minimumSamples: A.minimumSamples,
+            baselineEpoch: baselineEpochOf(assetId),
             anomalyScore: null, primaryDriver: null, trend: 'STABLE',
             unit: canonical.vibrationUnit(metrics || {}),
             drivers: {}, baseline: { vibration: baseline.vibration, temperature: baseline.temperature },
         };
     }
 
-    return { ingest, getAssetState, registry };
+    // Epoch (ISO) from which learned-baseline samples count; null until an operator re-baselines.
+    function baselineEpochOf(assetId) {
+        const r = baselines && assetId != null ? baselines.get(assetId) : null;
+        return r ? r.baselineEpoch : null;
+    }
+
+    // The condition the ABSOLUTE thresholds alone give for these metrics (no learned anomaly part).
+    function thresholdConditionOf(metrics, allowOff) {
+        const hs = health.compute(metrics || {}, config.thresholds, []);
+        return condition.evaluate(hs.score, metrics || {}, config.thresholds, config.conditionBands, { allowOff }).condition;
+    }
+
+    // Explicit, operator-initiated re-baseline: discard the learned window, start LEARNING again and make
+    // restore ignore every sample older than the new epoch. Fixed physical guardrails stay active (they
+    // never depended on the learned baseline). Throws when the epoch cannot be persisted.
+    function rebaseline(assetId, { reason = null, now = new Date().toISOString() } = {}) {
+        if (!baselines) throw new Error('REBASELINE_UNAVAILABLE');
+        const id = String(assetId);
+        const record = baselines.set(id, { reason, now });          // persist first: no half-applied re-baseline
+        const state = assets.get(id) || restoreAssetState(id);       // epoch is set, so restore is already epoch-aware
+        state.learnSamples = [];
+        state.scoreHistory = [];
+        state.anomalyStable = 'NORMAL';
+        state.anomalyCandidate = null;
+        state.anomalyCandidateCount = 0;
+        // The previous anomaly episode belonged to the discarded baseline: end it silently (no RECOVERY event)
+        // and continue from what the absolute thresholds say about the last known metrics.
+        state.condition = state.last ? thresholdConditionOf(state.mergedMetrics, state.last.activityInference !== 'unsupported') : state.condition;
+        state.analytics = initialAnalyticsSnapshot(state, state.mergedMetrics, id);
+        if (state.last) assets.set(id, state);
+        log(logger, { stage: 'rebaseline', assetId: id, baselineEpoch: record.baselineEpoch, reason: record.reason });
+        return record;
+    }
+
+    return { ingest, getAssetState, registry, rebaseline };
 }
 
 function initAnalyticsState(state) {

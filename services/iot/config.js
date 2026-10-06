@@ -27,6 +27,10 @@ const config = {
     eventStorePath      : process.env.IOT_EVENT_STORE_PATH || 'storage/iot/events',
     eventHistoryLimit   : Number(process.env.IOT_EVENT_HISTORY_LIMIT) || 500,
 
+    // Operator re-baseline (explicit; never automatic). The control route is separately gated, default OFF.
+    baselineStorePath   : process.env.IOT_BASELINE_STORE_PATH || '',   // '' => baseline-epochs.json next to the telemetry store
+    rebaselineEnabled   : bool(process.env.IOT_REBASELINE_ENABLED, false),
+
     // device id -> Fusion Manage asset id. Default: identity for the demo motor.
     deviceAssetMap : json(process.env.IOT_DEVICE_ASSET_MAP, { 'MOTOR-DEMO-001': 'MOTOR-DEMO-001' }),
 
