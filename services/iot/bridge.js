@@ -199,7 +199,9 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
         const trend = analytics.trendFrom(state.scoreHistory, A);
 
         // update gate: only learn genuinely-normal readings so a developing fault can't rewrite normal.
-        if (analytics.shouldLearn(baseline.modelState, finalCondition, evalRes.score, A)) {
+        // A reading the ABSOLUTE guardrails flag (>= warn / critical, or an early-drift OBSERVE) is never a
+        // normal reference — not even while LEARNING, which otherwise accepts everything.
+        if (thresholdCondition === 'NORMAL' && analytics.shouldLearn(baseline.modelState, finalCondition, evalRes.score, A)) {
             state.learnSamples.push(current);
             if (state.learnSamples.length > A.historyWindow) {
                 state.learnSamples.splice(0, state.learnSamples.length - A.historyWindow);

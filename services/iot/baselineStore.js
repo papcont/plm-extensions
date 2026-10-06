@@ -16,17 +16,18 @@ function createBaselineStore(config = {}, logger = console) {
 
     function get(assetId) { return data[String(assetId)] || null; }
 
-    // Record a new epoch (default: now). `reason` is a short operator note. Throws if it cannot be persisted:
-    // a re-baseline that would not survive a restart must not report success.
+    // Record a new epoch (default: now). `reason` is a short operator note. Throws if it cannot be persisted
+    // (persistence disabled, or the write fails): a re-baseline that would not survive a restart must not
+    // report success. The in-memory copy is replaced only AFTER the file was written, so a failure leaves no
+    // transient epoch behind.
     function set(assetId, { reason = null, now = new Date().toISOString() } = {}) {
+        if (!persist) throw new Error('REBASELINE_NOT_DURABLE');
         const record = { baselineEpoch: now, startedAt: now, reason: reason ? String(reason).slice(0, 200) : null };
         const next = Object.assign({}, data, { [String(assetId)]: record });
-        if (persist) {
-            fs.mkdirSync(path.dirname(file), { recursive: true });
-            const tmp = file + '.tmp';
-            fs.writeFileSync(tmp, JSON.stringify(next, null, 1), 'utf8');
-            fs.renameSync(tmp, file);
-        }
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        const tmp = file + '.tmp';
+        fs.writeFileSync(tmp, JSON.stringify(next, null, 1), 'utf8');
+        fs.renameSync(tmp, file);
         data = next;
         return record;
     }

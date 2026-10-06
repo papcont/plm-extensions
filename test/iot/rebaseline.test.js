@@ -106,7 +106,7 @@ test('during LEARNING: no learned-anomaly events; fixed 2 g / 4 g guardrails sti
         await h.feed(rt, 0.3, 20);                                 // enough post-epoch samples
         const a = h.analytics(rt);
         assert.strictEqual(a.modelState, 'READY');
-        assert.ok(a.sampleCount >= 20 && a.sampleCount <= 34, 'only post-epoch samples, got ' + a.sampleCount);
+        assert.strictEqual(a.sampleCount, 31, '12 + 20 valid post-epoch samples (snapshot lags one); the 2.5 g and 4.5 g samples are NOT learned');
         assert.strictEqual(a.baseline.vibration.median, 0.3, 'baseline describes the post-epoch (running) state, not the old rest state');
     } finally { h.done(); }
 });
@@ -186,6 +186,8 @@ test('route /iot/admin/rebaseline: gated OFF (404), exact body, allowlisted asse
         });
         req.on('error', reject); if (body !== undefined) req.write(JSON.stringify(body)); req.end();
     });
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'iot-rb-route-'));
+    Object.assign(iotConfig, { telemetryPersistenceEnabled: true, telemetryStorePath: path.join(tmp, 't'), baselineStorePath: path.join(tmp, 'b.json') });
     const log = console.log; console.log = () => {};
     try {
         iotConfig.rebaselineEnabled = false;
@@ -198,5 +200,106 @@ test('route /iot/admin/rebaseline: gated OFF (404), exact body, allowlisted asse
         const ok = await call({ assetId: '30057', confirm: 'REBASELINE', reason: 'unit test' });
         assert.strictEqual(ok.status, 200);
         assert.ok(JSON.parse(ok.body).data.baselineEpoch);
-    } finally { console.log = log; iotConfig.rebaselineEnabled = false; server.close(); delete require.cache[routePath]; }
+        assert.ok(JSON.parse(fs.readFileSync(path.join(tmp, 'b.json'), 'utf8'))['30057'].baselineEpoch, 'epoch is on disk');
+    } finally {
+        try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* best effort */ } console.log = log; iotConfig.rebaselineEnabled = false; server.close(); delete require.cache[routePath]; }
+});
+
+// ---- guardrail samples never become the normal reference ----
+async function guardrailRun(h, bad, expectedCondition) {
+    const rt = h.start();
+    await h.feed(rt, h.rest, 60);
+    h.rebaseline(rt, { now: h.now() });
+    await h.feed(rt, 0.3, 10);
+    const [r] = await h.feed(rt, bad, 1);
+    assert.strictEqual(r.condition.condition, expectedCondition, 'fixed guardrail still fires');
+    await h.feed(rt, 0.3, 10);
+    return rt;
+}
+
+test('guardrail A: a 2.5 g sample during LEARNING raises WARNING but is NOT learned', async () => {
+    const h = harness();
+    try {
+        const rt = await guardrailRun(h, 2.5, 'WARNING');
+        assert.ok(h.types(rt).some(t => t === 'ESCALATION:NORMAL>WARNING'), 'WARNING event present');
+        const a = h.analytics(rt);
+        assert.strictEqual(a.modelState, 'LEARNING');
+        assert.strictEqual(a.sampleCount, 19, '10 + 10 valid samples (snapshot lags one); the 2.5 g sample is not in the window');
+        assert.strictEqual(a.baseline.vibration.median, 0.3);
+        assert.strictEqual(a.baseline.vibration.upper, 0.33, 'band unaffected by the 2.5 g outlier');
+    } finally { h.done(); }
+});
+
+test('guardrail B: a 4.5 g sample during LEARNING raises CRITICAL but is NOT learned', async () => {
+    const h = harness();
+    try {
+        const rt = await guardrailRun(h, 4.5, 'CRITICAL');
+        assert.ok(h.types(rt).some(t => t.endsWith('>CRITICAL')), 'CRITICAL event present');
+        const a = h.analytics(rt);
+        assert.strictEqual(a.sampleCount, 19);
+        assert.strictEqual(a.baseline.vibration.median, 0.3);
+    } finally { h.done(); }
+});
+
+test('guardrail C: READY after enough valid samples; the window holds only valid samples', async () => {
+    const h = harness();
+    try {
+        const rt = await guardrailRun(h, 2.5, 'WARNING');
+        await h.feed(rt, 4.5, 1);
+        await h.feed(rt, 0.3, 15);                                  // 10 + 10 + 15 = 35 valid samples in total
+        const a = h.analytics(rt);
+        assert.strictEqual(a.modelState, 'READY');
+        assert.strictEqual(a.sampleCount, 34, '35 valid samples (snapshot lags one); neither guardrail sample learned');
+        assert.strictEqual(a.baseline.vibration.n, 34);
+    } finally { h.done(); }
+});
+
+// ---- re-baseline durability: persist first, then reset; never a partial success ----
+test('durability: persistence disabled -> rebaseline rejected, learned state untouched', async () => {
+    const h = harness();
+    try {
+        const rt = service.createRuntime({ telemetryPersistenceEnabled: false, eventPersistenceEnabled: false, deviceAssetMap: { dev: 'A1' } });
+        await h.feed(rt, h.rest, 60);
+        const before = JSON.stringify(h.analytics(rt));
+        assert.throws(() => h.rebaseline(rt, { now: h.now() }), /REBASELINE_NOT_DURABLE/);
+        assert.strictEqual(JSON.stringify(h.analytics(rt)), before, 'no learned-window reset, no epoch change');
+        assert.strictEqual(h.analytics(rt).modelState, 'READY');
+        assert.strictEqual(h.analytics(rt).baselineEpoch, null);
+        const [r] = await h.feed(rt, h.rest, 1);                    // pipeline keeps working normally
+        assert.ok(r.accepted);
+    } finally { h.done(); }
+});
+
+test('durability: writable -> success, epoch on disk, identical epoch after restart', async () => {
+    const h = harness();
+    try {
+        const rt = h.start();
+        await h.feed(rt, h.rest, 60);
+        const epoch = h.now();
+        const rec = h.rebaseline(rt, { now: epoch });
+        assert.strictEqual(rec.baselineEpoch, epoch);
+        assert.strictEqual(JSON.parse(fs.readFileSync(path.join(h.root, 'b.json'), 'utf8')).A1.baselineEpoch, epoch);
+        assert.strictEqual(h.analytics(h.start()).baselineEpoch, epoch, 'restart loads the identical epoch');
+    } finally { h.done(); }
+});
+
+test('durability: write failure -> rebaseline fails, no reset, no transient epoch, no partial state', async () => {
+    const h = harness();
+    try {
+        const blocker = path.join(h.root, 'blocker');
+        fs.writeFileSync(blocker, 'x');                            // a FILE where a directory is needed -> write fails
+        const rt = service.createRuntime({ telemetryPersistenceEnabled: true, telemetryStorePath: path.join(h.root, 't'),
+            eventPersistenceEnabled: false, baselineStorePath: path.join(blocker, 'b.json'), deviceAssetMap: { dev: 'A1' } });
+        await h.feed(rt, h.rest, 60);
+        const before = JSON.stringify(h.analytics(rt));
+        assert.throws(() => h.rebaseline(rt, { now: h.now() }));
+        assert.strictEqual(JSON.stringify(h.analytics(rt)), before, 'learned window and epoch unchanged');
+        assert.strictEqual(h.analytics(rt).baselineEpoch, null, 'no transient epoch');
+        await h.feed(rt, h.rest, 5);
+        assert.strictEqual(h.analytics(rt).modelState, 'READY');
+        assert.strictEqual(h.analytics(rt).sampleCount, 64, 'learning continues untouched after the failed attempt');
+        const restarted = service.createRuntime({ telemetryPersistenceEnabled: true, telemetryStorePath: path.join(h.root, 't'),
+            eventPersistenceEnabled: false, baselineStorePath: path.join(blocker, 'b.json'), deviceAssetMap: { dev: 'A1' } });
+        assert.strictEqual(h.analytics(restarted).baselineEpoch, null, 'nothing persisted either');
+    } finally { h.done(); }
 });

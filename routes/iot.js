@@ -232,6 +232,7 @@ router.post('/admin/rebaseline', function(req, res) {
         res.json({ success: true, data: { assetId: b.assetId, baselineEpoch: r.baselineEpoch } });
     } catch (e) {
         console.log(' /iot/admin/rebaseline failed: ' + e.message);
+        if (e.message === 'REBASELINE_NOT_DURABLE') return res.status(409).json({ success: false, message: 'Re-baseline requires telemetry persistence (not durable)' });
         res.status(500).json({ success: false, message: 'Re-baseline failed' });
     }
 });
