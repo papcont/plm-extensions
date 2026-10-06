@@ -14,6 +14,7 @@ const condition = require('./condition');
 const { createBridge } = require('./bridge');
 const { createTandemRepository } = require('./tandemRepository');
 const { createFusionManageRepository } = require('./fusionManageRepository');
+const { createEventRepository } = require('./eventRepository');
 const { createFmResolver } = require('./sensorDirectory');
 
 // Turn a logical simulator reading into a canonical event by going through Netvox encode -> TTS
@@ -38,9 +39,10 @@ function createRuntime(overrides = {}) {
     const config = Object.assign({}, baseConfig, overrides);
     const tandem = createTandemRepository(config);
     const fusionManage = createFusionManageRepository(config);
+    const events = overrides.events || createEventRepository(config);   // durable condition-event store
     // DevEUI -> asset resolver: test/override wins; otherwise the gated FM resolver (null unless configured).
     const resolveDeviceAsset = overrides.resolveDeviceAsset || createFmResolver(config);
-    const bridge = createBridge({ config, tandem, fusionManage, resolveDeviceAsset });
+    const bridge = createBridge({ config, tandem, fusionManage, events, resolveDeviceAsset });
 
     const deviceId = config.simulation.deviceId;
     const scenario = simulator.DEFAULT_SCENARIO;
@@ -144,10 +146,24 @@ function createRuntime(overrides = {}) {
         };
     }
 
+    // Operational event feed for the API: resolves the asset, normalizes the limit (default 50, invalid
+    // -> default, capped to eventHistoryLimit), returns events NEWEST-FIRST and echoes the resolved asset.
+    function getEventsFeed(assetId, limit) {
+        const resolved = String(assetId || bridge.registry.resolveAsset(deviceId));
+        const max = Number(config.eventHistoryLimit) || 500;
+        let n = Number(limit);
+        if (!Number.isFinite(n) || n <= 0) n = 50;     // default + invalid
+        if (n > max) n = max;                          // cap excessive
+        const chronological = events.list(resolved, n); // most-recent n, oldest-first
+        return { assetId: resolved, events: chronological.slice().reverse() }; // newest-first for the feed
+    }
+
     return {
         config, deviceId, tick, bridge, ingestUplink,
         getState,
         getHistory : (rangeMs, assetId) => tandem.history(assetId || bridge.registry.resolveAsset(deviceId), rangeMs),
+        getEvents : (assetId, limit) => events.list(assetId || bridge.registry.resolveAsset(deviceId), limit),
+        getEventsFeed,
         reset : () => { tickIndex = 0; },
     };
 }

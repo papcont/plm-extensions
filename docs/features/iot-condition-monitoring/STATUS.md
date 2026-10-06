@@ -2,6 +2,17 @@
 
 _Last updated: 2026-10-05_
 
+## Phase 2A-1 — Durable + enriched Condition Events (2026-10-05, `npm test` = 76/76, branch `feature/iot-condition-events-durable`)
+- New **`services/iot/eventRepository.js`**: durable, asset-scoped, idempotent condition-event store
+  (in-memory + optional NDJSON at `storage/iot/events/`); injected into the bridge, which appends on each
+  real transition. **schemaVersion 1** enriched event (`metrics{}`, `baselineRef{}`, `telemetryWindowRef{}`).
+- New **`GET /iot/events?assetId=&limit=`** → `{ success, assetId, events[newest-first] }` (default limit 50,
+  capped 500). Restart-safe when persistence is enabled (full per-asset file restored, deduped by eventId).
+- **Persistence gated OFF by default** (code capability only — live durability needs
+  `iot.eventPersistenceEnabled=true`; **no live/tenant mutation**). Events start `OPEN`; LINKED/CLOSED reserved.
+- **No Maintenance Cases, no FM event persistence, no Fleet Learning** — those remain design-only
+  (`PHASE-2A-DESIGN.md`). FM still records events dry-run only.
+
 ## AI Phase 1 — Learned Condition Monitoring added (2026-10-05, `npm test` = 61/61, branch `feature/iot-predictive-ai-phase1`)
 - New **`services/iot/analytics.js`**: per-asset learned baseline (rolling **median + MAD** + normal
   band), robust-Z **anomaly score 0..1**, primary driver, hysteresis, trend, update gate. Pure and

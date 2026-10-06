@@ -204,6 +204,14 @@ router.get('/history', function(req, res) {
     res.json({ success: true, data: points });
 });
 
+// Durable condition events for an asset (escalation/recovery), NEWEST-FIRST, bounded by ?limit
+// (default 50, capped to eventHistoryLimit). Survives restarts when event persistence is enabled;
+// FM is not involved. Echoes the resolved assetId.
+router.get('/events', function(req, res) {
+    const feed = service.getShared().getEventsFeed(req.query.assetId || null, req.query.limit);
+    res.json({ success: true, assetId: feed.assetId, events: feed.events });
+});
+
 router.post('/reset', function(req, res) {
     service.getShared().reset();
     res.json({ success: true });

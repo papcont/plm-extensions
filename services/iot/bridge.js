@@ -9,9 +9,10 @@ const canonical = require('./canonical');
 const health = require('./health');
 const condition = require('./condition');
 const analytics = require('./analytics');
+const { EVENT_SCHEMA_VERSION } = require('./eventRepository');
 const { createRegistry } = require('./deviceRegistry');
 
-function createBridge({ config, tandem, fusionManage, resolveDeviceAsset = null, logger = console }) {
+function createBridge({ config, tandem, fusionManage, events = null, resolveDeviceAsset = null, logger = console }) {
     const registry = createRegistry(config.deviceAssetMap, resolveDeviceAsset);
     const assets = new Map(); // assetId -> { mergedMetrics, condition, health, history[], events[], last }
 
@@ -65,23 +66,54 @@ function createBridge({ config, tandem, fusionManage, resolveDeviceAsset = null,
 
         // 7. condition event on any change after the first reading (skip initial NORMAL establishment).
         // Uses the FINAL (threshold ∨ learned-anomaly) condition; reason names whichever drove it.
+        // Enriched (schemaVersion, from/to, telemetry snapshot + learned baseline ref + telemetry window)
+        // so a later maintenance case can reference it without re-deriving. Existing fields are preserved
+        // for back-compat; new fields are additive. Persisted to the durable event repo (if injected).
         let conditionEvent = null;
         if (finalCondition !== state.condition && state.condition !== null) {
+            // metrics snapshot — only include values actually present (no invented humidity/temperature).
+            const metricsRef = {
+                vibration    : h.vibration,
+                vibrationUnit: analyticsSnapshot ? analyticsSnapshot.unit : canonical.vibrationUnit(metrics),
+            };
+            if (typeof metrics.temperature === 'number') metricsRef.temperature = metrics.temperature;
+            if (typeof metrics.humidity === 'number') metricsRef.humidity = metrics.humidity;
+            // learned-baseline reference — only the parts the engine actually has.
+            let baselineRef = null;
+            if (analyticsSnapshot) {
+                baselineRef = { modelState: analyticsSnapshot.modelState, sampleCount: analyticsSnapshot.sampleCount };
+                if (analyticsSnapshot.baseline && analyticsSnapshot.baseline.vibration) baselineRef.vibration = analyticsSnapshot.baseline.vibration;
+                if (analyticsSnapshot.baseline && analyticsSnapshot.baseline.temperature) baselineRef.temperature = analyticsSnapshot.baseline.temperature;
+            }
+            // telemetry window: fromTs = previous telemetry timestamp, toTs = the reading that triggered the
+            // transition. The bridge only knows discrete reading timestamps, so this is the interval between
+            // the prior and current readings — not a continuous sampling window. fromTs omitted if unknown.
+            const prevTs = state.history.length ? state.history[state.history.length - 1].t : null;
+            const telemetryWindowRef = { toTs: event.timestamp };
+            if (prevTs) telemetryWindowRef.fromTs = prevTs;
+
             conditionEvent = {
+                schemaVersion: EVENT_SCHEMA_VERSION,                 // durable v1 shape
                 eventId    : crypto.randomUUID(),
                 assetId,
                 deviceId   : event.deviceId,
                 type       : condition.isEscalation(state.condition || 'OFF', finalCondition) ? 'ESCALATION' : 'RECOVERY',
                 from       : state.condition || null,
-                severity   : finalCondition,
+                severity   : finalCondition,                        // retained: consumers (UI/tandem) depend on it
+                to         : finalCondition,
                 timestamp  : event.timestamp,
+                detectedAt : event.timestamp,
                 healthScore: h.score,
                 anomalyScore : analyticsSnapshot ? analyticsSnapshot.anomalyScore : null,
                 primaryDriver: analyticsSnapshot ? analyticsSnapshot.primaryDriver : null,
                 reason     : analyticsResult.drivenByAnomaly ? analyticsResult.anomalyReason : c.reason,
-                status     : 'OPEN',
+                status     : 'OPEN',                                // always OPEN at 2A-1; LINKED/CLOSED are for Phase 2A cases
+                metrics    : metricsRef,
+                baselineRef,
+                telemetryWindowRef,
             };
             state.events.push(conditionEvent);
+            if (events) await events.append(conditionEvent);        // durable, idempotent, restart-safe; logs if not durable
         }
 
         // 8. persist: Tandem (time series) always; Fusion Manage summary + events (gated in repo)

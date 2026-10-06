@@ -20,6 +20,13 @@ const config = {
     telemetryStorePath  : process.env.IOT_TELEMETRY_STORE_PATH || 'storage/iot/telemetry',
     fusionManageWrites  : bool(process.env.FUSION_MANAGE_IOT_WRITES, false),
 
+    // Durable condition-event store (services/iot/eventRepository.js). Low-frequency discrete events
+    // (escalation/recovery) persisted to NDJSON so they survive a restart. Gated OFF by default like the
+    // telemetry store; enable per deployment to keep events across restarts. FM is NOT touched by this.
+    eventPersistenceEnabled: bool(process.env.IOT_EVENT_PERSISTENCE, false),
+    eventStorePath      : process.env.IOT_EVENT_STORE_PATH || 'storage/iot/events',
+    eventHistoryLimit   : Number(process.env.IOT_EVENT_HISTORY_LIMIT) || 500,
+
     // device id -> Fusion Manage asset id. Default: identity for the demo motor.
     deviceAssetMap : json(process.env.IOT_DEVICE_ASSET_MAP, { 'MOTOR-DEMO-001': 'MOTOR-DEMO-001' }),
 
@@ -140,6 +147,9 @@ config.applyDeployment = function(env) {
     if (process.env.IOT_SERVER_TICK_MS       == null && iot.serverTickMs         !== undefined) config.serverTickMs       = Number(iot.serverTickMs);
     if (process.env.IOT_TELEMETRY_PERSISTENCE == null && iot.telemetryPersistenceEnabled !== undefined) config.telemetryPersistenceEnabled = !!iot.telemetryPersistenceEnabled;
     if (process.env.IOT_TELEMETRY_STORE_PATH == null && iot.telemetryStorePath) config.telemetryStorePath = String(iot.telemetryStorePath);
+    if (process.env.IOT_EVENT_PERSISTENCE    == null && iot.eventPersistenceEnabled !== undefined) config.eventPersistenceEnabled = !!iot.eventPersistenceEnabled;
+    if (process.env.IOT_EVENT_STORE_PATH     == null && iot.eventStorePath) config.eventStorePath = String(iot.eventStorePath);
+    if (process.env.IOT_EVENT_HISTORY_LIMIT  == null && iot.eventHistoryLimit !== undefined) config.eventHistoryLimit = Number(iot.eventHistoryLimit);
     if (process.env.IOT_WRITE_MIN_INTERVAL_MS== null && iot.writeMinIntervalMs   !== undefined) config.writeMinIntervalMs = Number(iot.writeMinIntervalMs);
     if (process.env.IOT_FLOAT_DECIMALS       == null && iot.floatDecimals        !== undefined) config.floatDecimals      = Number(iot.floatDecimals);
     if (process.env.IOT_FLOAT_DECIMALS_BY_FIELD == null && iot.floatDecimalsByField) {
