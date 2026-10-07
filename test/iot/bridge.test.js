@@ -62,7 +62,9 @@ test('bridge emits a condition event when severity changes', async () => {
 });
 
 test('E2E: simulator drives Healthy -> Warning -> Critical -> Recovery through the runtime', async () => {
-    const runtime = service.createRuntime(); // dry-run defaults (no live Tandem/FM writes)
+    const runtime = service.createRuntime({
+        simulation: Object.assign({}, baseConfig.simulation, { timeScale: 10 }),
+    }); // 10-s samples make the 60-s evidence window observable
     const total = require('../../services/iot/simulator').totalTicks(require('../../services/iot/simulator').DEFAULT_SCENARIO);
 
     const conditions = [];

@@ -93,6 +93,27 @@ test('hysteresis: single spike does not escalate; persistence does; recovery nee
     assert.strictEqual(s, 'NORMAL', 'sustained normal recovers');
 });
 
+test('learned evidence: 3 of 5 band hits within 60 seconds escalates and 3 inside-band samples recover', () => {
+    const st = {};
+    const cfg = Object.assign({}, A, { evidenceWindowSamples: 5, evidenceRequiredHits: 3, evidenceMaxWindowMs: 60000 });
+    const t = i => new Date(Date.UTC(2026, 0, 1) + i * 10000).toISOString();
+    let r = analytics.stabilizeEvidence('NORMAL', 'NORMAL', true, t(0), st, cfg);
+    assert.strictEqual(r.condition, 'NORMAL');
+    analytics.stabilizeEvidence(r.condition, 'NORMAL', false, t(1), st, cfg);
+    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', true, t(2), st, cfg);
+    assert.strictEqual(r.hits, 2);
+    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', true, t(3), st, cfg);
+    assert.strictEqual(r.condition, 'OBSERVE');
+    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', false, t(4), st, cfg);
+    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', false, t(5), st, cfg);
+    assert.strictEqual(r.condition, 'NORMAL');
+    const late = {};
+    analytics.stabilizeEvidence('NORMAL', 'NORMAL', true, t(0), late, cfg);
+    analytics.stabilizeEvidence('NORMAL', 'NORMAL', true, t(7), late, cfg);
+    analytics.stabilizeEvidence('NORMAL', 'NORMAL', true, t(14), late, cfg);
+    assert.strictEqual(late.anomalyEvidence.length, 1, 'old evidence expires by time, not just sample count');
+});
+
 test('trend: STABLE / DEGRADING / IMPROVING from a window of scores', () => {
     assert.strictEqual(analytics.trendFrom([0.1, 0.1, 0.1, 0.1, 0.1, 0.1], A), 'STABLE');
     assert.strictEqual(analytics.trendFrom([0.0, 0.0, 0.0, 0.5, 0.6, 0.7], A), 'DEGRADING');
@@ -121,7 +142,7 @@ let seq = 0;
 function velEvent(mag, temp) {
     return canonical.createEvent({
         deviceId: 'MOTOR-DEMO-001', deviceType: 'netvox-r718e', source: 'test',
-        timestamp: new Date(Date.UTC(2026, 0, 1) + (seq++) * 60000).toISOString(),
+        timestamp: new Date(Date.UTC(2026, 0, 1) + (seq++) * 10000).toISOString(),
         metrics: { velocityX: mag, velocityY: 0, velocityZ: 0, temperature: temp },
     });
 }

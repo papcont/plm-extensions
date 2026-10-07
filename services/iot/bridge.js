@@ -59,7 +59,7 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
         // Never makes the asset look healthier than the threshold path; adds early, explainable detection
         // of "different from its own normal" before any absolute band is crossed. Skipped while OFF so a
         // stopped machine (vibration ~0, far below its running median) is not flagged as anomalous.
-        const analyticsResult = evaluateAnalytics(state, metrics, h, c.condition, allowOff, assetId);
+        const analyticsResult = evaluateAnalytics(state, metrics, h, c.condition, allowOff, assetId, event.timestamp);
         h = analyticsResult.health;                      // effective health = min(threshold, anomaly) health
         const finalCondition = analyticsResult.finalCondition;
         const analyticsSnapshot = analyticsResult.snapshot;
@@ -171,9 +171,9 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
     }
 
     // Run the learned-baseline analytics for one reading and fold it into health + condition. Pure w.r.t.
-    // the engine; mutates only `state` (learned-sample window, hysteresis counters, score history).
+    // the engine; mutates only `state` (learned-sample window, evidence window, score history).
     // Returns the effective health, the final condition, a UI snapshot, and the anomaly reason/flag.
-    function evaluateAnalytics(state, metrics, h, thresholdCondition, allowOff, assetId) {
+    function evaluateAnalytics(state, metrics, h, thresholdCondition, allowOff, assetId, timestamp) {
         const A = config.analytics;
         if (!A || !A.enabled || thresholdCondition === 'OFF') {
             return { health: h, finalCondition: thresholdCondition, snapshot: null, drivenByAnomaly: false, anomalyReason: null };
@@ -184,10 +184,14 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
         const current = { vibration: h.vibration, temperature: metrics.temperature };
         let evalRes = { score: 0, primaryDriver: null, drivers: {} };
         let stable = state.anomalyStable || 'NORMAL';
+        let evidence = { hits: 0, samples: 0, evidenceActive: false, recoveryReady: false };
         if (baseline.modelState === 'READY') {
             evalRes = analytics.evaluate(current, baseline, A);
-            const raw = analytics.anomalyCondition(evalRes.score, A);
-            stable = analytics.stabilize(state.anomalyStable || 'NORMAL', raw, state, A);
+            const scoreSeverity = analytics.anomalyCondition(evalRes.score, A);
+            state.anomalyScoreStable = analytics.stabilize(state.anomalyScoreStable || 'NORMAL', scoreSeverity, state, A);
+            const aboveBand = baseline.vibration && h.vibration > baseline.vibration.upper;
+            evidence = analytics.stabilizeEvidence(stable, state.anomalyScoreStable, aboveBand, timestamp, state, A, scoreSeverity);
+            stable = evidence.condition;
         }
         state.anomalyStable = stable;
 
@@ -216,6 +220,10 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
             baselineEpoch: baselineEpochOf(assetId),
             anomalyScore : evalRes.score,
             primaryDriver: evalRes.primaryDriver,
+            evidenceHits: evidence.hits,
+            evidenceSamples: evidence.samples,
+            evidenceWindowSamples: A.evidenceWindowSamples,
+            evidenceActive: evidence.evidenceActive,
             trend        : trend,
             unit         : canonical.vibrationUnit(metrics),
             drivers      : evalRes.drivers,
@@ -277,6 +285,8 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
         const thresholdCondition = thresholdConditionOf(metrics, allowOff);
         const anomalyDriven = !preEpoch && analytics.ORDER.indexOf(state.condition) > analytics.ORDER.indexOf(thresholdCondition);
         state.anomalyStable = anomalyDriven ? state.condition : 'NORMAL';
+        state.anomalyScoreStable = state.anomalyStable;
+        state.anomalyEvidence = [];
         // Re-baselined and nothing stored since: the old anomaly episode belongs to the discarded baseline.
         if (preEpoch) state.condition = thresholdCondition;
         state.analytics = initialAnalyticsSnapshot(state, metrics, assetId);
@@ -355,8 +365,10 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
         state.learnSamples = [];
         state.scoreHistory = [];
         state.anomalyStable = 'NORMAL';
+        state.anomalyScoreStable = 'NORMAL';
         state.anomalyCandidate = null;
         state.anomalyCandidateCount = 0;
+        state.anomalyEvidence = [];
         // The previous anomaly episode belonged to the discarded baseline: end it silently (no RECOVERY event)
         // and continue from what the absolute thresholds say about the last known metrics.
         state.condition = state.last ? thresholdConditionOf(state.mergedMetrics, state.last.activityInference !== 'unsupported') : state.condition;
@@ -373,12 +385,18 @@ function initAnalyticsState(state) {
     if (!state.learnSamples) state.learnSamples = [];
     if (!state.scoreHistory) state.scoreHistory = [];
     if (state.anomalyStable === undefined) state.anomalyStable = 'NORMAL';
+    if (state.anomalyScoreStable === undefined) state.anomalyScoreStable = 'NORMAL';
     if (state.anomalyCandidate === undefined) state.anomalyCandidate = null;
     if (state.anomalyCandidateCount === undefined) state.anomalyCandidateCount = 0;
+    if (!state.anomalyEvidence) state.anomalyEvidence = [];
 }
 
 // Human-readable "why" for an anomaly-driven condition — all facts from the analytics snapshot, no LLM.
 function buildAnomalyReason(snapshot) {
+    if (snapshot.evidenceActive) {
+        return 'Persistent learned-band deviation: ' + snapshot.evidenceHits + ' of last ' +
+            snapshot.evidenceWindowSamples + ' samples above learned upper band within 60 s';
+    }
     const driver = snapshot.primaryDriver;
     const d = driver && snapshot.drivers[driver];
     const unit = driver === 'vibration' ? (snapshot.unit || '') : (driver === 'temperature' ? '°C' : '');
@@ -391,7 +409,7 @@ function newAssetState() {
     return {
         mergedMetrics: {}, condition: null, health: null, history: [], events: [], last: null,
         learnSamples: [], scoreHistory: [], analytics: null,
-        anomalyStable: 'NORMAL', anomalyCandidate: null, anomalyCandidateCount: 0,
+        anomalyStable: 'NORMAL', anomalyScoreStable: 'NORMAL', anomalyCandidate: null, anomalyCandidateCount: 0, anomalyEvidence: [],
     };
 }
 

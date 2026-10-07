@@ -30,6 +30,9 @@ const DEFAULTS = {
     criticalThreshold : 0.85,   // anomaly score -> CRITICAL
     escalationSamples : 3,      // consecutive worse readings required before the anomaly condition escalates
     recoverySamples   : 3,      // consecutive better readings required before it recovers
+    evidenceWindowSamples: 5,
+    evidenceRequiredHits : 3,
+    evidenceMaxWindowMs  : 60000,
     trendWindow       : 12,     // samples compared for STABLE/IMPROVING/DEGRADING
     trendDelta        : 0.08,   // min anomaly-score change (over the window) to call a trend
     weights           : { vibration: 1, temperature: 0.6 }, // temperature is a supplementary signal
@@ -151,6 +154,27 @@ function stabilize(stable, raw, state, cfg) {
     return stable;
 }
 
+// Learned-band evidence: three hits in the last five valid samples, inside one time window.
+function stabilizeEvidence(stable, scoreSeverity, aboveBand, timestamp, state, cfg, scoreSeverityNow = scoreSeverity) {
+    const window = Math.max(1, cfgValue(cfg, 'evidenceWindowSamples'));
+    const required = Math.max(1, cfgValue(cfg, 'evidenceRequiredHits'));
+    const maxMs = Math.max(0, cfgValue(cfg, 'evidenceMaxWindowMs'));
+    const ts = Date.parse(timestamp);
+    if (!Array.isArray(state.anomalyEvidence)) state.anomalyEvidence = [];
+    if (Number.isFinite(ts)) state.anomalyEvidence.push({ timestamp: ts, aboveBand: !!aboveBand });
+    state.anomalyEvidence = state.anomalyEvidence.slice(-window);
+    if (Number.isFinite(ts)) state.anomalyEvidence = state.anomalyEvidence.filter(s => ts - s.timestamp <= maxMs);
+    const hits = state.anomalyEvidence.reduce((n, s) => n + (s.aboveBand ? 1 : 0), 0);
+    const inside = state.anomalyEvidence.length - hits;
+    const evidenceActive = hits >= required;
+    const recoveryReady = inside >= required && scoreSeverityNow === 'NORMAL';
+    let next = stable || 'NORMAL';
+    if (recoveryReady) next = 'NORMAL';
+    else if (evidenceActive) next = worst(scoreSeverity, 'OBSERVE');
+    else if (scoreSeverity !== 'NORMAL') next = scoreSeverity;
+    return { condition: next, hits, samples: state.anomalyEvidence.length, evidenceActive, recoveryReady };
+}
+
 // Update gate: only fold the current reading into the learned baseline while the asset is genuinely
 // normal, so a developing fault never normalizes itself away. Always learn while still LEARNING.
 function shouldLearn(modelState, finalCondition, anomalyScore, cfg) {
@@ -189,6 +213,6 @@ function round4(n) { return typeof n === 'number' ? parseFloat(n.toFixed(4)) : n
 module.exports = {
     DEFAULTS, MAD_TO_SIGMA, ORDER,
     computeBaseline, robustZ, scoreFromZ, evaluate,
-    anomalyCondition, stabilize, shouldLearn, trendFrom, worst, anomalyHealth,
+    anomalyCondition, stabilize, stabilizeEvidence, shouldLearn, trendFrom, worst, anomalyHealth,
     median, mad,
 };
