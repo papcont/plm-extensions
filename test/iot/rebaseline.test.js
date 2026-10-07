@@ -47,7 +47,8 @@ test('re-baseline: clears the learned window, enters LEARNING, records the epoch
         const rt = h.start();
         await h.feed(rt, h.rest, 60);
         assert.strictEqual(h.analytics(rt).modelState, 'READY');
-        assert.strictEqual(h.analytics(rt).sampleCount, 20, 'READY baseline freezes at the first validated window');
+        assert.strictEqual(h.analytics(rt).sampleCount, 60, 'READY continues learning until maturity');
+        assert.strictEqual(h.analytics(rt).baselineFrozen, false);
         const epoch = h.now();
         const rec = h.rebaseline(rt, { reason: 'normal operation', now: epoch });
         assert.strictEqual(rec.baselineEpoch, epoch);
@@ -59,27 +60,53 @@ test('re-baseline: clears the learned window, enters LEARNING, records the epoch
     } finally { h.done(); }
 });
 
-test('READY baseline freezes, persists its window, and survives restart without rolling', async () => {
+test('baseline matures at the configured window, freezes once, and survives restart without rolling', async () => {
     const h = harness();
     try {
         const rt = h.start();
         h.rebaseline(rt, { now: h.now() });
-        await h.feed(rt, 0.3, 30);
-        const before = h.analytics(rt);
+        await h.feed(rt, 0.3, 19);
+        let before = h.analytics(rt);
+        assert.strictEqual(before.modelState, 'LEARNING');
+        assert.strictEqual(before.sampleCount, 19);
+        assert.strictEqual(before.baselineFrozen, false);
+        await h.feed(rt, 0.3, 1);
+        before = h.analytics(rt);
         assert.strictEqual(before.modelState, 'READY');
         assert.strictEqual(before.sampleCount, 20);
+        assert.strictEqual(before.baselineFrozen, false);
+        const eventsBeforeMaturity = rt.getEvents('A1').length;
+        await h.feed(rt, 0.8, 3);
+        assert.strictEqual(rt.getEvents('A1').length, eventsBeforeMaturity, 'learned events stay suppressed before maturity');
+        assert.strictEqual(h.analytics(rt).sampleCount, 20, 'anomalous samples are not learned before maturity');
+        await h.feed(rt, 0.3, 179);
+        before = h.analytics(rt);
+        assert.strictEqual(before.modelState, 'READY');
+        assert.strictEqual(before.sampleCount, 199);
+        assert.strictEqual(before.baselineFrozen, false);
+        await h.feed(rt, 0.3, 1);
+        before = h.analytics(rt);
+        assert.strictEqual(before.sampleCount, 200);
         assert.strictEqual(before.baselineFrozen, true);
         const stored = JSON.parse(fs.readFileSync(path.join(h.root, 'b.json'), 'utf8')).A1;
         assert.strictEqual(stored.baselineFrozen, true);
-        assert.strictEqual(stored.validatedSamples.length, 20);
+        assert.strictEqual(stored.validatedSamples.length, 200);
         const reference = JSON.stringify(before.baseline);
 
         const restarted = h.start();
         const restored = h.analytics(restarted);
         assert.strictEqual(restored.baselineFrozen, true);
+        assert.strictEqual(restored.sampleCount, 200);
         assert.strictEqual(JSON.stringify(restored.baseline), reference);
         await h.feed(restarted, 0.02, 100);
         assert.strictEqual(JSON.stringify(h.analytics(restarted).baseline), reference, 'post-READY samples do not roll the reference');
+        h.rebaseline(restarted, { now: h.now() });
+        const reset = h.analytics(restarted);
+        assert.strictEqual(reset.modelState, 'LEARNING');
+        assert.strictEqual(reset.sampleCount, 0);
+        assert.strictEqual(reset.baselineFrozen, false);
+        const cleared = JSON.parse(fs.readFileSync(path.join(h.root, 'b.json'), 'utf8')).A1;
+        assert.strictEqual(cleared.baselineFrozen, undefined, 'rebaseline clears the frozen snapshot');
     } finally { h.done(); }
 });
 
@@ -97,12 +124,13 @@ test('restore never loads telemetry older than baselineEpoch; epoch survives res
         assert.strictEqual(a.modelState, 'LEARNING');
         assert.strictEqual(a.baselineEpoch, epoch);
 
-        await h.feed(rt, 0.3, 10);                                 // running machine, still learning
+        await h.feed(rt, 0.3, 50);                                 // running machine, restart during maturity learning
         rt = h.start();                                            // restart DURING learning
         a = h.analytics(rt);
         assert.strictEqual(a.baselineEpoch, epoch, 'epoch kept');
-        assert.strictEqual(a.sampleCount, 10, 'only the 10 post-epoch samples, none of the old ones');
-        assert.strictEqual(a.modelState, 'LEARNING');
+        assert.strictEqual(a.sampleCount, 50, 'only the 50 post-epoch samples, none of the old ones');
+        assert.strictEqual(a.modelState, 'READY');
+        assert.strictEqual(a.baselineFrozen, false);
         assert.strictEqual(a.baseline.vibration.median, 0.3);
         assert.strictEqual(JSON.parse(fs.readFileSync(path.join(h.root, 'b.json'), 'utf8')).A1.baselineEpoch, epoch);
     } finally { h.done(); }
@@ -130,7 +158,7 @@ test('during LEARNING: no learned-anomaly events; fixed 2 g / 4 g guardrails sti
         await h.feed(rt, 0.3, 20);                                 // enough post-epoch samples
         const a = h.analytics(rt);
         assert.strictEqual(a.modelState, 'READY');
-        assert.strictEqual(a.sampleCount, 20, 'READY baseline freezes; the 2.5 g and 4.5 g samples are NOT learned');
+        assert.strictEqual(a.sampleCount, 32, 'valid samples continue through READY; guardrail samples are NOT learned');
         assert.strictEqual(a.baseline.vibration.median, 0.3, 'baseline describes the post-epoch (running) state, not the old rest state');
     } finally { h.done(); }
 });
@@ -140,6 +168,8 @@ test('re-baseline ends an anomaly episode silently (no RECOVERY event); an unper
     try {
         const rt = h.start();
         await h.feed(rt, h.rest, 60);
+        h.rebaseline(rt, { now: h.now() });
+        await h.feed(rt, h.rest, 200);
         await h.feed(rt, 0.3, 6);
         assert.deepStrictEqual(h.types(rt), ['ESCALATION:NORMAL>CRITICAL']);
         h.rebaseline(rt, { now: h.now() });
@@ -159,6 +189,8 @@ test('REGRESSION restart mid anomaly-driven episode: stays CRITICAL, no RECOVERY
     try {
         let rt = h.start();
         await h.feed(rt, h.rest, 60);
+        h.rebaseline(rt, { now: h.now() });
+        await h.feed(rt, h.rest, 200);
         await h.feed(rt, 0.3, 8);                                  // stabilises to CRITICAL (anomaly-driven; 0.3 g < 2 g guardrail)
         const first = rt.getEvents('A1');
         assert.deepStrictEqual(h.types(rt), ['ESCALATION:NORMAL>CRITICAL']);
@@ -186,6 +218,8 @@ test('restart during a mixed threshold + anomaly episode (>= 2 g) creates no ext
     try {
         let rt = h.start();
         await h.feed(rt, h.rest, 60);
+        h.rebaseline(rt, { now: h.now() });
+        await h.feed(rt, 0.3, 200);
         await h.feed(rt, 2.5, 6);                                  // WARNING by guardrail at once, CRITICAL by learned anomaly after 3 samples
         const before = h.types(rt);
         assert.deepStrictEqual(before, ['ESCALATION:NORMAL>WARNING', 'ESCALATION:WARNING>CRITICAL']);
@@ -248,7 +282,7 @@ test('guardrail A: a 2.5 g sample during LEARNING raises WARNING but is NOT lear
         assert.ok(h.types(rt).some(t => t === 'ESCALATION:NORMAL>WARNING'), 'WARNING event present');
         const a = h.analytics(rt);
         assert.strictEqual(a.modelState, 'LEARNING');
-        assert.strictEqual(a.sampleCount, 17, '8 + 10 valid samples minus the guardrail sample');
+        assert.strictEqual(a.sampleCount, 18, '8 + 10 valid samples minus the guardrail sample');
         assert.strictEqual(a.baseline.vibration.median, 0.3);
         assert.strictEqual(a.baseline.vibration.upper, 0.33, 'band unaffected by the 2.5 g outlier');
     } finally { h.done(); }
@@ -260,7 +294,7 @@ test('guardrail B: a 4.5 g sample during LEARNING raises CRITICAL but is NOT lea
         const rt = await guardrailRun(h, 4.5, 'CRITICAL');
         assert.ok(h.types(rt).some(t => t.endsWith('>CRITICAL')), 'CRITICAL event present');
         const a = h.analytics(rt);
-        assert.strictEqual(a.sampleCount, 17);
+        assert.strictEqual(a.sampleCount, 18);
         assert.strictEqual(a.baseline.vibration.median, 0.3);
     } finally { h.done(); }
 });
@@ -270,11 +304,11 @@ test('guardrail C: READY after enough valid samples; the window holds only valid
     try {
         const rt = await guardrailRun(h, 2.5, 'WARNING');
         await h.feed(rt, 4.5, 1);
-        await h.feed(rt, 0.3, 15);                                  // 8 + 10 + 15 = 33 valid samples; READY freezes at 20
+        await h.feed(rt, 0.3, 15);                                  // 8 + 10 + 15 = 33 valid samples; still below maturity
         const a = h.analytics(rt);
         assert.strictEqual(a.modelState, 'READY');
-        assert.strictEqual(a.sampleCount, 20, 'baseline froze at READY; neither guardrail sample learned');
-        assert.strictEqual(a.baseline.vibration.n, 20);
+        assert.strictEqual(a.sampleCount, 33, 'neither guardrail sample learned');
+        assert.strictEqual(a.baseline.vibration.n, 33);
     } finally { h.done(); }
 });
 
@@ -321,7 +355,7 @@ test('durability: write failure -> rebaseline fails, no reset, no transient epoc
         assert.strictEqual(h.analytics(rt).baselineEpoch, null, 'no transient epoch');
         await h.feed(rt, h.rest, 5);
         assert.strictEqual(h.analytics(rt).modelState, 'READY');
-        assert.strictEqual(h.analytics(rt).sampleCount, 20, 'frozen baseline remains unchanged after the failed attempt');
+        assert.strictEqual(h.analytics(rt).sampleCount, 65, 'learning remains available without a durable freeze');
         const restarted = service.createRuntime({ telemetryPersistenceEnabled: true, telemetryStorePath: path.join(h.root, 't'),
             eventPersistenceEnabled: false, baselineStorePath: path.join(blocker, 'b.json'), deviceAssetMap: { dev: 'A1' } });
         assert.strictEqual(h.analytics(restarted).baselineEpoch, null, 'nothing persisted either');

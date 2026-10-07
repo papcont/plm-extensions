@@ -187,11 +187,14 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
         let evidence = { hits: 0, samples: 0, evidenceActive: false, recoveryReady: false };
         if (baseline.modelState === 'READY') {
             evalRes = analytics.evaluate(current, baseline, A);
-            const scoreSeverity = analytics.anomalyCondition(evalRes.score, A);
-            state.anomalyScoreStable = analytics.stabilize(state.anomalyScoreStable || 'NORMAL', scoreSeverity, state, A);
-            const aboveBand = baseline.vibration && h.vibration > baseline.vibration.upper;
-            evidence = analytics.stabilizeEvidence(stable, state.anomalyScoreStable, aboveBand, timestamp, state, A, scoreSeverity);
-            stable = evidence.condition;
+            // READY enables scoring; learned severity/evidence stays inert until the reference is mature.
+            if (state.baselineFrozen) {
+                const scoreSeverity = analytics.anomalyCondition(evalRes.score, A);
+                state.anomalyScoreStable = analytics.stabilize(state.anomalyScoreStable || 'NORMAL', scoreSeverity, state, A);
+                const aboveBand = baseline.vibration && h.vibration > baseline.vibration.upper;
+                evidence = analytics.stabilizeEvidence(stable, state.anomalyScoreStable, aboveBand, timestamp, state, A, scoreSeverity);
+                stable = evidence.condition;
+            }
         }
         state.anomalyStable = stable;
 
@@ -205,23 +208,23 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
         // update gate: only learn genuinely-normal readings so a developing fault can't rewrite normal.
         // A reading the ABSOLUTE guardrails flag (>= warn / critical, or an early-drift OBSERVE) is never a
         // normal reference — not even while LEARNING, which otherwise accepts everything.
-        if (thresholdCondition === 'NORMAL' && analytics.shouldLearn(baseline.modelState, finalCondition, evalRes.score, A)) {
+        if (thresholdCondition === 'NORMAL' && analytics.shouldLearn(baseline.modelState, finalCondition, evalRes.score, A, state.baselineFrozen)) {
             state.learnSamples.push(current);
             if (state.learnSamples.length > A.historyWindow) {
                 state.learnSamples.splice(0, state.learnSamples.length - A.historyWindow);
             }
         }
 
-        // READY is a validated reference, not a rolling window. Freeze on the transition only;
-        // explicit rebaseline() is the sole path that may replace it.
-        if (baseline.modelState !== 'READY' && state.learnSamples.length >= A.minimumSamples) {
+        // READY enables scoring; the configured history window is the maturity target. Freeze only there;
+        // explicit rebaseline() is the sole path that may replace a frozen reference.
+        if (!state.baselineFrozen) {
             baseline = analytics.computeBaseline(state.learnSamples, A);
-            if (!state.baselineFrozen) {
+            const freezeTarget = Math.max(A.minimumSamples, A.historyWindow);
+            if (state.learnSamples.length >= freezeTarget) {
                 state.baselineFrozenAt = new Date(timestamp).toISOString();
                 try {
-                    if (baselines && baselines.freeze) baselines.freeze(assetId, {
-                        frozenAt: state.baselineFrozenAt, samples: state.learnSamples, baseline,
-                    });
+                    if (!baselines || !baselines.freeze) throw new Error('BASELINE_FREEZE_NOT_DURABLE');
+                    baselines.freeze(assetId, { frozenAt: state.baselineFrozenAt, samples: state.learnSamples, baseline });
                     state.baselineFrozen = true;
                 } catch (err) {
                     state.baselineFrozenAt = null;

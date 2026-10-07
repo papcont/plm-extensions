@@ -69,10 +69,11 @@ test('anomaly: a temperature-only deviation is attributed to temperature', () =>
 
 // ---------------- update gate / baseline protection ----------------
 
-test('update gate: learns while LEARNING; after READY only when normal and quiet', () => {
+test('update gate: learns through READY until the baseline is frozen', () => {
     assert.strictEqual(analytics.shouldLearn('LEARNING', 'WARNING', 0.9, A), false); // guardrail/anomaly is not learned
     assert.strictEqual(analytics.shouldLearn('LEARNING', 'NORMAL', 0.1, A), true);    // valid learning sample
-    assert.strictEqual(analytics.shouldLearn('READY', 'NORMAL', 0.1, A), false);      // READY is frozen
+    assert.strictEqual(analytics.shouldLearn('READY', 'NORMAL', 0.1, A), true);        // READY still matures
+    assert.strictEqual(analytics.shouldLearn('READY', 'NORMAL', 0.1, A, true), false); // frozen means no learning
     assert.strictEqual(analytics.shouldLearn('READY', 'WARNING', 0.8, A), false);    // fault -> frozen
     assert.strictEqual(analytics.shouldLearn('READY', 'NORMAL', A.learningThreshold + 0.01, A), false); // too anomalous
 });
@@ -150,7 +151,9 @@ function velEvent(mag, temp) {
 
 test('PIPELINE: LEARNING -> READY -> learned anomaly escalates BELOW the absolute threshold -> recovery', async () => {
     seq = 0;
-    const bridge = createBridge({ config: baseConfig, ...mockRepos() });
+    const config = Object.assign({}, baseConfig, { analytics: Object.assign({}, baseConfig.analytics, { historyWindow: A.minimumSamples }) });
+    const frozenBaselines = { get: () => null, freeze: () => ({}) };
+    const bridge = createBridge({ config, baselines: frozenBaselines, ...mockRepos() });
 
     // Phase 1: learn this asset's normal (~1.2 mm/s, small jitter). Well below warn (4.5).
     let last;
@@ -168,7 +171,7 @@ test('PIPELINE: LEARNING -> READY -> learned anomaly escalates BELOW the absolut
     // old threshold path alone stays NORMAL, but it is far from THIS asset's learned baseline.
     let elevated;
     for (let i = 0; i < 6; i++) elevated = await bridge.ingest(velEvent(2.6, 30));
-    assert.ok(canonical.vibrationMagnitude({ velocityX: 2.6 }) < baseConfig.thresholds.vibration.warn,
+    assert.ok(canonical.vibrationMagnitude({ velocityX: 2.6 }) < config.thresholds.vibration.warn,
         'test premise: 2.6 is below the absolute warn threshold');
     assert.ok(analytics.ORDER.indexOf(elevated.condition.condition) >= analytics.ORDER.indexOf('OBSERVE'),
         'learned baseline escalates despite no absolute-threshold crossing, got ' + elevated.condition.condition);
