@@ -119,7 +119,6 @@ const config = {
         provider : process.env.IOT_AI_PROVIDER || 'anthropic',
         model    : process.env.IOT_AI_MODEL || 'claude-opus-5-5',
         effort   : process.env.IOT_AI_EFFORT || 'medium',
-        apiKey   : process.env.IOT_AI_API_KEY || '',
     },
 
     // Simulation cadence. tickMs = wall interval between emitted readings; timeScale compresses

@@ -7,7 +7,11 @@ const state = {
     summary: { condition: 'NORMAL', healthScore: 100, vibration: 0.02, temperature: 29.08, humidity: 37,
         lastTelemetry: '2026-10-06T17:46:54.626Z', secretish: 'must-not-leak' },
     analytics: { modelState: 'READY', sampleCount: 200, anomalyScore: null, primaryDriver: null, trend: 'STABLE',
+        baselineEpoch: '2026-10-07T11:32:08.451Z', baselineFrozen: true, baselineFrozenAt: '2026-10-07T12:06:54.000Z',
         baseline: { vibration: { median: 0.02, lower: -0.01, upper: 0.05 }, temperature: { median: 29.08 } } },
+    events: [{ eventId: 'EV-1', type: 'ESCALATION', from: 'NORMAL', to: 'OBSERVE', severity: 'OBSERVE',
+        timestamp: '2026-10-07T12:37:33.701Z', detectedAt: '2026-10-07T12:37:33.701Z', anomalyScore: 0.5,
+        primaryDriver: 'vibration', reason: 'Recurrent learned-band deviation', status: 'OPEN' }],
 };
 const kase = { caseId: 'A000019-SRV001', workflow: 'Definition', urgency: 'Predictive Service',
     assessment: 'CONFIRMED_ISSUE', confirmedCause: 'Controlled test finding', anomalyAtDetection: '0.91',
@@ -20,6 +24,11 @@ test('context is an allowlist: null stays null, no extra fields, current vs hist
         now: Date.parse('2026-10-06T18:46:54.626Z') });
     assert.strictEqual(ctx.currentMachineState.anomalyScore, null);
     assert.strictEqual(ctx.currentMachineState.dataAgeMinutes, 60);
+    assert.strictEqual(ctx.learnedBaseline.frozen, true);
+    assert.strictEqual(ctx.learnedBaseline.baselineEpoch, '2026-10-07T11:32:08.451Z');
+    assert.strictEqual(ctx.learnedBaseline.vibrationMadG, null);
+    assert.strictEqual(ctx.latestDurableConditionEvent.eventId, 'EV-1');
+    assert.strictEqual(ctx.recentDurableConditionEvents.length, 1);
     assert.deepStrictEqual(ctx.learnedBaseline.vibrationNormalBandG, [0, 0.05]);
     assert.strictEqual(ctx.historicalDetection.anomalyAtDetection, 0.91);
     assert.strictEqual(ctx.maintenanceCase.confirmedCause, 'Controlled test finding');
@@ -63,6 +72,21 @@ test('provider: one request, exact model, maxRetries 0, no tools/fallback/betas,
     }
 });
 
+test('provider: Anthropic credential comes only from ANTHROPIC_API_KEY', async () => {
+    const { createAnthropicProvider } = require('../../services/iot/ai/providers/anthropic');
+    const old = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+        assert.throws(() => createAnthropicProvider({}), /AI_CREDENTIAL_MISSING/);
+        process.env.ANTHROPIC_API_KEY = ['TEST', '_ONLY', '_SENTINEL'].join('');
+        assert.strictEqual(require('../../services/iot/ai/providers/anthropic').hasAnthropicCredential(), true);
+        assert.doesNotThrow(() => createAnthropicProvider({}));
+    } finally {
+        if (old === undefined) delete process.env.ANTHROPIC_API_KEY;
+        else process.env.ANTHROPIC_API_KEY = old;
+    }
+});
+
 test('invalid (non-JSON) model output is a controlled error', async () => {
     const svc = createAiService({ config: { enabled: true }, provider: { complete: async () => 'not json' } });
     await assert.rejects(svc.explainAssetState({}), /AI_BAD_SHAPE/);
@@ -79,7 +103,7 @@ test('route: POST only, exact body, allowlist 403, disabled 503, no key/context 
     const http = require('http');
     const express = require('express');
     const iotConfig = require('../../services/iot/config');
-    iotConfig.ai.enabled = false; iotConfig.ai.apiKey = 'sk-secret-test-key';
+    iotConfig.ai.enabled = false;
     const app = express();
     app.use(express.json());
     app.use('/iot', require('../../routes/iot'));
@@ -99,8 +123,39 @@ test('route: POST only, exact body, allowlist 403, disabled 503, no key/context 
         assert.strictEqual(off.status, 503);
         assert.ok(!off.body.includes('context'));
         const cfg = await call('GET', '/iot/config');
-        assert.ok(!cfg.body.includes('sk-secret-test-key') && !/apiKey/i.test(cfg.body));
-    } finally { server.close(); iotConfig.ai.apiKey = ''; }
+        assert.ok(!cfg.body.includes(['TEST', '_ONLY', '_SENTINEL'].join('')) && !/apiKey/i.test(cfg.body));
+    } finally { server.close(); }
+});
+
+test('route: enabled without ANTHROPIC_API_KEY fails before provider access and exposes only a boolean', async () => {
+    const http = require('http');
+    const express = require('express');
+    const iotConfig = require('../../services/iot/config');
+    const old = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    iotConfig.ai.enabled = true;
+    const app = express(); app.use(express.json()); app.use('/iot', require('../../routes/iot'));
+    const server = await new Promise(r => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
+    const call = path => new Promise((resolve, reject) => {
+        const req = http.request({ host: '127.0.0.1', port: server.address().port, path, method: 'POST', headers: { 'content-type': 'application/json' } }, res => {
+            let d = ''; res.on('data', c => d += c); res.on('end', () => resolve({ status: res.statusCode, body: d }));
+        });
+        req.on('error', reject); req.write('{"assetId":"30057"}'); req.end();
+    });
+    try {
+        const missing = await call('/iot/ai/explain');
+        assert.strictEqual(missing.status, 503);
+        assert.deepStrictEqual(JSON.parse(missing.body), { success: false, message: 'AI credential is not configured' });
+        const cfg = await new Promise((resolve, reject) => http.get({ host: '127.0.0.1', port: server.address().port, path: '/iot/config' }, res => {
+            let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(JSON.parse(d)));
+        }).on('error', reject));
+        assert.strictEqual(cfg.data.aiCredentialConfigured, false);
+        assert.doesNotMatch(JSON.stringify(cfg), /apiKey|secret|token/i);
+    } finally {
+        server.close(); iotConfig.ai.enabled = false;
+        if (old === undefined) delete process.env.ANTHROPIC_API_KEY;
+        else process.env.ANTHROPIC_API_KEY = old;
+    }
 });
 
 test('cache key: age bucketed per 15 min; every other fact changes the key; insight has exact fields', async () => {
@@ -192,7 +247,7 @@ test('route: technician-briefing is POST-only, exact body, 403/503, never leaks 
     const http = require('http');
     const express = require('express');
     const iotConfig = require('../../services/iot/config');
-    iotConfig.ai.enabled = false; iotConfig.ai.apiKey = 'sk-secret-test-key';
+    iotConfig.ai.enabled = false;
     const app = express();
     app.use(express.json());
     app.use('/iot', require('../../routes/iot'));
@@ -213,7 +268,7 @@ test('route: technician-briefing is POST-only, exact body, 403/503, never leaks 
         const off = await call('POST', P, { assetId: '30057' });
         assert.strictEqual(off.status, 503);
         assert.ok(!off.body.includes('context') && !off.body.includes('sk-secret-test-key'));
-    } finally { server.close(); iotConfig.ai.apiKey = ''; }
+    } finally { server.close(); }
 });
 
 test('no-write guarantee: AI modules never import an FM write path or HTTP client', () => {
@@ -282,6 +337,8 @@ test('route: a rejected model answer is logged by reason only; HTTP stays generi
     const routePath = require.resolve('../../routes/iot');
     delete require.cache[routePath];                       // re-load so the route binds the stubs
     iotConfig.ai.enabled = true;
+    const oldKey = process.env.ANTHROPIC_API_KEY;          // credential guard runs before the (stubbed) provider
+    process.env.ANTHROPIC_API_KEY = ['TEST', '_ONLY', '_SENTINEL'].join('');
     const logs = []; const origLog = console.log; console.log = (...a) => logs.push(a.join(' '));
     const app = express(); app.use(express.json()); app.locals.tenant = 't'; app.locals.tenantLink = 'https://t';
     app.use('/iot', require('../../routes/iot'));
@@ -301,6 +358,7 @@ test('route: a rejected model answer is logged by reason only; HTTP stays generi
         assert.ok(!log.includes('SECRET-MODEL-TEXT') && !res.body.includes('SECRET-MODEL-TEXT'));
     } finally {
         console.log = origLog; server.close(); iotConfig.ai.enabled = false;
+        if (oldKey === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = oldKey;
         prov.createAnthropicProvider = origProv; repo.createFusionManageReadRepository = origRepo; delete require.cache[routePath];
     }
 });

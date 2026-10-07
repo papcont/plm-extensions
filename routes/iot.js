@@ -10,6 +10,7 @@ const iotConfig = require('../services/iot/config');
 const { createFusionManageReadRepository } = require('../services/iot/fusionManageReadRepository');
 const { buildContext } = require('../services/iot/ai/contextBuilder');
 const { createAiService } = require('../services/iot/ai/aiService');
+const anthropic = require('../services/iot/ai/providers/anthropic');
 let fmReadRepository;
 let aiService;
 
@@ -86,7 +87,7 @@ function getAiService() {
     if (!aiService) {
         // ponytail: one provider today; add a providers/<name>.js + this switch when a second is needed.
         if (iotConfig.ai.provider !== 'anthropic') throw new Error('AI_PROVIDER_UNKNOWN');
-        const provider = require('../services/iot/ai/providers/anthropic').createAnthropicProvider(iotConfig.ai);
+        const provider = anthropic.createAnthropicProvider(iotConfig.ai);
         aiService = createAiService({ config: iotConfig.ai, provider });
     }
     return aiService;
@@ -114,6 +115,7 @@ router.get('/config', function(req, res) {
             warningThreshold : rt.config.analytics.warningThreshold,
             criticalThreshold: rt.config.analytics.criticalThreshold,
         } : null,
+        aiCredentialConfigured: anthropic.hasAnthropicCredential(),
     }});
 });
 
@@ -158,7 +160,7 @@ router.get('/maintenance-case', async function(req, res) {
 
 // AI Insight, read-only. The server builds the context from its own sanitized reads; nothing from the
 // browser goes into the prompt except the allowlisted asset id. One handler per mode, same guards.
-function aiRoute(mode, serviceFn) {
+function aiRoute(mode) {
     return async function(req, res) {
         const body = req.body;
         if (!body || typeof body !== 'object' || Object.keys(body).join() !== 'assetId' || typeof body.assetId !== 'string') {
@@ -168,6 +170,9 @@ function aiRoute(mode, serviceFn) {
         const workspaceId = Object.keys(DEMO_ASSETS).find(ws => DEMO_ASSETS[ws].includes(dmsId));
         if (!workspaceId) return res.status(403).json({ success: false, message: 'Asset not enabled for monitoring' });
         if (!iotConfig.ai.enabled) return res.status(503).json({ success: false, message: 'AI Insight is disabled' });
+        if (iotConfig.ai.provider === 'anthropic' && !anthropic.hasAnthropicCredential()) {
+            return res.status(503).json({ success: false, message: 'AI credential is not configured' });
+        }
         try {
             const caseRef = DEMO_CASE_BY_ASSET[dmsId];
             const repo = getFmReadRepository();
@@ -180,16 +185,18 @@ function aiRoute(mode, serviceFn) {
                 asset: sanitizeAsset(assetDetails, workspaceId, dmsId),
                 kase: caseDetails ? sanitizeCase(req, caseDetails, caseRef.workspaceId, caseRef.dmsId) : null,
             });
-            const insight = await serviceFn(getAiService(), context);
-            res.json({ success: true, data: { mode, insight } });
+            const r = await getAiService().run(mode, context);
+            // Provenance for the UI (live vs cached, which model). Never the key, never the context.
+            res.json({ success: true, data: { mode, insight: r.insight, cached: r.cached, latencyMs: r.latencyMs,
+                provider: iotConfig.ai.provider, model: iotConfig.ai.model } });
         } catch (error) {
             console.log(' /iot/ai (' + mode + ') failed: ' + (error && (error.status || '') + ' ' + error.message));
             res.status(502).json({ success: false, message: 'AI Insight could not be generated' });
         }
     };
 }
-router.post('/ai/explain', aiRoute('explain_asset_state', (ai, ctx) => ai.explainAssetState(ctx)));
-router.post('/ai/technician-briefing', aiRoute('technician_briefing', (ai, ctx) => ai.technicianBriefing(ctx)));
+router.post('/ai/explain', aiRoute('explain_asset_state'));
+router.post('/ai/technician-briefing', aiRoute('technician_briefing'));
 
 // Time series for the charts. range in ms (default 1h of sim time is many points; UI slices).
 router.get('/history', function(req, res) {

@@ -1,5 +1,4 @@
 // Anthropic provider for the IoT AI service. Single read-only call: no tools, structured JSON output.
-// The key comes from config (environment.js iot.ai.apiKey) or the SDK's own ANTHROPIC_API_KEY lookup.
 
 const Anthropic = require('@anthropic-ai/sdk');
 
@@ -7,7 +6,8 @@ const Anthropic = require('@anthropic-ai/sdk');
 const MAX_OUTPUT_TOKENS = 2500;
 
 function createAnthropicProvider(config, client) {
-    client = client || new Anthropic({ apiKey: config.apiKey || undefined, timeout: 60000, maxRetries: 0 });
+    if (!client && !hasAnthropicCredential()) throw new Error('AI_CREDENTIAL_MISSING');
+    client = client || new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000, maxRetries: 0 });
 
     async function complete({ system, user, schema }) {
         const response = await client.messages.create({
@@ -27,4 +27,8 @@ function createAnthropicProvider(config, client) {
     return { complete };
 }
 
-module.exports = { createAnthropicProvider };
+function hasAnthropicCredential() {
+    return typeof process.env.ANTHROPIC_API_KEY === 'string' && process.env.ANTHROPIC_API_KEY.length > 0;
+}
+
+module.exports = { createAnthropicProvider, hasAnthropicCredential };

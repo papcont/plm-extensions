@@ -123,20 +123,23 @@ function createAiService({ config, provider }) {
     // ponytail: unbounded per-process cache keyed by mode + context hash; one demo asset, so a handful of entries.
     const cache = new Map();
 
-    async function generate(mode, context) {
+    // One call with its provenance: { insight, cached, latencyMs }. The UI shows live vs cached.
+    async function run(mode, context) {
         if (!config.enabled) throw new Error('AI_DISABLED');
         const m = MODES[mode];
         if (!m) throw new Error('AI_UNKNOWN_MODE');
         const user = 'Context (JSON):\n' + JSON.stringify(context, null, 2) + '\n\nQuestion: ' + m.question;
         const key = mode + ':' + cacheKey(context);
-        if (cache.has(key)) return cache.get(key);
+        if (cache.has(key)) return { insight: cache.get(key), cached: true, latencyMs: 0 };
+        const t0 = Date.now();
         const out = validate(await provider.complete({ system: m.system, user, schema: m.schema }), mode);
         cache.set(key, out);
-        return out;
+        return { insight: out, cached: false, latencyMs: Date.now() - t0 };
     }
+    const generate = (mode, context) => run(mode, context).then(r => r.insight);
 
     return {
-        generate,
+        generate, run,
         explainAssetState: ctx => generate('explain_asset_state', ctx),
         technicianBriefing: ctx => generate('technician_briefing', ctx),
     };

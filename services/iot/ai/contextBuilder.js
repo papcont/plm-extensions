@@ -8,6 +8,23 @@ function num(v) {
     return Number.isFinite(n) ? n : null;
 }
 
+function eventContext(event) {
+    if (!event) return null;
+    return {
+        eventId: event.eventId || null,
+        type: event.type || null,
+        from: event.from || null,
+        to: event.to || null,
+        severity: event.severity || null,
+        timestamp: event.timestamp || null,
+        detectedAt: event.detectedAt || null,
+        anomalyScore: num(event.anomalyScore),
+        primaryDriver: event.primaryDriver || null,
+        reason: event.reason || null,
+        status: event.status || null,
+    };
+}
+
 function buildContext({ state, asset, kase, now = Date.now() }) {
     const s = (state && state.summary) || {};
     const a = (state && state.analytics) || {};
@@ -15,6 +32,7 @@ function buildContext({ state, asset, kase, now = Date.now() }) {
     const temp = (a.baseline && a.baseline.temperature) || {};
     const lastAt = s.lastTelemetry || null;
     const ageMin = lastAt ? Math.round((now - Date.parse(lastAt)) / 60000) : null;
+    const events = Array.isArray(state && state.events) ? state.events : [];
 
     return {
         asset: { id: (asset && asset.id) || null, title: (asset && asset.title) || null },
@@ -32,12 +50,19 @@ function buildContext({ state, asset, kase, now = Date.now() }) {
             dataAgeMinutes: ageMin,
         },
         learnedBaseline: {
+            baselineEpoch: a.baselineEpoch || null,
+            frozen: a.baselineFrozen === true,
+            frozenAt: a.baselineFrozenAt || null,
             vibrationMedianG: num(vib.median),
+            vibrationMadG: num(vib.mad),
             // The lower band edge can be negative mathematically; amplitude cannot.
             vibrationNormalBandG: vib.upper != null ? [Math.max(0, num(vib.lower) || 0), num(vib.upper)] : null,
             temperatureMedianC: num(temp.median),
+            temperatureMadC: num(temp.mad),
             sampleCount: num(a.sampleCount),
         },
+        latestDurableConditionEvent: eventContext(events[events.length - 1]),
+        recentDurableConditionEvents: events.slice(-5).reverse().map(eventContext),
         historicalDetection: kase ? {
             anomalyAtDetection: num(kase.anomalyAtDetection),
             primaryDriver: kase.primaryDriver || null,

@@ -25,6 +25,7 @@
         $.getJSON('/iot/config', function (res) {
             cfg = res.data;
             if (!liveAsset) $('#cm-source').text('source: ' + cfg.source);
+            if (cfg.aiCredentialConfigured === false) $('#cm-ai-status').text('AI Insight is not configured on this server.');
             start();
         }).fail(function () { $('#cm-source').text('source: unavailable'); });
 
@@ -514,7 +515,9 @@
             data: JSON.stringify({ assetId: String(glob('dmsId')) }), dataType: 'json' }).done(function (res) {
             $('#cm-ai-result, #cm-ai-briefing-result').hide();
             render(res.data.insight);
-            $('#cm-ai-status').text('Read-only explanation of the data shown above. Nothing is written to Fusion Manage.');
+            $('#cm-ai-status').text(res.data.cached
+                ? 'Cached result (identical context, no new AI call).'
+                : 'Live AI response from ' + (res.data.model || res.data.provider || 'provider') + ' in ' + Math.round((res.data.latencyMs || 0) / 1000) + ' s.');
         }).fail(function (xhr) {
             $('#cm-ai-status').text((xhr.responseJSON && xhr.responseJSON.message) || 'AI Insight could not be generated.');
         }).always(function () { btns.prop('disabled', false); });
