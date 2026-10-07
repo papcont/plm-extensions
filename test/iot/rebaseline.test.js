@@ -47,7 +47,7 @@ test('re-baseline: clears the learned window, enters LEARNING, records the epoch
         const rt = h.start();
         await h.feed(rt, h.rest, 60);
         assert.strictEqual(h.analytics(rt).modelState, 'READY');
-        assert.strictEqual(h.analytics(rt).sampleCount, 59, 'snapshot is taken before the current reading is learned');
+        assert.strictEqual(h.analytics(rt).sampleCount, 20, 'READY baseline freezes at the first validated window');
         const epoch = h.now();
         const rec = h.rebaseline(rt, { reason: 'normal operation', now: epoch });
         assert.strictEqual(rec.baselineEpoch, epoch);
@@ -56,6 +56,30 @@ test('re-baseline: clears the learned window, enters LEARNING, records the epoch
         assert.strictEqual(a.modelState, 'LEARNING');
         assert.strictEqual(a.sampleCount, 0);
         assert.strictEqual(a.baselineEpoch, epoch);
+    } finally { h.done(); }
+});
+
+test('READY baseline freezes, persists its window, and survives restart without rolling', async () => {
+    const h = harness();
+    try {
+        const rt = h.start();
+        h.rebaseline(rt, { now: h.now() });
+        await h.feed(rt, 0.3, 30);
+        const before = h.analytics(rt);
+        assert.strictEqual(before.modelState, 'READY');
+        assert.strictEqual(before.sampleCount, 20);
+        assert.strictEqual(before.baselineFrozen, true);
+        const stored = JSON.parse(fs.readFileSync(path.join(h.root, 'b.json'), 'utf8')).A1;
+        assert.strictEqual(stored.baselineFrozen, true);
+        assert.strictEqual(stored.validatedSamples.length, 20);
+        const reference = JSON.stringify(before.baseline);
+
+        const restarted = h.start();
+        const restored = h.analytics(restarted);
+        assert.strictEqual(restored.baselineFrozen, true);
+        assert.strictEqual(JSON.stringify(restored.baseline), reference);
+        await h.feed(restarted, 0.02, 100);
+        assert.strictEqual(JSON.stringify(h.analytics(restarted).baseline), reference, 'post-READY samples do not roll the reference');
     } finally { h.done(); }
 });
 
@@ -106,7 +130,7 @@ test('during LEARNING: no learned-anomaly events; fixed 2 g / 4 g guardrails sti
         await h.feed(rt, 0.3, 20);                                 // enough post-epoch samples
         const a = h.analytics(rt);
         assert.strictEqual(a.modelState, 'READY');
-        assert.strictEqual(a.sampleCount, 31, '12 + 20 valid post-epoch samples (snapshot lags one); the 2.5 g and 4.5 g samples are NOT learned');
+        assert.strictEqual(a.sampleCount, 20, 'READY baseline freezes; the 2.5 g and 4.5 g samples are NOT learned');
         assert.strictEqual(a.baseline.vibration.median, 0.3, 'baseline describes the post-epoch (running) state, not the old rest state');
     } finally { h.done(); }
 });
@@ -210,7 +234,7 @@ async function guardrailRun(h, bad, expectedCondition) {
     const rt = h.start();
     await h.feed(rt, h.rest, 60);
     h.rebaseline(rt, { now: h.now() });
-    await h.feed(rt, 0.3, 10);
+    await h.feed(rt, 0.3, 8);
     const [r] = await h.feed(rt, bad, 1);
     assert.strictEqual(r.condition.condition, expectedCondition, 'fixed guardrail still fires');
     await h.feed(rt, 0.3, 10);
@@ -224,7 +248,7 @@ test('guardrail A: a 2.5 g sample during LEARNING raises WARNING but is NOT lear
         assert.ok(h.types(rt).some(t => t === 'ESCALATION:NORMAL>WARNING'), 'WARNING event present');
         const a = h.analytics(rt);
         assert.strictEqual(a.modelState, 'LEARNING');
-        assert.strictEqual(a.sampleCount, 19, '10 + 10 valid samples (snapshot lags one); the 2.5 g sample is not in the window');
+        assert.strictEqual(a.sampleCount, 17, '8 + 10 valid samples minus the guardrail sample');
         assert.strictEqual(a.baseline.vibration.median, 0.3);
         assert.strictEqual(a.baseline.vibration.upper, 0.33, 'band unaffected by the 2.5 g outlier');
     } finally { h.done(); }
@@ -236,7 +260,7 @@ test('guardrail B: a 4.5 g sample during LEARNING raises CRITICAL but is NOT lea
         const rt = await guardrailRun(h, 4.5, 'CRITICAL');
         assert.ok(h.types(rt).some(t => t.endsWith('>CRITICAL')), 'CRITICAL event present');
         const a = h.analytics(rt);
-        assert.strictEqual(a.sampleCount, 19);
+        assert.strictEqual(a.sampleCount, 17);
         assert.strictEqual(a.baseline.vibration.median, 0.3);
     } finally { h.done(); }
 });
@@ -246,11 +270,11 @@ test('guardrail C: READY after enough valid samples; the window holds only valid
     try {
         const rt = await guardrailRun(h, 2.5, 'WARNING');
         await h.feed(rt, 4.5, 1);
-        await h.feed(rt, 0.3, 15);                                  // 10 + 10 + 15 = 35 valid samples in total
+        await h.feed(rt, 0.3, 15);                                  // 8 + 10 + 15 = 33 valid samples; READY freezes at 20
         const a = h.analytics(rt);
         assert.strictEqual(a.modelState, 'READY');
-        assert.strictEqual(a.sampleCount, 34, '35 valid samples (snapshot lags one); neither guardrail sample learned');
-        assert.strictEqual(a.baseline.vibration.n, 34);
+        assert.strictEqual(a.sampleCount, 20, 'baseline froze at READY; neither guardrail sample learned');
+        assert.strictEqual(a.baseline.vibration.n, 20);
     } finally { h.done(); }
 });
 
@@ -297,7 +321,7 @@ test('durability: write failure -> rebaseline fails, no reset, no transient epoc
         assert.strictEqual(h.analytics(rt).baselineEpoch, null, 'no transient epoch');
         await h.feed(rt, h.rest, 5);
         assert.strictEqual(h.analytics(rt).modelState, 'READY');
-        assert.strictEqual(h.analytics(rt).sampleCount, 64, 'learning continues untouched after the failed attempt');
+        assert.strictEqual(h.analytics(rt).sampleCount, 20, 'frozen baseline remains unchanged after the failed attempt');
         const restarted = service.createRuntime({ telemetryPersistenceEnabled: true, telemetryStorePath: path.join(h.root, 't'),
             eventPersistenceEnabled: false, baselineStorePath: path.join(blocker, 'b.json'), deviceAssetMap: { dev: 'A1' } });
         assert.strictEqual(h.analytics(restarted).baselineEpoch, null, 'nothing persisted either');

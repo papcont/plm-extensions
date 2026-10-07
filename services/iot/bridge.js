@@ -180,7 +180,7 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
         }
         if (!state.learnSamples) initAnalyticsState(state);
 
-        const baseline = analytics.computeBaseline(state.learnSamples, A);
+        let baseline = analytics.computeBaseline(state.learnSamples, A);
         const current = { vibration: h.vibration, temperature: metrics.temperature };
         let evalRes = { score: 0, primaryDriver: null, drivers: {} };
         let stable = state.anomalyStable || 'NORMAL';
@@ -212,12 +212,32 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
             }
         }
 
+        // READY is a validated reference, not a rolling window. Freeze on the transition only;
+        // explicit rebaseline() is the sole path that may replace it.
+        if (baseline.modelState !== 'READY' && state.learnSamples.length >= A.minimumSamples) {
+            baseline = analytics.computeBaseline(state.learnSamples, A);
+            if (!state.baselineFrozen) {
+                state.baselineFrozenAt = new Date(timestamp).toISOString();
+                try {
+                    if (baselines && baselines.freeze) baselines.freeze(assetId, {
+                        frozenAt: state.baselineFrozenAt, samples: state.learnSamples, baseline,
+                    });
+                    state.baselineFrozen = true;
+                } catch (err) {
+                    state.baselineFrozenAt = null;
+                    log(logger, { stage: 'baseline-freeze', assetId, error: err.message });
+                }
+            }
+        }
+
         const drivenByAnomaly = analytics.ORDER.indexOf(stable) > analytics.ORDER.indexOf(thresholdCondition);
         const snapshot = {
             modelState   : baseline.modelState,
             sampleCount  : baseline.sampleCount,
             minimumSamples: A.minimumSamples,
             baselineEpoch: baselineEpochOf(assetId),
+            baselineFrozen: !!state.baselineFrozen,
+            baselineFrozenAt: state.baselineFrozenAt || null,
             anomalyScore : evalRes.score,
             primaryDriver: evalRes.primaryDriver,
             evidenceHits: evidence.hits,
@@ -260,6 +280,7 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
             latest.healthScore, metrics, config.thresholds, config.conditionBands).condition;
         if (!allowOff && state.condition === 'OFF') state.condition = 'NORMAL';
         const epoch = baselineEpochOf(assetId);
+        const baselineRecord = baselines && assetId != null ? baselines.get(assetId) : null;
         const preEpoch = !!epoch && String(latest.t) < epoch;      // last stored point predates the operator's re-baseline
         state.health = { score: latest.healthScore, vibration, temperature: metrics.temperature };
         state.history = points.slice(-5).map(p => ({
@@ -270,7 +291,14 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
         }));
         // Baseline bootstrap: seed the learned-normal window from persisted history so a server restart
         // doesn't throw the model back to sample 0. Only explicitly NORMAL-labelled points are learned.
-        bootstrapLearnSamples(state, epoch ? points.filter(p => String(p.t) >= epoch) : points);
+        if (baselineRecord && baselineRecord.baselineFrozen && Array.isArray(baselineRecord.validatedSamples)) {
+            const window = (config.analytics && config.analytics.historyWindow) || analytics.DEFAULTS.historyWindow;
+            state.learnSamples = baselineRecord.validatedSamples.slice(-window);
+            state.baselineFrozen = true;
+            state.baselineFrozenAt = baselineRecord.frozenAt || null;
+        } else {
+            bootstrapLearnSamples(state, epoch ? points.filter(p => String(p.t) >= epoch) : points);
+        }
         // The analytics hysteresis state is NOT the combined business condition. The stored condition may
         // have been WARNING/CRITICAL purely from the absolute-threshold path while analytics was NORMAL;
         // restoring anomalyStable from it would hold a healthy-again asset in WARNING for recoverySamples.
@@ -336,6 +364,7 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
         return {
             modelState: baseline.modelState, sampleCount: baseline.sampleCount, minimumSamples: A.minimumSamples,
             baselineEpoch: baselineEpochOf(assetId),
+            baselineFrozen: !!state.baselineFrozen, baselineFrozenAt: state.baselineFrozenAt || null,
             anomalyScore: null, primaryDriver: null, trend: 'STABLE',
             unit: canonical.vibrationUnit(metrics || {}),
             drivers: {}, baseline: { vibration: baseline.vibration, temperature: baseline.temperature },
@@ -369,6 +398,8 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
         state.anomalyCandidate = null;
         state.anomalyCandidateCount = 0;
         state.anomalyEvidence = [];
+        state.baselineFrozen = false;
+        state.baselineFrozenAt = null;
         // The previous anomaly episode belonged to the discarded baseline: end it silently (no RECOVERY event)
         // and continue from what the absolute thresholds say about the last known metrics.
         state.condition = state.last ? thresholdConditionOf(state.mergedMetrics, state.last.activityInference !== 'unsupported') : state.condition;
@@ -389,6 +420,8 @@ function initAnalyticsState(state) {
     if (state.anomalyCandidate === undefined) state.anomalyCandidate = null;
     if (state.anomalyCandidateCount === undefined) state.anomalyCandidateCount = 0;
     if (!state.anomalyEvidence) state.anomalyEvidence = [];
+    if (state.baselineFrozen === undefined) state.baselineFrozen = false;
+    if (state.baselineFrozenAt === undefined) state.baselineFrozenAt = null;
 }
 
 // Human-readable "why" for an anomaly-driven condition — all facts from the analytics snapshot, no LLM.
@@ -410,6 +443,7 @@ function newAssetState() {
         mergedMetrics: {}, condition: null, health: null, history: [], events: [], last: null,
         learnSamples: [], scoreHistory: [], analytics: null,
         anomalyStable: 'NORMAL', anomalyScoreStable: 'NORMAL', anomalyCandidate: null, anomalyCandidateCount: 0, anomalyEvidence: [],
+        baselineFrozen: false, baselineFrozenAt: null,
     };
 }
 

@@ -178,7 +178,7 @@ function stabilizeEvidence(stable, scoreSeverity, aboveBand, timestamp, state, c
 // Update gate: only fold the current reading into the learned baseline while the asset is genuinely
 // normal, so a developing fault never normalizes itself away. Always learn while still LEARNING.
 function shouldLearn(modelState, finalCondition, anomalyScore, cfg) {
-    if (modelState !== 'READY') return true;
+    if (modelState !== 'LEARNING') return false;
     return finalCondition === 'NORMAL' && anomalyScore < cfgValue(cfg, 'learningThreshold');
 }
 

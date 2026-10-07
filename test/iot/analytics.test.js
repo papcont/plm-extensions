@@ -70,8 +70,9 @@ test('anomaly: a temperature-only deviation is attributed to temperature', () =>
 // ---------------- update gate / baseline protection ----------------
 
 test('update gate: learns while LEARNING; after READY only when normal and quiet', () => {
-    assert.strictEqual(analytics.shouldLearn('LEARNING', 'WARNING', 0.9, A), true);  // still learning
-    assert.strictEqual(analytics.shouldLearn('READY', 'NORMAL', 0.1, A), true);      // normal + quiet
+    assert.strictEqual(analytics.shouldLearn('LEARNING', 'WARNING', 0.9, A), false); // guardrail/anomaly is not learned
+    assert.strictEqual(analytics.shouldLearn('LEARNING', 'NORMAL', 0.1, A), true);    // valid learning sample
+    assert.strictEqual(analytics.shouldLearn('READY', 'NORMAL', 0.1, A), false);      // READY is frozen
     assert.strictEqual(analytics.shouldLearn('READY', 'WARNING', 0.8, A), false);    // fault -> frozen
     assert.strictEqual(analytics.shouldLearn('READY', 'NORMAL', A.learningThreshold + 0.01, A), false); // too anomalous
 });

@@ -20,19 +20,34 @@ function createBaselineStore(config = {}, logger = console) {
     // (persistence disabled, or the write fails): a re-baseline that would not survive a restart must not
     // report success. The in-memory copy is replaced only AFTER the file was written, so a failure leaves no
     // transient epoch behind.
-    function set(assetId, { reason = null, now = new Date().toISOString() } = {}) {
-        if (!persist) throw new Error('REBASELINE_NOT_DURABLE');
-        const record = { baselineEpoch: now, startedAt: now, reason: reason ? String(reason).slice(0, 200) : null };
-        const next = Object.assign({}, data, { [String(assetId)]: record });
+    function write(next) {
         fs.mkdirSync(path.dirname(file), { recursive: true });
         const tmp = file + '.tmp';
         fs.writeFileSync(tmp, JSON.stringify(next, null, 1), 'utf8');
         fs.renameSync(tmp, file);
         data = next;
+    }
+
+    function set(assetId, { reason = null, now = new Date().toISOString() } = {}) {
+        if (!persist) throw new Error('REBASELINE_NOT_DURABLE');
+        const record = { baselineEpoch: now, startedAt: now, reason: reason ? String(reason).slice(0, 200) : null };
+        const next = Object.assign({}, data, { [String(assetId)]: record });
+        write(next);
         return record;
     }
 
-    return { get, set };
+    function freeze(assetId, { frozenAt = new Date().toISOString(), samples, baseline } = {}) {
+        if (!persist) throw new Error('BASELINE_FREEZE_NOT_DURABLE');
+        const id = String(assetId), current = data[id];
+        if (!current || !current.baselineEpoch) throw new Error('BASELINE_EPOCH_REQUIRED');
+        const record = Object.assign({}, current, { modelState: 'READY', baselineFrozen: true, frozenAt,
+            validatedSamples: (samples || []).map(s => ({ vibration: s.vibration, temperature: s.temperature })),
+            validatedBaseline: baseline || null });
+        write(Object.assign({}, data, { [id]: record }));
+        return record;
+    }
+
+    return { get, set, freeze };
 }
 
 module.exports = { createBaselineStore };
