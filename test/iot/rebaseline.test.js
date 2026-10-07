@@ -171,10 +171,10 @@ test('re-baseline ends an anomaly episode silently (no RECOVERY event); an unper
         h.rebaseline(rt, { now: h.now() });
         await h.feed(rt, h.rest, 200);
         await h.feed(rt, 0.3, 6);
-        assert.deepStrictEqual(h.types(rt), ['ESCALATION:NORMAL>CRITICAL']);
+        assert.deepStrictEqual(h.types(rt), ['ESCALATION:NORMAL>OBSERVE', 'ESCALATION:OBSERVE>CRITICAL']);
         h.rebaseline(rt, { now: h.now() });
         await h.feed(rt, 0.3, 5);
-        assert.deepStrictEqual(h.types(rt), ['ESCALATION:NORMAL>CRITICAL'], 'no artificial RECOVERY / ESCALATION from the re-baseline');
+        assert.deepStrictEqual(h.types(rt), ['ESCALATION:NORMAL>OBSERVE', 'ESCALATION:OBSERVE>CRITICAL'], 'no artificial RECOVERY / ESCALATION from the re-baseline');
 
         const blocker = path.join(h.root, 'blocker');
         fs.writeFileSync(blocker, 'x');                            // a FILE where a directory is needed
@@ -193,23 +193,23 @@ test('REGRESSION restart mid anomaly-driven episode: stays CRITICAL, no RECOVERY
         await h.feed(rt, h.rest, 200);
         await h.feed(rt, 0.3, 8);                                  // stabilises to CRITICAL (anomaly-driven; 0.3 g < 2 g guardrail)
         const first = rt.getEvents('A1');
-        assert.deepStrictEqual(h.types(rt), ['ESCALATION:NORMAL>CRITICAL']);
-        const escalationId = first[0].eventId;
+        assert.deepStrictEqual(h.types(rt), ['ESCALATION:NORMAL>OBSERVE', 'ESCALATION:OBSERVE>CRITICAL']);
+        const escalationIds = first.map(e => e.eventId);
 
         rt = h.start();                                            // restart mid-episode
-        assert.deepStrictEqual(rt.getEvents('A1').map(e => e.eventId), [escalationId], 'event restored, same id');
+        assert.deepStrictEqual(rt.getEvents('A1').map(e => e.eventId), escalationIds, 'events restored, same ids');
         const after = await h.feed(rt, 0.3, 8);                    // the SAME anomalous readings continue
         assert.ok(after.every(r => r.condition.condition === 'CRITICAL'), 'condition stays CRITICAL: ' + after.map(r => r.condition.condition));
-        assert.deepStrictEqual(h.types(rt), ['ESCALATION:NORMAL>CRITICAL'], 'no false RECOVERY, no duplicate ESCALATION');
-        assert.strictEqual(rt.getEvents('A1')[0].eventId, escalationId);
+        assert.deepStrictEqual(h.types(rt), ['ESCALATION:NORMAL>OBSERVE', 'ESCALATION:OBSERVE>CRITICAL'], 'no false RECOVERY, no duplicate ESCALATION');
+        assert.deepStrictEqual(rt.getEvents('A1').map(e => e.eventId), escalationIds);
 
         const rec = await h.feed(rt, h.rest, 8);                   // genuine recovery
         assert.strictEqual(rec[rec.length - 1].condition.condition, 'NORMAL');
-        assert.deepStrictEqual(h.types(rt), ['ESCALATION:NORMAL>CRITICAL', 'RECOVERY:CRITICAL>NORMAL']);
+        assert.deepStrictEqual(h.types(rt), ['ESCALATION:NORMAL>OBSERVE', 'ESCALATION:OBSERVE>CRITICAL', 'RECOVERY:CRITICAL>NORMAL']);
 
         rt = h.start();                                            // restart again, back to normal
         await h.feed(rt, h.rest, 5);
-        assert.deepStrictEqual(h.types(rt), ['ESCALATION:NORMAL>CRITICAL', 'RECOVERY:CRITICAL>NORMAL'], 'quiet restart creates nothing');
+        assert.deepStrictEqual(h.types(rt), ['ESCALATION:NORMAL>OBSERVE', 'ESCALATION:OBSERVE>CRITICAL', 'RECOVERY:CRITICAL>NORMAL'], 'quiet restart creates nothing');
     } finally { h.done(); }
 });
 

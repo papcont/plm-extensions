@@ -245,7 +245,7 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
             primaryDriver: evalRes.primaryDriver,
             evidenceHits: evidence.hits,
             evidenceSamples: evidence.samples,
-            evidenceWindowSamples: A.evidenceWindowSamples,
+            evidenceWindowSeconds: Math.round(A.evidenceMaxWindowMs / 1000),
             evidenceActive: evidence.evidenceActive,
             trend        : trend,
             unit         : canonical.vibrationUnit(metrics),
@@ -401,6 +401,7 @@ function createBridge({ config, tandem, fusionManage, events = null, baselines =
         state.anomalyCandidate = null;
         state.anomalyCandidateCount = 0;
         state.anomalyEvidence = [];
+        state.anomalyEvidenceRecoveryCount = 0;
         state.baselineFrozen = false;
         state.baselineFrozenAt = null;
         // The previous anomaly episode belonged to the discarded baseline: end it silently (no RECOVERY event)
@@ -423,6 +424,7 @@ function initAnalyticsState(state) {
     if (state.anomalyCandidate === undefined) state.anomalyCandidate = null;
     if (state.anomalyCandidateCount === undefined) state.anomalyCandidateCount = 0;
     if (!state.anomalyEvidence) state.anomalyEvidence = [];
+    if (state.anomalyEvidenceRecoveryCount === undefined) state.anomalyEvidenceRecoveryCount = 0;
     if (state.baselineFrozen === undefined) state.baselineFrozen = false;
     if (state.baselineFrozenAt === undefined) state.baselineFrozenAt = null;
 }
@@ -430,8 +432,8 @@ function initAnalyticsState(state) {
 // Human-readable "why" for an anomaly-driven condition — all facts from the analytics snapshot, no LLM.
 function buildAnomalyReason(snapshot) {
     if (snapshot.evidenceActive) {
-        return 'Persistent learned-band deviation: ' + snapshot.evidenceHits + ' of last ' +
-            snapshot.evidenceWindowSamples + ' samples above learned upper band within 60 s';
+        return 'Recurrent learned-band deviation: ' + snapshot.evidenceHits +
+            ' learned-band crossings within ' + snapshot.evidenceWindowSeconds + ' s';
     }
     const driver = snapshot.primaryDriver;
     const d = driver && snapshot.drivers[driver];
@@ -445,7 +447,7 @@ function newAssetState() {
     return {
         mergedMetrics: {}, condition: null, health: null, history: [], events: [], last: null,
         learnSamples: [], scoreHistory: [], analytics: null,
-        anomalyStable: 'NORMAL', anomalyScoreStable: 'NORMAL', anomalyCandidate: null, anomalyCandidateCount: 0, anomalyEvidence: [],
+        anomalyStable: 'NORMAL', anomalyScoreStable: 'NORMAL', anomalyCandidate: null, anomalyCandidateCount: 0, anomalyEvidence: [], anomalyEvidenceRecoveryCount: 0,
         baselineFrozen: false, baselineFrozenAt: null,
     };
 }

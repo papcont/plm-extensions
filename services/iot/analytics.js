@@ -30,9 +30,8 @@ const DEFAULTS = {
     criticalThreshold : 0.85,   // anomaly score -> CRITICAL
     escalationSamples : 3,      // consecutive worse readings required before the anomaly condition escalates
     recoverySamples   : 3,      // consecutive better readings required before it recovers
-    evidenceWindowSamples: 5,
-    evidenceRequiredHits : 3,
-    evidenceMaxWindowMs  : 60000,
+    evidenceRequiredHits : 2,
+    evidenceMaxWindowMs  : 180000,
     trendWindow       : 12,     // samples compared for STABLE/IMPROVING/DEGRADING
     trendDelta        : 0.08,   // min anomaly-score change (over the window) to call a trend
     weights           : { vibration: 1, temperature: 0.6 }, // temperature is a supplementary signal
@@ -154,22 +153,26 @@ function stabilize(stable, raw, state, cfg) {
     return stable;
 }
 
-// Learned-band evidence: three hits in the last five valid samples, inside one time window.
+// Learned-band evidence: recurrent crossings inside a timestamp window; uplink count is irrelevant.
 function stabilizeEvidence(stable, scoreSeverity, aboveBand, timestamp, state, cfg, scoreSeverityNow = scoreSeverity) {
-    const window = Math.max(1, cfgValue(cfg, 'evidenceWindowSamples'));
     const required = Math.max(1, cfgValue(cfg, 'evidenceRequiredHits'));
     const maxMs = Math.max(0, cfgValue(cfg, 'evidenceMaxWindowMs'));
     const ts = Date.parse(timestamp);
     if (!Array.isArray(state.anomalyEvidence)) state.anomalyEvidence = [];
     if (Number.isFinite(ts)) state.anomalyEvidence.push({ timestamp: ts, aboveBand: !!aboveBand });
-    state.anomalyEvidence = state.anomalyEvidence.slice(-window);
-    if (Number.isFinite(ts)) state.anomalyEvidence = state.anomalyEvidence.filter(s => ts - s.timestamp <= maxMs);
+    if (Number.isFinite(ts)) state.anomalyEvidence = state.anomalyEvidence.filter(s => s.timestamp <= ts && ts - s.timestamp <= maxMs);
     const hits = state.anomalyEvidence.reduce((n, s) => n + (s.aboveBand ? 1 : 0), 0);
-    const inside = state.anomalyEvidence.length - hits;
     const evidenceActive = hits >= required;
-    const recoveryReady = inside >= required && scoreSeverityNow === 'NORMAL';
+    if (stable === 'NORMAL') state.anomalyEvidenceRecoveryCount = 0;
+    else if (aboveBand) state.anomalyEvidenceRecoveryCount = 0;
+    else state.anomalyEvidenceRecoveryCount = (state.anomalyEvidenceRecoveryCount || 0) + 1;
+    const recoveryReady = state.anomalyEvidenceRecoveryCount >= Math.max(1, cfgValue(cfg, 'recoverySamples')) &&
+        scoreSeverityNow === 'NORMAL';
     let next = stable || 'NORMAL';
-    if (recoveryReady) next = 'NORMAL';
+    if (recoveryReady) {
+        next = 'NORMAL';
+        state.anomalyEvidence = [];
+    }
     else if (evidenceActive) next = worst(scoreSeverity, 'OBSERVE');
     else if (scoreSeverity !== 'NORMAL') next = scoreSeverity;
     return { condition: next, hits, samples: state.anomalyEvidence.length, evidenceActive, recoveryReady };

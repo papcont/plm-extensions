@@ -95,25 +95,70 @@ test('hysteresis: single spike does not escalate; persistence does; recovery nee
     assert.strictEqual(s, 'NORMAL', 'sustained normal recovers');
 });
 
-test('learned evidence: 3 of 5 band hits within 60 seconds escalates and 3 inside-band samples recover', () => {
+test('learned evidence: two timestamped crossings within 180 seconds escalate once and recover', () => {
+    const cfg = Object.assign({}, A, { evidenceRequiredHits: 2, evidenceMaxWindowMs: 180000 });
+    const t = seconds => new Date(Date.UTC(2026, 0, 1) + seconds * 1000).toISOString();
     const st = {};
-    const cfg = Object.assign({}, A, { evidenceWindowSamples: 5, evidenceRequiredHits: 3, evidenceMaxWindowMs: 60000 });
-    const t = i => new Date(Date.UTC(2026, 0, 1) + i * 10000).toISOString();
     let r = analytics.stabilizeEvidence('NORMAL', 'NORMAL', true, t(0), st, cfg);
     assert.strictEqual(r.condition, 'NORMAL');
-    analytics.stabilizeEvidence(r.condition, 'NORMAL', false, t(1), st, cfg);
-    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', true, t(2), st, cfg);
-    assert.strictEqual(r.hits, 2);
-    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', true, t(3), st, cfg);
+    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', true, t(120), st, cfg);
     assert.strictEqual(r.condition, 'OBSERVE');
-    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', false, t(4), st, cfg);
-    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', false, t(5), st, cfg);
+    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', true, t(130), st, cfg);
+    assert.strictEqual(r.condition, 'OBSERVE', 'active episode does not re-escalate');
+    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', false, t(140), st, cfg);
+    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', false, t(150), st, cfg);
+    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', false, t(160), st, cfg);
     assert.strictEqual(r.condition, 'NORMAL');
     const late = {};
     analytics.stabilizeEvidence('NORMAL', 'NORMAL', true, t(0), late, cfg);
-    analytics.stabilizeEvidence('NORMAL', 'NORMAL', true, t(7), late, cfg);
-    analytics.stabilizeEvidence('NORMAL', 'NORMAL', true, t(14), late, cfg);
-    assert.strictEqual(late.anomalyEvidence.length, 1, 'old evidence expires by time, not just sample count');
+    r = analytics.stabilizeEvidence('NORMAL', 'NORMAL', true, t(181), late, cfg);
+    assert.strictEqual(r.condition, 'NORMAL', 'evidence older than 180 seconds expires');
+    assert.strictEqual(r.hits, 1);
+});
+
+test('learned evidence replay: validated normal reference creates no events', () => {
+    const cfg = Object.assign({}, A, { evidenceRequiredHits: 2, evidenceMaxWindowMs: 180000 });
+    const st = {};
+    const start = Date.parse('2026-10-07T11:32:08.451Z');
+    let r = { condition: 'NORMAL' };
+    for (let i = 0; i < 200; i++) {
+        r = analytics.stabilizeEvidence(r.condition, 'NORMAL', false,
+            new Date(start + i * 10000).toISOString(), st, cfg);
+    }
+    assert.strictEqual(r.condition, 'NORMAL');
+    assert.strictEqual(r.hits, 0);
+    assert.strictEqual(r.evidenceActive, false);
+});
+
+test('learned evidence replay: the real 12.5 V crossings trigger at the third crossing', () => {
+    const cfg = Object.assign({}, A, { evidenceRequiredHits: 2, evidenceMaxWindowMs: 180000 });
+    const st = {};
+    const crossings = [
+        '2026-10-07T12:30:24.811Z',
+        '2026-10-07T12:35:33.724Z',
+        '2026-10-07T12:37:33.701Z',
+    ];
+    let r = analytics.stabilizeEvidence('NORMAL', 'NORMAL', true, crossings[0], st, cfg);
+    assert.strictEqual(r.condition, 'NORMAL');
+    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', true, crossings[1], st, cfg);
+    assert.strictEqual(r.condition, 'NORMAL', 'first two crossings are more than 180 seconds apart');
+    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', true, crossings[2], st, cfg);
+    assert.strictEqual(r.condition, 'OBSERVE');
+    assert.strictEqual(crossings[2], '2026-10-07T12:37:33.701Z');
+});
+
+test('learned evidence: crossing during recovery cancels recovery', () => {
+    const cfg = Object.assign({}, A, { evidenceRequiredHits: 2, evidenceMaxWindowMs: 180000 });
+    const st = {};
+    const t = seconds => new Date(Date.UTC(2026, 0, 1) + seconds * 1000).toISOString();
+    let r = analytics.stabilizeEvidence('NORMAL', 'NORMAL', true, t(0), st, cfg);
+    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', true, t(60), st, cfg);
+    assert.strictEqual(r.condition, 'OBSERVE');
+    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', false, t(70), st, cfg);
+    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', false, t(80), st, cfg);
+    r = analytics.stabilizeEvidence(r.condition, 'NORMAL', true, t(90), st, cfg);
+    assert.strictEqual(r.condition, 'OBSERVE');
+    assert.strictEqual(r.recoveryReady, false);
 });
 
 test('trend: STABLE / DEGRADING / IMPROVING from a window of scores', () => {
