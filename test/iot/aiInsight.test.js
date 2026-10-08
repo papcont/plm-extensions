@@ -63,7 +63,7 @@ test('provider: one request, exact model, maxRetries 0, no tools/fallback/betas,
     assert.strictEqual(r.model, 'm-1');
     assert.ok(r.max_tokens > 0 && r.max_tokens <= 4000);
     for (const k of ['tools', 'tool_choice', 'fallbacks', 'betas']) assert.ok(!(k in r), k);
-    const src = require('fs').readFileSync(require.resolve('../../services/iot/ai/providers/anthropic'), 'utf8');
+    const src = require('fs').readFileSync(require.resolve('../../services/ai/providers/anthropic'), 'utf8');
     assert.match(src, /maxRetries: 0/);
     assert.doesNotMatch(src, /fallbacks|betas/);
     for (const stop of ['refusal', 'max_tokens']) {
@@ -184,19 +184,19 @@ test('cache key: age bucketed per 15 min; every other fact changes the key; insi
 // ---- UI truth alignment + technician_briefing ----
 const briefing = { headline: 'h', currentSituation: 'c', knownFacts: ['k'], unknowns: ['u'], recommendedChecks: ['r'], handoverNote: 'n', confidence: 'low' };
 
-test('UI formatters: null/missing -> N/A or "not available"; numeric 0 stays 0.00; stale flagged', () => {
+test('UI formatters: null/missing -> N/A or "nicht verfügbar"; numeric 0 stays 0.00; stale flagged', () => {
     const f = require('../../public/javascripts/apps/cm-format');
     assert.strictEqual(f.anomalyText(null), 'N/A');
     assert.strictEqual(f.anomalyText(undefined), 'N/A');
     assert.strictEqual(f.anomalyText(NaN), 'N/A');
     assert.strictEqual(f.anomalyText(0), '0.00');
     assert.strictEqual(f.anomalyText(0.912), '0.91');
-    assert.strictEqual(f.vibrationText(undefined, 'g'), 'not available');
-    assert.strictEqual(f.vibrationText(null, 'g'), 'not available');
+    assert.strictEqual(f.vibrationText(undefined, 'g'), 'nicht verfügbar');
+    assert.strictEqual(f.vibrationText(null, 'g'), 'nicht verfügbar');
     assert.strictEqual(f.vibrationText(0.02, 'g'), '0.02 g');
     assert.strictEqual(f.vibrationText(0, 'g'), '0 g');
     const now = Date.parse('2026-10-06T20:00:00Z');
-    assert.match(f.staleText('2026-10-06T16:49:00Z', now), /stale · 191 min/);
+    assert.match(f.staleText('2026-10-06T16:49:00Z', now), /veraltet · 191 min/);
     assert.strictEqual(f.staleText('2026-10-06T19:55:00Z', now), '');
     assert.strictEqual(f.staleText(undefined, now), '');
 });

@@ -29,7 +29,7 @@ title: Supplier Command Center
 route: routes/landing.js
 view: views/apps/supplier-center.pug
 script: public/javascripts/apps/supplier-center.js
-style: public/stylesheets/apps/supplier-center.css
+style: public/stylesheets/apps/cockpit.css (shared by all twelve workspace cockpits)
 custom script: public/javascripts/custom/supplier-center.js
 custom style: public/stylesheets/custom/supplier-center.css
 ```

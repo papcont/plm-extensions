@@ -207,3 +207,8 @@ _Earlier history below (last updated 2026-08-12):_
 3. Set `IOT_SOURCE=tts` (stop simulator ticking) and map the real `deviceId` → asset in
    `IOT_DEVICE_ASSET_MAP`.
 That's it: canonical model, bridge, health/condition, Tandem, Fusion Manage, and the UI are unchanged.
+
+
+## Demo operations note (2026-10-07)
+
+`IOT_EVENT_PERSISTENCE=true` is required for the Maintenance Case preview after a restart (events are otherwise memory-only and the preview answers `UNKNOWN_EVENT`). Live telemetry needs an uplink source: `ttnMqtt.enabled` is `false` by default, so POST uplinks to `/iot/uplink` or enable MQTT deliberately. Full start sequence: `docs/features/intelligent-sourcing/CONFERENCE-RUNBOOK.md`.

@@ -2,6 +2,7 @@ let allPackages = [];
 let selectedPackageLink = null;
 let currentSharedItems = [];
 let bulkExportViews = [];
+let sourcingItems = null;   // /sourcing/items, loaded once; [] when Intelligent Sourcing is unavailable
 
 $(document).ready(function() {
     appendOverlay();
@@ -13,9 +14,11 @@ $(document).ready(function() {
 function setUIEvents() {
     $('#refresh').click(loadPackages);
     $('#package-search').on('input', debounce(renderPackageTable, 200));
+    $('#item-query').on('input', debounce(searchItems, 350));
+    $('#item-pick').change(pickItem);
     $('#filter-type, #filter-status, #filter-supplier, #filter-has-items').change(renderPackageTable);
     $('#close-package-detail').click(function() {
-        $('#package-detail-panel').addClass('hidden');
+        $('#package-detail-panel').addClass('hidden').removeClass('item-mode');
         $('body').removeClass('with-package-detail');
         $('.package-row').removeClass('selected');
         selectedPackageLink = null;
@@ -103,7 +106,22 @@ function loadPackages() {
         renderSummary();
         renderPackageTable();
         loadItemCounts();
+        openPackageFromUrl();
     });
+}
+
+let packageFromUrlOpened = false;
+function openPackageFromUrl() {
+    if(packageFromUrlOpened) return;
+    packageFromUrlOpened = true;
+
+    const dmsId = new URLSearchParams(window.location.search).get('package');
+    const pkg   = allPackages.find(function(p) { return String(p.dmsId) === String(dmsId); });
+    if(!pkg) return;
+
+    selectPackage(pkg.link);
+    const elemRow = $('.package-row[data-link="' + pkg.link + '"]');
+    if(elemRow.length) elemRow[0].scrollIntoView({ block : 'center' });
 }
 
 function loadItemCounts() {
@@ -228,9 +246,11 @@ function selectPackage(link) {
     $('.package-row').removeClass('selected');
     $('.package-row[data-link="' + link + '"]').addClass('selected');
 
-    $('#package-detail-panel').removeClass('hidden');
+    $('#package-detail-title').html('Package details');
+    $('#package-detail-panel').removeClass('hidden').removeClass('item-mode');
     $('body').addClass('with-package-detail');
     $('#shared-items-list').html('<div class="empty-note">Loading...</div>');
+    $('#sourcing-panel').addClass('hidden');
 
     insertDetails(link, { useCache : true, toggles : true, id : 'package-details', editable : false, openInPLM : true }, {});
     insertAttachments(link, { editable : false, includeRelatedFiles : true, includeVaultFiles : true }, {});
@@ -238,6 +258,7 @@ function selectPackage(link) {
 
     $.get('/plm/details', { link : link, useCache : true }, function(response) {
         renderSharedItems(response.data || {});
+        renderSourcingPanel(response.data || {});
     });
 }
 
@@ -264,10 +285,161 @@ function renderSharedItems(data) {
             .click(function() { previewItem(entry.link); });
         $('<div></div>').appendTo(elemItem).addClass('button with-icon icon-download').html('Export')
             .click(function() { openExport(entry.link); });
+        addSourcingButton(elemItem, entry);
     }
 
     $('#bulk-export-panel').removeClass('hidden');
     loadBulkExportViews();
+}
+
+// Hand a shared item to Intelligent Sourcing when it knows the part (matched by title, "<number> - <title>").
+function addSourcingButton(elemItem, entry) {
+
+    let title = String(entry.title).replace(/^.+? - /, '').toLowerCase();
+
+    let find = function(items) {
+        let match = items.filter(function(i) { return String(i.title).toLowerCase() === title; })[0];
+        if(!match) return;
+        // Compact Intelligent Sourcing inline (request, recommendation, alternatives); its own link opens the full page.
+        let elemButton = $('<div></div>').appendTo(elemItem).addClass('button').html('Sourcing').attr('title', 'Show suppliers and alternatives for this part');
+        elemButton.click(function() {
+            let elemEmbed = elemItem.children('.shared-item-embed');
+            if(elemEmbed.length === 0) {
+                elemEmbed = $('<div></div>').appendTo(elemItem).addClass('shared-item-embed');
+                $('<iframe></iframe>').appendTo(elemEmbed).attr('title', 'Intelligent Sourcing').attr('src', '/intelligent-sourcing?item=' + encodeURIComponent(match.id) + '&embedded=compact');
+                return;
+            }
+            elemEmbed.toggleClass('hidden');
+        });
+    };
+
+    loadSourcingItems(find);
+
+}
+
+// Sourcing by item: pick a part from the Items workspace first, then show its compact Intelligent Sourcing.
+let itemSearchToken = 0;
+
+function searchItems() {
+    const query = $('#item-query').val().trim();
+    const elemPick = $('#item-pick');
+
+    if(query.length < 2) {
+        elemPick.html('<option value="">Search an item first</option>');
+        return;
+    }
+
+    const token = ++itemSearchToken;
+    elemPick.html('<option value="">Searching...</option>');
+
+    $.post('/plm/search', {
+        wsId              : common.workspaceIds.items,
+        filter            : [
+            { field : 'NUMBER', type : '0', comparator : 'contains', value : query },
+            { field : 'TITLE' , type : '0', comparator : 'contains', value : query }
+        ],
+        searchLogicClause : 'OR',
+        fields            : ['NUMBER', 'TITLE'],
+        pageSize          : 30
+    }, function(response) {
+        if(token !== itemSearchToken) return;   // a newer search is already running
+
+        const rows = (response.data && Array.isArray(response.data.row)) ? response.data.row : [];
+        elemPick.html('');
+        $('<option></option>').appendTo(elemPick).attr('value', '').html(rows.length ? rows.length + ' items found - choose one' : 'No items found');
+        const seen = {};   // the search returns one row per revision
+        for(const row of rows) {
+            const key = getFieldText(row, 'NUMBER') + '|' + getFieldText(row, 'TITLE');
+            if(seen[key]) continue;
+            seen[key] = true;
+            $('<option></option>').appendTo(elemPick)
+                .attr('value', JSON.stringify({ number : getFieldText(row, 'NUMBER'), title : getFieldText(row, 'TITLE') }))
+                .text(getFieldText(row, 'DESCRIPTOR') || (getFieldText(row, 'NUMBER') + ' - ' + getFieldText(row, 'TITLE')));
+        }
+    }).fail(function() {
+        if(token === itemSearchToken) $('#item-pick').html('<option value="">Item search failed</option>');
+    });
+}
+
+function pickItem() {
+    const value = $('#item-pick').val();
+    if(isBlank(value)) return;
+
+    const item  = JSON.parse(value);
+    const label = $('#item-pick option:selected').text();
+
+    loadSourcingItems(function(items) {
+        const title = String(item.title).toLowerCase();
+        const match = items.filter(function(i) { return i.id === item.number || String(i.title).toLowerCase() === title; })[0];
+        showItemSourcing(match, label, items.length);
+    });
+}
+
+function showItemSourcing(match, label, knownCount) {
+    selectedPackageLink = null;
+    $('.package-row').removeClass('selected');
+    $('#bulk-export-panel, #item-viewer-panel').addClass('hidden');
+
+    $('#package-detail-title').html('Sourcing by item');
+    $('#package-detail-panel').removeClass('hidden').addClass('item-mode');
+    $('body').addClass('with-package-detail');
+
+    const safeLabel = $('<div></div>').text(label).html();
+    $('#sourcing-frame-wrap').html('');
+    if(match) {
+        $('#sourcing-context').html('Item <strong>' + safeLabel + '</strong> from the Items workspace');
+        $('<iframe></iframe>').appendTo('#sourcing-frame-wrap').attr('title', 'Intelligent Sourcing').attr('src', '/intelligent-sourcing?item=' + encodeURIComponent(match.id) + '&embedded=compact');
+    } else {
+        $('#sourcing-context').html('Intelligent Sourcing has no data for <strong>' + safeLabel + '</strong> yet. It currently covers ' + knownCount + ' parts (capabilities, suppliers, purchase history).');
+    }
+    $('#sourcing-panel').removeClass('hidden');
+}
+
+function loadSourcingItems(callback) {
+    if(sourcingItems !== null) return callback(sourcingItems);
+    $.getJSON('/sourcing/items', function(response) { sourcingItems = response.data || []; })
+        .fail(function() { sourcingItems = []; })
+        .always(function() { callback(sourcingItems); });
+}
+
+function getDetailsFieldValue(data, fieldId) {
+    for(const section of (data.sections || [])) {
+        for(const field of (section.fields || [])) {
+            if((field.__self__ || '').endsWith('/fields/' + fieldId)) return (field.value && typeof field.value === 'object') ? (field.value.title || '') : String(field.value || '');
+        }
+    }
+    return '';
+}
+
+// Packages written by Intelligent Sourcing (purchase history) keep their facts in NOTES as "key=value; key=value",
+// e.g. "item=DEMO-SRC-ITEM-002; supplier=DEMO-SRC-SUP-001; quantity=20; unitPriceEUR=18.70". Show the part's compact sourcing next to them.
+function renderSourcingPanel(data) {
+
+    $('#sourcing-panel').addClass('hidden');
+    $('#sourcing-frame-wrap').html('');
+
+    const notes = $('<textarea></textarea>').html(getDetailsFieldValue(data, 'NOTES')).text();
+    const facts = {};
+    notes.split(';').forEach(function(pair) {
+        const index = pair.indexOf('=');
+        if(index > 0) facts[pair.slice(0, index).trim()] = pair.slice(index + 1).trim();
+    });
+    if(isBlank(facts.item)) return;
+
+    const link = selectedPackageLink;
+    loadSourcingItems(function(items) {
+        const match = items.filter(function(i) { return i.id === facts.item; })[0];
+        if(!match || link !== selectedPackageLink) return;
+
+        const parts = [ 'Part <strong>' + match.title + '</strong>' ];
+        if(facts.supplier)     parts.push('supplier ' + facts.supplier);
+        if(facts.quantity)     parts.push(facts.quantity + ' pcs');
+        if(facts.unitPriceEUR) parts.push(facts.unitPriceEUR + ' EUR each');
+        $('#sourcing-context').html('Purchase history record of Intelligent Sourcing: ' + parts.join(' · '));
+        $('<iframe></iframe>').appendTo('#sourcing-frame-wrap').attr('title', 'Intelligent Sourcing').attr('src', '/intelligent-sourcing?item=' + encodeURIComponent(match.id) + '&embedded=compact');
+        $('#sourcing-panel').removeClass('hidden');
+    });
+
 }
 
 function previewItem(link) {

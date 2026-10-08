@@ -100,6 +100,30 @@ router.get('/condition-monitoring', function(req, res) {
         colors: req.app.locals.colors,
     });
 });
+// Intelligent Sourcing works on local demo data + the /sourcing API; no browser FM session needed to render.
+router.get('/intelligent-sourcing', function(req, res) {
+    if (isServiceDisabled('apps/intelligent-sourcing', req, res)) return;
+    res.render('apps/intelligent-sourcing', {
+        title: 'Intelligent Sourcing',
+        tenant: req.app.locals.tenant,
+        tenantLink: req.app.locals.tenantLink,
+        theme: req.query.theme || req.app.locals.defaultTheme,
+        wsId: req.query.wsId || '',
+        dmsId: req.query.dmsId || '',
+        descriptor: req.query.descriptor || '',
+        number: req.query.number || '',
+        fileId: req.query.fileId || '',
+        language: req.query.language || '',
+        type: req.query.type || '',
+        revisionBias: req.query.revisionBias || 'release',
+        options: String(req.query.options || '').split(','),
+        debugMode: req.app.locals.debugMode,
+        common: req.app.locals.common,
+        config: req.app.locals.applications.intelligentSourcing,
+        menu: req.app.locals.menu,
+        colors: req.app.locals.colors,
+    });
+});
 router.get('/dashboard'     , function(req, res, next) { launch('apps/dashboard'     , 'dashboard'     , 'Dashboard'                , req, res, next); });
 router.get('/bom-export-attachment-studio', function(req, res, next) { launch('apps/bom-export-attachment-studio', 'bomExportAttachmentStudio', 'BOM Export And Attachment Studio', req, res, next); });
 router.get('/supplier-package-center', function(req, res, next) { launch('apps/supplier-package-center', 'supplierPackageCenter', 'Supplier Package Center', req, res, next); });

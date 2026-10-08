@@ -26,7 +26,7 @@ title: Installed Base Service Cockpit
 route: routes/landing.js
 view: views/apps/installed-base-service.pug
 script: public/javascripts/apps/installed-base-service.js
-style: public/stylesheets/apps/installed-base-service.css
+style: public/stylesheets/apps/cockpit.css (shared by all twelve workspace cockpits)
 custom script: public/javascripts/custom/installed-base-service.js
 custom style: public/stylesheets/custom/installed-base-service.css
 ```

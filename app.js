@@ -44,6 +44,7 @@ if ((process.argv.length > 2) && (!fs.existsSync(pathEnvironment))) {
     const services    = require('./routes/services');
     const erp         = require('./routes/erp');
     const iot         = require('./routes/iot');
+    const sourcing    = require('./routes/sourcing');
     const { fchmodSync } = require('fs');
     const environment = require(pathEnvironment);
     const app         = express();
@@ -103,6 +104,8 @@ if ((process.argv.length > 2) && (!fs.existsSync(pathEnvironment))) {
     // IoT: fold per-deployment settings (admin creds, tenant link, `exports.iot` block) into the IoT
     // config singleton, then start the optional unattended server ticker (off unless serverTickMs set).
     require('./services/iot/config').applyDeployment(environment);
+    // Sourcing: fold the optional `exports.sourcing` block (RFQ write gate, AI gate) into its config singleton.
+    require('./services/sourcing/config').applyDeployment(environment);
     require('./services/iot/service').startServerTicker();
     // Optional TTN MQTT ingestion (pull): local client subscribes to The Things Stack and pumps real
     // sensor uplinks into the bridge. No public URL. Gated off unless environment.iot.ttnMqtt.enabled.
@@ -149,6 +152,7 @@ if ((process.argv.length > 2) && (!fs.existsSync(pathEnvironment))) {
     app.use('/services', services);
     app.use('/erp', erp);
     app.use('/iot', iot);
+    app.use('/sourcing', sourcing);
     app.use('/storage', express.static(__dirname + '/storage'), serveIndex(__dirname + '/storage', { icons: true }));
 
 

@@ -131,9 +131,53 @@ exports.applications = {
     impactanalysis : {},
     insights       : {},
     instances      : {
-        // tabs : [{
-        //     workspaceId : 308
-        // }]
+        // Instance tabs as configured in the papcont/plm-extensions fork (origin/main): the base file only enables Serial Numbers.
+        // Arrays of a different length replace the base array, so every tab is listed in full.
+        tabs : [{
+            label       : 'Serial Numbers',
+            fieldId     : 'SERIAL_NUMBERS_LIST',
+            workspaceId : null,
+            colorIndex  : 1,
+            bomIcon     : 'icon-tag',
+            fieldsIn    : ['Serial #', 'Installation Date', 'Item Title', 'Rev', '#', 'Instance Path', 'Previous Serial #'],
+            fieldsList  : { partNumber : 'NUMBER', title : 'ITEM_TITLE', revision : 'ITEM_REV', path : 'LOCATION', instanceId : 'INSTANCE_ID', instancePath : 'INSTANCE_PATH', boundingBox : 'BOUNDING_BOX' },
+            groupBy     : 'NUMBER',
+            sortOrder   : [{ sortBy : 'INSTANCE_ID', sortType : 'integer', sortDirection : 'ascending' }, { sortBy : 'LOCATION', sortType : 'string', sortDirection : 'ascending' }],
+            filter      : { fieldId : 'SERIAL_NUMBER', value : true }
+        },{
+            label       : 'Motors',
+            fieldId     : 'MOTORS_LIST',
+            workspaceId : 967,
+            colorIndex  : 2,
+            bomIcon     : 'icon-item',
+            fieldsIn    : ['Supplier', 'Model', 'Serial #', 'Previous Serial #', 'M_nenn gearb.', 'n_nenn gearb.', 'Output acceleration', 'Power Supply', 'Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
+            fieldsList  : { partNumber : 'NUMBER', title : 'ITEM_TITLE', revision : 'ITEM_REV', path : 'LOCATION', instanceId : 'INSTANCE_ID', instancePath : 'INSTANCE_PATH', boundingBox : 'BOUNDING_BOX' },
+            groupBy     : 'NUMBER',
+            sortOrder   : [{ sortBy : 'INSTANCE_ID', sortType : 'integer', sortDirection : 'ascending' }, { sortBy : 'LOCATION', sortType : 'string', sortDirection : 'ascending' }],
+            filter      : { fieldId : 'MOTOR', value : true }
+        },{
+            label       : 'Sensors',
+            fieldId     : 'SENSORS_LIST',
+            workspaceId : 968,
+            colorIndex  : 3,
+            bomIcon     : 'icon-highlight',
+            fieldsIn    : ['Serial #', 'Supplier', 'Installation Date', 'Function (engl.) high level signal', 'Flex Cable', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
+            fieldsList  : { partNumber : 'NUMBER', title : 'ITEM_TITLE', revision : 'ITEM_REV', path : 'LOCATION', instanceId : 'INSTANCE_ID', instancePath : 'INSTANCE_PATH', boundingBox : 'BOUNDING_BOX' },
+            groupBy     : 'NUMBER',
+            sortOrder   : [{ sortBy : 'INSTANCE_ID', sortType : 'integer', sortDirection : 'ascending' }, { sortBy : 'LOCATION', sortType : 'string', sortDirection : 'ascending' }],
+            filter      : { fieldId : 'SENSOR', value : true }
+        },{
+            label       : 'Smart Service',
+            fieldId     : 'CONTROL_ELEMENTS_LIST',
+            workspaceId : 969,
+            colorIndex  : 4,
+            bomIcon     : 'icon-sliders',
+            fieldsIn    : ['Serial #', 'Supplier', 'Reference Item', 'Type', 'Smart', 'Function (ger.)', 'Installation Date', 'Location', 'Item Title', 'Item Rev', 'Instance #', 'Instance Path'],
+            fieldsList  : { partNumber : 'NUMBER', title : 'ITEM_TITLE', revision : 'ITEM_REV', path : 'LOCATION', instanceId : 'INSTANCE_ID', instancePath : 'INSTANCE_PATH', boundingBox : 'BOUNDING_BOX' },
+            groupBy     : 'NUMBER',
+            sortOrder   : [{ sortBy : 'INSTANCE_ID', sortType : 'integer', sortDirection : 'ascending' }, { sortBy : 'LOCATION', sortType : 'string', sortDirection : 'ascending' }],
+            filter      : { fieldId : 'CONTROL_ELEMENT', value : true }
+        }]
     },
     matrix         : {},
     mbom           : {
@@ -210,7 +254,7 @@ exports.menu = []
 //  SERVER ROUTING
 // ---------------------------------------------------------------------------------------------------------------------------
 exports.server = {
-    landingPage     : '',  // Set the default URL to be opened if no app URL is provided (default is '')
+    landingPage     : '/start',  // Compact app overview is the default entry; the classic page stays at /landing
     servicesEnabled : {}   // Defines the applications to enable. When an application is set to false, an error 404 page will be shown when users try accessing the given page.
 }
 

@@ -3,12 +3,21 @@ extends layout
 block head
 
     link(rel='stylesheet', href='/stylesheets/framework/start.css')
-    script(src='/javascripts/framework/start.js') 
+    script(src='/javascripts/framework/start.js')
     script.
         menu = !{JSON.stringify(menu)};
 
 block body
 
     body.surface-level-1
-        #content.box-shadow
-            #title=title 
+        #start-scroll
+            #content.box-shadow
+                #title=title
+            #start-footer
+                .start-links
+                    a(href='/landing') Classic Landing Page
+                    a(href='/docs') Developer Guide
+                    a(href='/studio') Panel Configuration Studio
+                    a(href='/troubleshooting') Troubleshooting Guide
+                    a(href='/chrome-extension') Chrome Extension
+                .start-disclaimer These solutions are provided by Autodesk Technical Sales without warranty and support. There should be no assumption that updates, patches, bug fixes and / or new features will be delivered to you. There will also be no support available either through Autodesk Support channels or by the Autodesk Pre-sales Technical Team. Please feel free to take the source code and ideas from this tool to develop your own production ready tool and products. Change and reuse the source code as you like.

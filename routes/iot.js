@@ -11,8 +11,12 @@ const { createFusionManageReadRepository } = require('../services/iot/fusionMana
 const { buildContext } = require('../services/iot/ai/contextBuilder');
 const { createAiService } = require('../services/iot/ai/aiService');
 const anthropic = require('../services/iot/ai/providers/anthropic');
+const { createFusionManageCaseRepository } = require('../services/iot/fusionManageCaseRepository');
+const { createFusionManageCaseSearch } = require('../services/iot/fusionManageCaseSearch');
+const { createMaintenanceCaseFlow, CONFIRM: CASE_CONFIRM } = require('../services/iot/maintenanceCaseFlow');
 let fmReadRepository;
 let aiService;
+let caseFlow;
 
 // Controlled demo mapping. Keep the reader GET-only; generalize to CONDITION_EVENT_ID lookup later.
 const DEMO_CASE_BY_ASSET = Object.freeze({ '30057': { workspaceId: '907', dmsId: '33979' } });
@@ -33,6 +37,15 @@ function fieldValue(details, fieldId) {
     if (!field || field.value == null) return null;
     if (typeof field.value !== 'object') return String(field.value);
     return field.value.title || field.value.name || field.value.descriptor || null;
+}
+
+// Reference to a linked record (e.g. SENSORS_LIST -> Sensors 968) so the UI can open it in Fusion Manage.
+// Only the API link and its title leave the server, never the linked record's content.
+function fieldRecordLink(details, fieldId) {
+    const field = findField(details, fieldId);
+    const value = field && field.value;
+    const link = value && typeof value === 'object' ? String(value.link || '') : '';
+    return /^\/api\/v3\/workspaces\/\d+\/items\/\d+$/.test(link) ? { link, title: value.title || null } : null;
 }
 
 function stateValue(details) {
@@ -80,6 +93,7 @@ function sanitizeAsset(details, workspaceId, dmsId) {
         description: fieldValue(details, 'DESCRIPTION'),
         customer: fieldValue(details, 'CUSTOMER'),
         operational: fieldValue(details, 'IS_OPERATIONAL'),
+        sensor: fieldRecordLink(details, 'SENSORS_LIST'),
     };
 }
 
@@ -93,6 +107,25 @@ function getAiService() {
     return aiService;
 }
 
+// Operator-gated Maintenance Case flow (preview + create). Built lazily from the shared runtime's durable
+// event store/link store, the FM read repository (asset title, business-key search) and the AI service's
+// last results (supporting context only). FM write gate: iotConfig.fusionManageCaseWrites (default false).
+function getCaseFlow() {
+    if (!caseFlow) {
+        const rt = service.getShared();
+        const search = createFusionManageCaseSearch(iotConfig);
+        caseFlow = createMaintenanceCaseFlow({
+            config: iotConfig, events: rt.events, linkStore: rt.caseLinks, caseRepo: rt.cases,
+            fmCaseRepo: createFusionManageCaseRepository(iotConfig),
+            getState: id => rt.getState(id),
+            readAsset: async id => sanitizeAsset(await getFmReadRepository().getItem(iotConfig.assetWorkspaceId || '904', id), iotConfig.assetWorkspaceId || '904', id),
+            searchByEventId: search.configured() ? search.searchByConditionEventId : null,
+            lastInsight: (mode, assetId) => (aiService ? aiService.lastInsight(mode, assetId) : null),
+        });
+    }
+    return caseFlow;
+}
+
 function readErrorStatus(error) {
     return error && error.message === 'FM_READ_NOT_CONFIGURED' ? 503 : 502;
 }
@@ -102,6 +135,7 @@ router.get('/config', function(req, res) {
     const rt = service.getShared();
     res.json({ success: true, data: {
         deviceId          : rt.deviceId,
+        monitoredAssets   : DEMO_ASSETS,
         source            : rt.config.source,
         tandemEnabled     : rt.config.tandemEnabled,
         telemetryPersistenceEnabled: rt.config.telemetryPersistenceEnabled,
@@ -147,14 +181,73 @@ router.get('/asset', async function(req, res) {
     }
 });
 
+// Parts of the asset's Service BOM (SERVICE_BOM) so the dashboard can hand a part to Intelligent Sourcing.
+// Same allowlist as /asset; only title + record ids leave the server.
+router.get('/asset-parts', async function(req, res) {
+    const workspaceId = String(req.query.wsId || iotConfig.assetWorkspaceId || '904');
+    const dmsId = String(req.query.assetId || '');
+    if (!(DEMO_ASSETS[workspaceId] || []).includes(dmsId)) return res.status(403).json({ success: false, message: 'Asset not enabled for monitoring' });
+    try {
+        const repo = getFmReadRepository();
+        const bom = fieldRecordLink(await repo.getItem(workspaceId, dmsId), 'SERVICE_BOM');
+        const m = bom && bom.link.match(/workspaces\/(\d+)\/items\/(\d+)$/);
+        if (!m) return res.json({ success: true, data: { bom: null, parts: [] } });
+        const parts = (await repo.getBomChildren(m[1], m[2])).map(i => {
+            const p = String(i.link || '').match(/workspaces\/(\d+)\/items\/(\d+)$/);
+            return p && { workspaceId: p[1], dmsId: p[2], title: i.title || '', url: itemUrl(req, p[1], p[2]) };
+        }).filter(Boolean);
+        res.json({ success: true, data: { bom: { workspaceId: m[1], dmsId: m[2], title: bom.title }, parts } });
+    } catch (error) {
+        res.status(readErrorStatus(error)).json({ success: false, message: 'Asset parts could not be read' });
+    }
+});
+
+// A case created from a real durable event (link store) outranks the static demo mapping.
 router.get('/maintenance-case', async function(req, res) {
-    const ref = DEMO_CASE_BY_ASSET[String(req.query.assetId || '')];
+    const assetId = String(req.query.assetId || '');
+    const link = assetId ? service.getShared().caseLinks.latestForAsset(assetId) : null;
+    const ref = link ? { workspaceId: String(link.fmWorkspaceId || iotConfig.caseWorkspaceId || '907'), dmsId: String(link.fmDmsId) } : DEMO_CASE_BY_ASSET[assetId];
     if (!ref) return res.status(404).json({ success: false, message: 'No maintenance case mapping for asset' });
     try {
         const details = await getFmReadRepository().getItem(ref.workspaceId, ref.dmsId);
-        res.json({ success: true, data: sanitizeCase(req, details, ref.workspaceId, ref.dmsId) });
+        res.json({ success: true, data: Object.assign(sanitizeCase(req, details, ref.workspaceId, ref.dmsId), { linkedConditionEventId: link ? link.eventId : null }) });
     } catch (error) {
         res.status(readErrorStatus(error)).json({ success: false, message: 'Maintenance Case could not be read' });
+    }
+});
+
+// Non-mutating preview of the case the operator is about to create from a durable ESCALATION event.
+router.get('/maintenance-case/preview', async function(req, res) {
+    const assetId = String(req.query.assetId || ''), eventId = String(req.query.eventId || '');
+    if (!Object.keys(DEMO_ASSETS).some(ws => DEMO_ASSETS[ws].includes(assetId))) return res.status(403).json({ success: false, message: 'Asset not enabled for monitoring' });
+    try {
+        const r = await getCaseFlow().preview({ assetId, eventId });
+        if (r.error) return res.status(r.status || 400).json({ success: false, message: r.error });
+        res.json({ success: true, data: r });
+    } catch (error) {
+        console.log(' /iot/maintenance-case/preview failed: ' + (error && error.message));
+        res.status(502).json({ success: false, message: 'Preview could not be generated' });
+    }
+});
+
+// The ONLY mutating path: exact body { assetId, eventId, confirm: 'CREATE_MAINTENANCE_CASE' }, allowlisted
+// asset, gate ON, no existing case for the event. The server rebuilds every field from its own stores;
+// nothing from the browser reaches Fusion Manage.
+router.post('/maintenance-case/create', async function(req, res) {
+    const b = req.body;
+    if (!b || typeof b !== 'object' || Object.keys(b).sort().join() !== 'assetId,confirm,eventId'
+        || [b.assetId, b.eventId, b.confirm].some(v => typeof v !== 'string')) {
+        return res.status(400).json({ success: false, message: 'Body must be exactly { assetId, eventId, confirm }' });
+    }
+    if (!Object.keys(DEMO_ASSETS).some(ws => DEMO_ASSETS[ws].includes(b.assetId))) return res.status(403).json({ success: false, message: 'Asset not enabled for monitoring' });
+    if (b.confirm !== CASE_CONFIRM) return res.status(400).json({ success: false, message: 'Explicit confirmation required' });
+    try {
+        const r = await getCaseFlow().create({ assetId: b.assetId, eventId: b.eventId, confirm: b.confirm });
+        if (r.error) return res.status(r.status || 400).json(Object.assign({ success: false, message: r.error }, r.writeEnabled === false ? { writeEnabled: false } : {}));
+        res.json({ success: true, data: r });
+    } catch (error) {
+        console.log(' /iot/maintenance-case/create failed: ' + (error && error.message));
+        res.status(502).json({ success: false, message: 'Maintenance case could not be created' });
     }
 });
 

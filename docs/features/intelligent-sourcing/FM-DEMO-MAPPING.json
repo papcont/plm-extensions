@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-07",
+  "tenant": "contelosuxdemo",
+  "scope": "Fusion Manage demo data only; no Inventor/Vault writes",
+  "lifecycle": ["DESIGN", "FIND", "DOCUMENT", "SOURCE", "OPERATE", "LEARN"],
+  "maturity": {
+    "design": "DEMO",
+    "find": "PROTOTYPE",
+    "document": "PROTOTYPE",
+    "source": "DEMO",
+    "operate": "PROTOTYPE",
+    "learn": "TARGET"
+  },
+  "workspaces": {
+    "items": { "id": 57, "title": "Items" },
+    "suppliers": { "id": 14, "title": "Suppliers" },
+    "capabilities": { "id": 63, "title": "Manufacturer P/N", "representation": "manufacturer-part records with supplier link and structured comments" },
+    "purchaseHistory": { "id": 147, "title": "Supplier Packages", "representation": "package records with structured notes" },
+    "rfq": { "id": 148, "title": "Supplier Proposals" },
+    "assets": { "id": 904, "title": "Assets" },
+    "motors": { "id": 967, "title": "Motors" },
+    "service": { "id": 1000, "title": "Service" }
+  },
+  "fieldMapping": {
+    "items": { "number": "NUMBER", "title": "TITLE", "description": "DESCRIPTION", "family": "CLASS_NAME", "material": "MATERIAL", "process": "PROCESS_CODE", "dimensions": ["LENGTH", "WIDTH", "HEIGHT"], "commercial": ["UNIT_COST", "LEAD_TIME"], "tolerance": "DESCRIPTION.tolerance -> manufacturingTolerance; not mapped to toleranceClass" },
+    "suppliers": { "name": "NAME", "group": "GROUP_NAME", "city": "CITY_TOWN", "notes": "NOTES" },
+    "capabilities": { "supplier": ["MANUFACTURER", "VENDOR"], "unitCost": "UNIT_COST", "leadTimeDays": "LEAD_TIME", "minOrderQty": "MIN_ORDER_QTY", "maxOrderQty": "MAX_ORDER_QTY", "notes": "COMMENTS" },
+    "purchaseHistory": { "supplier": "SUPPLIER", "title": "TITLE", "notes": "NOTES" },
+    "rfq": { "title": "TITLE", "item": "IMPACTED_ITEM", "package": "IMPACTED_PACKAGE", "supplier": "SUPPLIER", "comments": "COMMENTS", "proposedChange": "PROPOSED_CHANGE" }
+  },
+  "primaryObject": {
+    "businessId": "U-HALTER-800",
+    "fm": { "workspaceId": 57, "dmsId": "34051", "title": "U-Halter 800", "seedNumber": "DEMO-SRC-ITEM-001", "version": "[REV:w]", "lifecycleState": "Unreleased" },
+    "revisionContext": { "requested": ["B", "C"], "availableInTenant": ["[REV:w]"], "status": "DOCUMENTED_CONTEXT_ONLY" },
+    "descriptionEncoding": "structured demo=true; stableId=DEMO-ENG-ITEM-001 data in DESCRIPTION"
+  },
+  "relatedItems": {
+    "workspaceId": 57,
+    "range": { "stableIds": ["DEMO-SRC-ITEM-002", "DEMO-SRC-ITEM-028"], "dmsIds": ["34052", "34053", "34054", "34055", "34056", "34057", "34058", "34059", "34060", "34061", "34062", "34063", "34064", "34065", "34066", "34078", "34079", "34080", "34081", "34082", "34083", "34084", "34085", "34086", "34087", "34088", "34089"] },
+    "intentionalFailureCase": { "stableId": "DEMO-SRC-ITEM-028", "dmsId": "34089", "reason": "thickness 16 mm exceeds seeded supplier capability ceiling 12 mm" }
+  },
+  "suppliers": {
+    "workspaceId": 14,
+    "count": 12,
+    "stableIdPrefix": "DEMO-SRC-SUP-",
+    "dmsIds": { "001": "34012", "002": "34013", "003": "34014", "004": "34015", "005": "34016", "006": "34017", "007": "34018", "008": "34019", "009": "34020", "010": "34021", "011": "34022", "012": "34023" }
+  },
+  "capabilities": {
+    "workspaceId": 63,
+    "count": 12,
+    "stableIdPrefix": "DEMO-SRC-CAP-",
+    "dmsIds": { "001": "34090", "002": "34092", "003": "34093", "004": "34094", "005": "34095", "006": "34096", "007": "34097", "008": "34098", "009": "34099", "010": "34100", "011": "34101", "012": "34102" },
+    "note": "FM has no capability workspace; these are Manufacturer P/N records with machine-readable COMMENTS. CAP001 is the U-Halter primary capability.",
+    "primary": { "stableId": "DEMO-SRC-CAP-001", "dmsId": "34090", "supplierStableId": "DEMO-SRC-SUP-001" }
+  },
+  "purchaseHistory": {
+    "workspaceId": 147,
+    "canonicalStableIdCount": 80,
+    "stableIdRange": ["DEMO-SRC-PO-0001", "DEMO-SRC-PO-0080"],
+    "notesField": "NOTES",
+    "note": "Existing duplicate seed attempts were retained and renamed with DEMO-SRC-PO-DUP-; canonical stable IDs are the 80 numbered records. No records were deleted."
+  },
+  "rfqAndQuotes": {
+    "workspaceId": 148,
+    "records": [
+      { "stableId": "DEMO-SRC-RFQ-001", "dmsId": "34217", "packageDmsId": "34103", "supplierDmsId": "34012", "quoteId": "DEMO-SRC-QUOTE-001" },
+      { "stableId": "DEMO-SRC-RFQ-002", "dmsId": "34223", "packageDmsId": "34218", "supplierDmsId": "34013" },
+      { "stableId": "DEMO-SRC-RFQ-003", "dmsId": "34224", "packageDmsId": "34219", "supplierDmsId": "34016" },
+      { "stableId": "DEMO-SRC-RFQ-004", "dmsId": "34225", "packageDmsId": "34220", "supplierDmsId": "34014" },
+      { "stableId": "DEMO-SRC-RFQ-005", "dmsId": "34226", "packageDmsId": "34221", "supplierDmsId": "34015" },
+      { "stableId": "DEMO-SRC-RFQ-006", "dmsId": "34227", "packageDmsId": "34222", "supplierDmsId": "34022" }
+    ],
+    "workflow": "all records remain in initial Creation state; no workflow transition was performed"
+  },
+  "similarity": {
+    "status": "DEMO_METADATA_ONLY",
+    "candidates": ["DEMO-SRC-ITEM-002", "DEMO-SRC-ITEM-003", "DEMO-SRC-ITEM-004"],
+    "scores": "not persisted as authoritative FM fields; presentation scores are illustrative only",
+    "review": "REVIEW_REQUIRED"
+  },
+  "documentContext": {
+    "status": "PROTOTYPE_METADATA_ONLY",
+    "drawing": "not written; no drawing/Vault/Inventor action performed",
+    "provenance": "FM item DESCRIPTION carries stable demo identity and sourcing facts"
+  },
+  "operateAndLearn": {
+    "existingFmAnchor": { "assetWorkspaceId": 904, "assetDmsId": "30057", "assetTitle": "A000019 - Unterbau", "motorWorkspaceId": 967, "motorDmsId": "30059" },
+    "requestedMotor4711": { "status": "NOT_CREATED", "reason": "no matching Motor #4711 / Antriebsmodul record exists in the discovered tenant model" },
+    "conditionData": "existing IoT condition events are local durable NDJSON; no raw telemetry or learning case was written to FM",
+    "learning": "TARGET / not represented by a dedicated FM workspace in this tenant"
+  },
+  "validation": {
+    "tenantReadback": "PASS",
+    "supplierReadback": "PASS",
+    "primaryItemReadback": "PASS",
+    "packageReadback": "PASS",
+    "rfqReadback": "PASS",
+    "idempotency": "stable demo IDs used for lookup; no deletion; duplicate package attempts retained/renamed",
+    "sourcingEngine": "FM_NORMALIZED_READ_ONLY",
+    "engineReason": "FM reader/adapter is active for demo/hybrid modes; native FM capacity, date and numeric tolerance fields remain missing or outside the current engine contract",
+    "secrets": "none stored in this mapping"
+  }
+}

@@ -153,6 +153,26 @@ function selectResult(elemClicked) {
     openEditor(elemClicked.attr('data-link'));
 
 }
+// Shows the Condition button only for assets Condition Monitoring is enabled for (/iot/config), so it never opens a dead end.
+function showConditionLink(link, title) {
+
+    let match = String(link).match(/workspaces\/(\d+)\/items\/(\d+)$/);
+    if(!match) return;
+
+    $.getJSON('/iot/config', function(response) {
+        let monitored = ((response.data || {}).monitoredAssets || {})[match[1]] || [];
+        if(monitored.indexOf(match[2]) < 0) return;
+        // Docked live panel (compact Condition Monitoring: tiles + charts, with a link to the full page inside).
+        let frameSrc = '/condition-monitoring?wsId=' + match[1] + '&dmsId=' + match[2] + '&descriptor=' + encodeURIComponent(title || '') + '&embedded=compact';
+        $('#condition-frame').attr('src', frameSrc);
+        $('body').addClass('with-condition');
+        $('#condition-link').removeClass('hidden').addClass('toggle-on').removeClass('toggle-off').off('click').on('click', function() {
+            let on = $('body').toggleClass('with-condition').hasClass('with-condition');
+            $(this).toggleClass('toggle-on', on).toggleClass('toggle-off', !on);
+        });
+    });
+
+}
 function openEditor(link) {
 
     appendOverlay(false);
@@ -187,6 +207,7 @@ function openEditor(link) {
         $('body').addClass('screen-main').removeClass('screen-landing');
         $('#header-subtitle').html(urlParameters.title);
         $('#overlay').hide();
+        showConditionLink(link, urlParameters.title);
 
         links.ebom = getSectionFieldValue(responses[0].data.sections, config.assets.fieldIdBOM , '', 'link');
 

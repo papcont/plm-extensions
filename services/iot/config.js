@@ -19,6 +19,21 @@ const config = {
     telemetryPersistenceEnabled: bool(process.env.IOT_TELEMETRY_PERSISTENCE, false),
     telemetryStorePath  : process.env.IOT_TELEMETRY_STORE_PATH || 'storage/iot/telemetry',
     fusionManageWrites  : bool(process.env.FUSION_MANAGE_IOT_WRITES, false),
+    // Maintenance-Case writes to Asset Services (907) — INDEPENDENT from the summary-write gate above.
+    // Default OFF; the case repository must never write just because fusionManageWrites is true.
+    fusionManageCaseWrites: bool(process.env.FUSION_MANAGE_CASE_WRITES, false),
+    caseWorkspaceId       : process.env.IOT_CASE_WS_ID || '907',
+    caseSectionId         : process.env.IOT_CASE_SECTION_ID || '',   // numeric id of "Condition / IoT" (set after layout placement)
+    // Reused 907 fields live in their real sections (e.g. Header), not "Condition / IoT". Map fieldId->sectionId
+    // so createBody groups them correctly, e.g. { "ASSET":"2136", "URGENCY":"2136" }.
+    reusedFieldSections   : json(process.env.IOT_CASE_REUSED_FIELD_SECTIONS, {}),
+    // URGENCY is MANDATORY on a 907 create. caseDefaultUrgency = the logical value written (configurable,
+    // never derived from anomalyScore). urgencyOptions maps that logical value -> the tenant lookup option
+    // link; injected only after a read-only live inspection of that lookup (option ids are tenant-specific).
+    caseDefaultUrgency    : process.env.IOT_CASE_DEFAULT_URGENCY || '',
+    urgencyOptions        : json(process.env.IOT_CASE_URGENCY_OPTIONS, {}),
+    // Durable eventId -> FM case link (services/iot/caseLinkStore.js); '' => case-links.json next to the telemetry store.
+    caseLinkStorePath     : process.env.IOT_CASE_LINK_STORE_PATH || '',
 
     // Durable condition-event store (services/iot/eventRepository.js). Low-frequency discrete events
     // (escalation/recovery) persisted to NDJSON so they survive a restart. Gated OFF by default like the
@@ -146,6 +161,12 @@ config.applyDeployment = function(env) {
     config.impersonateUser   = config.impersonateUser   || iot.impersonateUser   || env.erpServiceAccountEmail || '';
     // Only let the environment block override where the corresponding process.env var was NOT set.
     if (process.env.FUSION_MANAGE_IOT_WRITES == null && iot.fusionManageWrites  !== undefined) config.fusionManageWrites = !!iot.fusionManageWrites;
+    if (process.env.FUSION_MANAGE_CASE_WRITES == null && iot.fusionManageCaseWrites !== undefined) config.fusionManageCaseWrites = !!iot.fusionManageCaseWrites;
+    if (process.env.IOT_CASE_WS_ID            == null && iot.caseWorkspaceId      !== undefined) config.caseWorkspaceId    = String(iot.caseWorkspaceId);
+    if (process.env.IOT_CASE_SECTION_ID       == null && iot.caseSectionId        !== undefined) config.caseSectionId      = String(iot.caseSectionId);
+    if (process.env.IOT_CASE_DEFAULT_URGENCY  == null && iot.caseDefaultUrgency    !== undefined) config.caseDefaultUrgency = String(iot.caseDefaultUrgency);
+    if (iot.urgencyOptions)      config.urgencyOptions      = Object.assign({}, config.urgencyOptions, iot.urgencyOptions);
+    if (iot.reusedFieldSections) config.reusedFieldSections = Object.assign({}, config.reusedFieldSections, iot.reusedFieldSections);
     if (process.env.IOT_RESOLVE_FROM_FM      == null && iot.resolveFromFm        !== undefined) config.resolveFromFm      = !!iot.resolveFromFm;
     if (process.env.IOT_CONDITION_SECTION_ID == null && iot.conditionSectionId   !== undefined) config.conditionSectionId = String(iot.conditionSectionId);
     if (process.env.IOT_ASSET_WS_ID          == null && iot.assetWorkspaceId     !== undefined) config.assetWorkspaceId   = String(iot.assetWorkspaceId);

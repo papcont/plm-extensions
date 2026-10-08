@@ -7,36 +7,35 @@ if(typeof app.locals === 'undefined') return;
 
 let server, port;
 
-if(app.locals.protocol === 'https') {
+function createServer() {
 
-	if (fs.existsSync('./keys/privkey.pem')) {
+	if(app.locals.protocol === 'https') {
 
-		const https       = require('https');
-		const privateKey  = fs.readFileSync('./keys/privkey.pem', 'utf8');
-		const certificate = fs.readFileSync('./keys/fullchain.pem', 'utf8');
-		const credentials = { key: privateKey, cert: certificate };
+		if (fs.existsSync('./keys/privkey.pem')) {
 
-		server = https.createServer(credentials, app);
+			const https       = require('https');
+			const privateKey  = fs.readFileSync('./keys/privkey.pem', 'utf8');
+			const certificate = fs.readFileSync('./keys/fullchain.pem', 'utf8');
+			const credentials = { key: privateKey, cert: certificate };
 
-	} else {
+			return https.createServer(credentials, app);
 
-		console.log();
-		console.log('  ERROR ! File privkey.pem not available in folder /keys');
-		console.log('        ! Server will be started using http instead of https');
-		console.log();
+		} else {
 
-		const http = require('http');
+			console.log();
+			console.log('  ERROR ! File privkey.pem not available in folder /keys');
+			console.log('        ! Server will be started using http instead of https');
+			console.log();
 
-		server = http.createServer(app);
+		}
 
 	}
 
-} else {
-
-	const http = require('http');
-	server = http.createServer(app);
+	return require('http').createServer(app);
 
 }
+
+server = createServer();
 
 app.set('port', app.locals.port);
 
@@ -44,6 +43,28 @@ app.set('port', app.locals.port);
 server.listen(app.locals.port, app.locals.host);
 server.on('error', onError);
 server.on('listening', onListening);
+
+
+// Windows resolves "localhost" to ::1 first. With the IPv4 loopback listener alone, every connection to
+// http://localhost (the registered APS callback host) pays a ~200 ms fallback. Mirror the IPv4 loopback
+// listener on the IPv6 loopback - still loopback-only, same app, no second initialization.
+if(app.locals.host === '127.0.0.1') {
+
+	const server6 = createServer();
+
+	server6.listen(app.locals.port, '::1');
+	server6.on('error', function(error) {
+		if(error.syscall === 'listen' && ['EADDRNOTAVAIL', 'EAFNOSUPPORT'].includes(error.code)) {
+			console.log('  !! IPv6 loopback ::1 not available - localhost requests fall back to 127.0.0.1');
+			return;
+		}
+		onError(error);
+	});
+	server6.on('listening', function() {
+		console.log('  >> Also listening on       ::1 port ' + app.locals.port + ' (IPv6 loopback for localhost)');
+	});
+
+}
 
 
 if(!fs.existsSync('storage'      )) fs.mkdirSync('storage'      );

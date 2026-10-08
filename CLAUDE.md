@@ -58,6 +58,10 @@ Adding a new standard app means: one line in `routes/landing.js`, one Pug view e
 
 **`/condition-monitoring` (Condition Monitoring)** — dashboard app (`apps/condition-monitoring`, settings key `conditionMonitoring`) for the IoT subsystem below; status tiles + Health/Vibration/Temperature charts, condition coloring, events list.
 
+**`/intelligent-sourcing` (Intelligent Sourcing)** — local-first prototype (`apps/intelligent-sourcing`, settings key `intelligentSourcing`, API `routes/sourcing.js` at `/sourcing`). A deterministic engine (`services/sourcing/engine.js`) ranks suppliers for an item/quantity/date: technical PASS/FAIL/UNKNOWN from capability records is authoritative and strictly separate from commercial/delivery/quality/history scoring; a FAIL supplier never gets an overall score. Claude explanation (`services/sourcing/ai.js`) is advisory and guarded (recommending a FAIL supplier is rejected). RFQ creation follows the maintenance-case pattern (preview → confirm → gate `SOURCING_RFQ_WRITES` → idempotency) but has no write target yet, so it is dry-run only. Data is the reproducible seed in `services/sourcing/demoData.js`; no Fusion Manage reads/writes. Tests in `test/sourcing/`. Design + status: `docs/features/intelligent-sourcing/DESIGN-STATUS.md`.
+
+**Shared AI core** — `services/ai/structured.js` (mode table → JSON schema + validator, bounded output, context-hash cache, provenance) and `services/ai/providers/anthropic.js` are used by both the IoT AI Insight and sourcing. Add a new AI domain by defining its mode table on top of this core; don't copy the validator.
+
 **`/mebom` (Mechatronic BOM Editor)** — **`dev/` work-in-progress** (`dev/mebom`, settings key `mebom`), an evolution of the `instances` app: context is an Asset (WS 904), with the mechanical Engineering BOM + 3D viewer on one side and per-instance lists (serials, motors, sensors, control elements) as alignment tabs. Tenant setup: `docs/MEBOM-TENANT-SETUP.md`.
 
 ### IoT / Condition Monitoring subsystem (`/iot`)

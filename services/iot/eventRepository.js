@@ -116,7 +116,16 @@ function createEventRepository(config = {}, logger = console) {
         return arr.length ? arr[arr.length - 1] : null;
     }
 
-    return { append, list, latest, SCHEMA_VERSION: EVENT_SCHEMA_VERSION };
+    // eventId lookup for the Maintenance Case layer. With assetId the asset's bounded window is loaded
+    // (from disk if needed); without it only assets already touched this process are scanned.
+    function find(eventId, assetId) {
+        if (!eventId) return null;
+        if (assetId != null) return mem(assetId).get(eventId) || null;
+        for (const m of byAsset.values()) if (m.has(eventId)) return m.get(eventId);
+        return null;
+    }
+
+    return { append, list, latest, find, SCHEMA_VERSION: EVENT_SCHEMA_VERSION };
 }
 
 module.exports = { createEventRepository, EVENT_SCHEMA_VERSION };

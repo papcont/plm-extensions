@@ -14,60 +14,45 @@ block body
         #header.dark
             #header-logo
             #header-title= title
-            #header-subtitle Asset health, vibration and temperature from live telemetry
+            #header-subtitle Zustand, Vibration und Temperatur aus Live-Telemetrie
             #header-toolbar
-                #cm-source.cm-pill(title='Telemetry source')  source: -
-                #cm-pause.button.with-icon.icon-pause(title='Pause / resume all mock data (client poll + unattended server ticker)') Pause
-                #cm-reset.button.icon.icon-refresh(title='Restart the demo scenario')
+                #cm-source.cm-pill(title='Telemetrie-Quelle')  Quelle: -
+                #cm-pause.button.with-icon.icon-pause(title='Alle Demo-Daten pausieren / fortsetzen (Client-Abfrage + Server-Ticker)') Pause
+                #cm-reset.button.icon.icon-refresh(title='Demo-Szenario neu starten')
                 #header-avatar
 
         #condition-monitoring
 
+            .cm-fullview
+                a#cm-fullview-link(target='_blank' rel='noopener') Vollansicht öffnen ↗ · Baseline, Events, KI-Einschätzung, Maintenance Case, Ersatzteile
+
+            .cm-pipeline
+                span Telemetrie
+                span.cm-pipe-arrow →
+                span Gelernte Baseline (eingefroren)
+                span.cm-pipe-arrow →
+                span Ergebnis Condition · Anomalie · Event
+                span.cm-pipe-arrow →
+                span.cm-pipe-ai KI-Erklärung (nur auf Klick)
+                span.cm-pipe-arrow →
+                span Mensch / Maintenance Case
+
             #cm-asset.surface-level-2(style='display:none')
                 .cm-asset-head
                     span.cm-label Asset
-                    span#cm-asset-name.cm-asset-name -
-                    a#cm-asset-link.cm-asset-link.cm-fm-link(target='_blank' rel='noopener') Open in Fusion Manage — login required
+                    a#cm-asset-name.cm-asset-name.cm-fm-title(target='_blank' rel='noopener' title='Asset in Fusion Manage öffnen') -
+                    a#cm-asset-link.cm-asset-link.cm-fm-link(target='_blank' rel='noopener') In Fusion Manage öffnen – Login erforderlich
                 .cm-sensors
-                    .cm-section-title Sensors on this asset
+                    .cm-section-title Sensoren an diesem Asset
                     #cm-sensors-list
-                        .cm-events-empty Loading…
+                        .cm-events-empty Wird geladen …
 
-            #cm-asset-info.surface-level-2(style='display:none')
-                .cm-section-title Asset information
-                .cm-asset-info-grid
-                    .cm-info-item
-                        .cm-info-label ID
-                        .cm-info-value#cm-info-id -
-                    .cm-info-item
-                        .cm-info-label Fusion Manage
-                        a#cm-info-link.cm-info-value.cm-fm-link(target='_blank' rel='noopener') Open in Fusion Manage — login required
-                    .cm-info-item
-                        .cm-info-label Title
-                        .cm-info-value#cm-info-title -
-                    .cm-info-item
-                        .cm-info-label Customer
-                        .cm-info-value#cm-info-customer -
-                    .cm-info-item
-                        .cm-info-label Project type
-                        .cm-info-value#cm-info-project -
-                    .cm-info-item
-                        .cm-info-label Asset BOM
-                        .cm-info-value#cm-info-asset-bom -
-                    .cm-info-item
-                        .cm-info-label Operational
-                        .cm-info-value#cm-info-operational -
-                    .cm-info-item.cm-info-wide
-                        .cm-info-label Description
-                        .cm-info-value#cm-info-description -
-                    .cm-info-item
-                        .cm-info-label Images
-                        .cm-info-value#cm-info-images -
-            #cm-asset-info-message.surface-level-2(style='display:none')
-                .cm-section-title Asset information
-                .cm-events-empty Asset master data could not be loaded.
+            #cm-parts.surface-level-2(style='display:none')
+                .cm-section-title Ersatzteile dieses Assets (Service BOM) · Beschaffung
+                #cm-parts-list
 
-            .cm-story-label Current machine state
+            //- 1 CURRENT STATE
+            .cm-story-label Aktueller Maschinenzustand
 
             #cm-summary.surface-level-2
                 .cm-tile#cm-tile-status
@@ -75,18 +60,19 @@ block body
                     .cm-status-value
                         span#cm-status-dot.cm-dot
                         span#cm-status-text -
+                    .cm-tile-sub#cm-status-sub
                 .cm-tile
                     .cm-label Health
                     .cm-value
                         span#cm-health -
                         span.cm-unit  %
                 .cm-tile#cm-tile-ai
-                    .cm-label AI model
+                    .cm-label Baseline-Modell
                     .cm-value
                         span#cm-ai-state.cm-value-sm -
                     .cm-tile-sub#cm-ai-samples -
                 .cm-tile#cm-tile-anomaly
-                    .cm-label Anomaly
+                    .cm-label Anomalie
                     .cm-value
                         span#cm-anomaly -
                     .cm-tile-sub#cm-anomaly-driver -
@@ -97,7 +83,7 @@ block body
                         span.cm-unit#cm-vib-unit  g
                         span#cm-vib-trend.cm-trend
                 .cm-tile
-                    .cm-label Temperature
+                    .cm-label Temperatur
                     .cm-value
                         span#cm-temp -
                         span.cm-unit  °C
@@ -106,141 +92,211 @@ block body
                     .cm-value
                         span#cm-trend.cm-value-sm -
                 .cm-tile
-                    .cm-label Humidity
+                    .cm-label Luftfeuchte
                     .cm-value
                         span#cm-humidity -
                         span.cm-unit  %
-                .cm-tile
-                    .cm-label Last update
+                .cm-tile#cm-tile-updated
+                    .cm-label Letzte Messung
                     .cm-value.cm-value-sm#cm-updated -
                 .cm-tile
-                    .cm-label Last event
+                    .cm-label Letztes Event
                     .cm-value.cm-value-sm#cm-last-event -
 
-            #cm-why.surface-level-2
-                .cm-section-title Why is this unusual?
+            //- Shown only while the current state is anomalous (OBSERVE or worse) and fresh.
+            #cm-why.surface-level-2(style='display:none')
+                .cm-section-title Warum ist das auffällig?
                 #cm-why-body
-                    .cm-events-empty Learning this asset’s normal behavior…
-                #cm-learned-fixed
-                    .cm-why-head Learned baseline vs fixed threshold
-                    .cm-why-line Learned baseline: asset-specific normal behavior learned from recent healthy observations.
-                    .cm-why-line Fixed threshold: an absolute safety guardrail independent of learned behavior.
 
+            //- 2 CHARTS
             #cm-controls.surface-level-2
-                .cm-control-label Time range
+                .cm-control-label Zeitraum
                 select#cm-range
-                    option(value='1') Last 1h
-                    option(value='6') Last 6h
-                    option(value='12') Last 12h
-                    option(value='24' selected) Last 24h
-                    option(value='168') Last 7d
-                    option(value='0') All
+                    option(value='1') Letzte 1 h
+                    option(value='6') Letzte 6 h
+                    option(value='12') Letzte 12 h
+                    option(value='24' selected) Letzte 24 h
+                    option(value='168') Letzte 7 Tage
+                    option(value='0') Alle
                 .cm-legend
                     span.cm-legend-item
                         span.cm-legend-swatch.cm-normal
                         | Normal
                     span.cm-legend-item
                         span.cm-legend-swatch.cm-warning
-                        | Warning
+                        | Warnung
                     span.cm-legend-item
                         span.cm-legend-swatch.cm-critical
-                        | Critical
+                        | Kritisch
 
             .cm-charts
                 .cm-chart-card.surface-level-2
-                    .cm-chart-title Health trend
+                    .cm-chart-title Health-Verlauf
                     canvas.cm-chart#cm-chart-health(height='160')
                 .cm-chart-card.surface-level-2
                     .cm-chart-title
-                        span Vibration trend (
+                        span Vibrationsverlauf (
                         span#cm-vib-chart-unit g
                         span )
-                        span.cm-chart-hint  · band = learned normal
+                        span.cm-chart-hint  · Band = gelernter Normalbereich
                     canvas.cm-chart#cm-chart-vib(height='160')
                 .cm-chart-card.surface-level-2
-                    .cm-chart-title Temperature trend (°C)
+                    .cm-chart-title Temperaturverlauf (°C)
                     canvas.cm-chart#cm-chart-temp(height='160')
                 .cm-chart-card.surface-level-2
-                    .cm-chart-title Humidity trend (%)
+                    .cm-chart-title Luftfeuchte-Verlauf (%)
                     canvas.cm-chart#cm-chart-humidity(height='160')
 
-            #cm-events.surface-level-2
-                .cm-section-title Condition events
-                #cm-events-list
-                    .cm-events-empty No events yet.
+            //- 3 LEARNED BASELINE
+            #cm-baseline.surface-level-2
+                .cm-section-title Gelernte Baseline
+                #cm-baseline-body
+                    .cm-events-empty Normalverhalten dieses Assets wird gelernt …
+                #cm-learned-fixed
+                    .cm-why-head Gelernte Baseline vs. fester Grenzwert
+                    .cm-why-line Gelernte Baseline: asset-spezifisches Normalverhalten, gelernt aus aktuellen, unauffälligen Messungen.
+                    .cm-why-line Fester Grenzwert: absolute Sicherheitsgrenze, unabhängig vom gelernten Verhalten.
 
+            //- 4 CONDITION EVENTS
+            #cm-events.surface-level-2
+                .cm-section-title Zustandsereignisse (Condition Events)
+                #cm-latest-event
+                #cm-events-list
+                    .cm-events-empty Noch keine Events.
+
+            //- 5 AI INSIGHT
+            #cm-ai-insight.surface-level-2
+                .cm-ai-head
+                    .cm-section-title KI-Einschätzung
+                    .cm-ai-buttons
+                        button#cm-ai-explain.button(type='button') Asset-Zustand erklären
+                        button#cm-ai-briefing.button(type='button') Techniker-Briefing erstellen
+                .cm-ai-note AI Interpretation – keine automatische Diagnose. Nur auf ausdrückliche Anforderung; nichts wird in Fusion Manage geschrieben.
+                .cm-ai-status#cm-ai-disabled(style='display:none') AI Insight ist auf diesem Server deaktiviert. Messwerte, Baseline und Condition Events oben bleiben vollständig verfügbar.
+                .cm-ai-status#cm-ai-status Nur lesende Erklärung der oben gezeigten Daten.
+                #cm-ai-facts(style='display:none')
+                #cm-ai-result(style='display:none')
+                    .cm-ai-list-title AI Interpretation
+                    .cm-ai-summary#cm-ai-summary
+                    .cm-case-row
+                        span Aktueller Zustand
+                        span#cm-ai-current
+                    .cm-case-row
+                        span Historischer Kontext
+                        span#cm-ai-historical
+                    .cm-case-row
+                        span Menschliche Bewertung
+                        span#cm-ai-human
+                    .cm-ai-list-title Vorgeschlagene Prüfungen (Vorschläge, keine Schlussfolgerungen)
+                    ul#cm-ai-checks
+                    .cm-ai-list-title Unsicherheit / Grenzen
+                    ul#cm-ai-limitations
+                    .cm-case-note#cm-ai-confidence
+                #cm-ai-briefing-result(style='display:none')
+                    .cm-section-title Techniker-Briefing – AI Interpretation
+                    .cm-ai-summary#cm-brief-headline
+                    .cm-ai-list-title Aktuelle Situation
+                    div#cm-brief-situation
+                    .cm-ai-list-title Bekannte Fakten
+                    ul#cm-brief-known
+                    .cm-ai-list-title Offene Punkte
+                    ul#cm-brief-unknown
+                    .cm-ai-list-title Empfohlene Prüfungen (Vorschläge, keine Diagnosen)
+                    ul#cm-brief-checks
+                    .cm-ai-list-title Übergabenotiz
+                    div#cm-brief-handover
+                    .cm-case-note#cm-brief-confidence
+
+            //- 6 MAINTENANCE CASE
             #cm-maintenance-case.surface-level-2(style='display:none')
-                .cm-section-title Historical detection / Maintenance Case
+                .cm-section-title Historische Erkennung / Maintenance Case
                 .cm-case-columns
                     .cm-case-block.cm-machine
-                        .cm-case-block-title Historical detection (at case creation)
+                        .cm-case-block-title Historische Erkennung (bei Case-Anlage)
                         .cm-case-row
-                            span Case ID
+                            span Case-ID
                             strong#cm-case-id -
                         .cm-case-row
-                            span Condition Event ID
+                            span Condition-Event-ID
                             strong#cm-case-event-id -
                         .cm-case-row
-                            span Anomaly at Detection
+                            span Anomalie bei Erkennung
                             strong#cm-case-anomaly -
                         .cm-case-row
-                            span Primary Driver
+                            span Primärer Treiber
                             strong#cm-case-driver -
                     .cm-case-block.cm-human
-                        .cm-case-block-title Human assessment (outranks the model)
+                        .cm-case-block-title Menschliche Bewertung (hat Vorrang vor dem Modell)
                         .cm-case-row
                             span Workflow
                             strong#cm-case-workflow -
                         .cm-case-row
-                            span Urgency
+                            span Dringlichkeit
                             strong#cm-case-urgency -
                         .cm-case-row
-                            span Assessment
+                            span Bewertung
                             strong#cm-case-assessment -
                         .cm-case-row
-                            span Confirmed Cause
+                            span Bestätigte Ursache
                             strong#cm-case-cause -
-                .cm-case-note Anomaly detection identifies deviations from learned normal behavior. It does not diagnose the cause. A current NORMAL state does not invalidate this historical detection.
-                a#cm-case-link.cm-asset-link.cm-fm-link(target='_blank' rel='noopener') Open in Fusion Manage — login required
+                .cm-case-note Die Anomalieerkennung zeigt Abweichungen vom gelernten Normalverhalten. Sie diagnostiziert keine Ursache. Ein aktueller NORMAL-Zustand macht diese historische Erkennung nicht ungültig.
+                a#cm-case-link.cm-asset-link.cm-fm-link(target='_blank' rel='noopener') In Fusion Manage öffnen – Login erforderlich
             #cm-maintenance-case-message.surface-level-2(style='display:none')
                 .cm-section-title Maintenance Case
-                .cm-events-empty Maintenance Case data could not be loaded.
+                .cm-events-empty Maintenance-Case-Daten konnten nicht geladen werden.
 
-            #cm-ai-insight.surface-level-2
+            //- Operator-gated Maintenance Case creation from a real durable Condition Event. Preview first,
+            //- explicit confirmation, then ONE gated Fusion Manage create. Never automatic, never from AI.
+            #cm-case-create.surface-level-2
                 .cm-ai-head
-                    .cm-section-title AI Insight
+                    .cm-section-title Maintenance Case
                     .cm-ai-buttons
-                        button#cm-ai-explain.button(type='button') Explain asset state
-                        button#cm-ai-briefing.button(type='button') Create technician briefing
-                .cm-ai-note AI interpretation – no automatic diagnosis. Explicit request only; nothing is written to Fusion Manage.
-                .cm-ai-status#cm-ai-status Read-only explanation of the data shown above.
-                #cm-ai-result(style='display:none')
-                    .cm-ai-summary#cm-ai-summary
-                    .cm-case-row
-                        span Current state
-                        span#cm-ai-current
-                    .cm-case-row
-                        span Historical context
-                        span#cm-ai-historical
-                    .cm-case-row
-                        span Human assessment
-                        span#cm-ai-human
-                    .cm-ai-list-title Suggested checks (suggestions, not conclusions)
-                    ul#cm-ai-checks
-                    .cm-ai-list-title Limitations
-                    ul#cm-ai-limitations
-                    .cm-case-note#cm-ai-confidence
-                #cm-ai-briefing-result(style='display:none')
-                    .cm-section-title Technician Briefing
-                    .cm-ai-summary#cm-brief-headline
-                    .cm-ai-list-title Current situation
-                    div#cm-brief-situation
-                    .cm-ai-list-title Known facts
-                    ul#cm-brief-known
-                    .cm-ai-list-title Unknowns
-                    ul#cm-brief-unknown
-                    .cm-ai-list-title Recommended checks (suggestions, not diagnoses)
-                    ul#cm-brief-checks
-                    .cm-ai-list-title Handover note
-                    div#cm-brief-handover
-                    .cm-case-note#cm-brief-confidence
+                        button#cm-case-btn.button(type='button' disabled) Maintenance Case anlegen
+                .cm-ai-note Nur durch Bediener ausgelöst. Das deterministische Condition Event ist die Referenz; der Mensch entscheidet. Ohne ausdrückliche Bestätigung wird nichts geschrieben.
+                .cm-ai-status#cm-case-status Nicht angelegt.
+                #cm-case-latest.cm-case-latest Keine dauerhafte Eskalation vorhanden.
+                #cm-case-preview(style='display:none')
+                    .cm-ai-list-title Vorschau – noch nichts geschrieben
+                    #cm-case-preview-body
+                    label.cm-case-confirm
+                        input#cm-case-confirm(type='checkbox')
+                        span Mir ist bewusst, dass dadurch ein echtes Fusion-Manage-Item in Asset Services angelegt wird
+                    button#cm-case-submit.button(type='button' disabled) In Fusion Manage anlegen
+                #cm-case-result(style='display:none')
+                    .cm-ai-list-title Ergebnis
+                    #cm-case-result-body
+
+            //- 7 ASSET / EXPLANATION DETAILS
+            #cm-asset-info.surface-level-2(style='display:none')
+                .cm-section-title Asset-Informationen
+                .cm-asset-info-grid
+                    .cm-info-item
+                        .cm-info-label ID
+                        .cm-info-value#cm-info-id -
+                    .cm-info-item
+                        .cm-info-label Fusion Manage
+                        a#cm-info-link.cm-info-value.cm-fm-link(target='_blank' rel='noopener') In Fusion Manage öffnen – Login erforderlich
+                    .cm-info-item
+                        .cm-info-label Titel
+                        .cm-info-value#cm-info-title -
+                    .cm-info-item
+                        .cm-info-label Kunde
+                        .cm-info-value#cm-info-customer -
+                    .cm-info-item
+                        .cm-info-label Projekttyp
+                        .cm-info-value#cm-info-project -
+                    .cm-info-item
+                        .cm-info-label Asset-BOM
+                        .cm-info-value#cm-info-asset-bom -
+                    .cm-info-item
+                        .cm-info-label In Betrieb
+                        .cm-info-value#cm-info-operational -
+                    .cm-info-item.cm-info-wide
+                        .cm-info-label Beschreibung
+                        .cm-info-value#cm-info-description -
+                    .cm-info-item
+                        .cm-info-label Bilder
+                        .cm-info-value#cm-info-images -
+            #cm-asset-info-message.surface-level-2(style='display:none')
+                .cm-section-title Asset-Informationen
+                .cm-events-empty Asset-Stammdaten konnten nicht geladen werden.

@@ -35,10 +35,11 @@
 }
 
 #cm-asset-info { padding: 16px; border-radius: 8px; }
+#cm-parts { padding: 16px; border-radius: 8px; }
 .cm-asset-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 20px; }
 .cm-info-item { min-width: 0; }
 .cm-info-wide { grid-column: 1 / -1; }
-.cm-info-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.6; }
+.cm-info-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.6; }
 .cm-info-value { margin-top: 4px; font-size: 14px; overflow-wrap: anywhere; }
 
 /* summary tiles */
@@ -50,13 +51,18 @@
     border-radius: 8px;
 }
 .cm-tile { display: flex; flex-direction: column; gap: 6px; }
-.cm-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.6; }
+.cm-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.6; }
 .cm-value { font-size: 28px; font-weight: 600; line-height: 1.1; }
 .cm-value-sm { font-size: 15px; font-weight: 500; }
 .cm-unit { font-size: 14px; font-weight: 400; opacity: 0.6; }
 .cm-trend { font-size: 16px; margin-left: 4px; }
 .cm-status-value { display: flex; align-items: center; gap: 8px; font-size: 22px; font-weight: 600; }
 .cm-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; background: #8a8f98; flex: none; }
+/* stale telemetry: neutral status, last-known values muted, age emphasized (presentation only) */
+#cm-summary.cm-is-stale .cm-status-value { font-size: 16px; }
+#cm-summary.cm-is-stale .cm-tile:not(#cm-tile-status):not(#cm-tile-updated) .cm-value { opacity: 0.4; }
+#cm-summary.cm-is-stale #cm-updated { font-weight: 700; }
+#cm-status-sub:empty { display: none; }
 
 /* controls */
 #cm-controls {
@@ -88,7 +94,7 @@
 .cm-chart { width: 100%; display: block; }
 
 /* analytics: tile sub-labels + why panel */
-.cm-tile-sub { font-size: 11px; opacity: 0.6; }
+.cm-tile-sub { font-size: 12px; opacity: 0.6; }
 #cm-why { padding: 16px; border-radius: 8px; }
 .cm-why-head { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
 .cm-why-line { font-size: 13px; line-height: 1.6; }
@@ -101,7 +107,7 @@
 .cm-section-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; opacity: 0.85; }
 .cm-events-empty { font-size: 13px; opacity: 0.5; }
 .cm-story-label {
-    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.55;
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.55;
     margin: 4px 0 -8px;
 }
 .cm-case-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
@@ -111,12 +117,16 @@
 .cm-case-row strong { text-align: right; overflow-wrap: anywhere; }
 .cm-case-note { margin-top: 14px; font-size: 12px; opacity: 0.7; }
 #cm-case-link { display: inline-block; margin-top: 12px; }
-.cm-fm-link { color: inherit; opacity: 0.55; font-size: 11px; }
+.cm-fm-link { color: var(--color-blue-500, #0696d7); font-size: 12px; }
+/* record names that open the source record in Fusion Manage */
+a.cm-fm-title { color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; }
+a.cm-fm-title:hover { color: var(--color-blue-500, #0696d7); text-decoration-style: solid; }
+a.cm-fm-title::after { content: '\2197'; font-size: 0.75em; margin-left: 2px; opacity: 0.6; }
 #cm-maintenance-case { padding: 16px; border-radius: 8px; }
 #cm-maintenance-case-message { padding: 16px; border-radius: 8px; }
 .cm-event-row {
     display: grid;
-    grid-template-columns: 16px 72px 90px 1fr auto;
+    grid-template-columns: 16px 72px 90px minmax(0, 1fr) auto auto;
     align-items: center;
     gap: 10px;
     padding: 6px 0;
@@ -135,3 +145,54 @@
 #cm-ai-insight .cm-ai-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
 #cm-ai-briefing-result { margin-top: 14px; }
 #cm-ai-insight ul { margin: 4px 0 0 18px; padding: 0; font-size: 13px; }
+.cm-case-latest { font-size: 12px; opacity: 0.8; margin: 2px 0 8px; overflow-wrap: anywhere; }
+.cm-case-confirm { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 12px 0 8px; }
+.cm-case-from-event { margin-left: 8px; font-size: 12px; padding: 2px 8px; }
+.cm-events-summary { font-size: 13px; padding: 6px 0 8px; opacity: 0.85; }
+.cm-events-older > summary { cursor: pointer; font-size: 13px; opacity: 0.75; padding: 8px 0 4px; border-top: 1px solid rgba(128, 128, 128, 0.15); }
+#cm-ai-insight, #cm-case-create { padding: 16px; border-radius: 8px; }
+#cm-case-result { margin-top: 12px; }
+
+/* Shared pattern strip (Sourcing + Condition Monitoring): deterministic result first, AI explanation second, human last. */
+.cm-pipeline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12px; padding: 0 2px; opacity: 0.85; }
+.cm-pipeline > span:not(.cm-pipe-arrow) { padding: 2px 10px; border: 1px solid rgba(128,128,128,0.35); border-radius: 3px; }
+.cm-pipeline .cm-pipe-ai { border-style: dashed; }
+.cm-pipe-arrow { opacity: 0.5; }
+
+#condition-monitoring { position: absolute; top: 68px; bottom: 0; left: 0; right: 0; }
+.cm-baseline-grid, .cm-ai-facts-grid, .cm-event-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 8px 32px; }
+.cm-event-cards { margin-bottom: 14px; }
+.cm-event-card { padding: 10px 12px; border: 1px solid rgba(128, 128, 128, 0.25); border-radius: 3px; }
+.cm-mono { font-family: Consolas, monospace; font-size: 12px; }
+.cm-src { font-size: 10px; font-weight: 500; border: 1px solid rgba(128,128,128,0.45); border-radius: 8px; padding: 0 6px; margin-left: 6px; opacity: 0.75; }
+#cm-ai-facts { margin: 10px 0 14px; }
+
+#cm-baseline { padding: 16px; border-radius: 8px; }
+.cm-ai-buttons .button, .cm-case-from-event.button, #cm-case-btn { height: auto; line-height: 20px; padding: 5px 14px; }
+
+/* Shared AI loading state (Sourcing assistant + Condition Monitoring AI Insight): visible progress for 10-20 s waits. */
+.cm-loading { display: flex; flex-direction: column; gap: 8px; font-size: 13px; padding: 6px 0; }
+.cm-loading-bar { position: relative; height: 4px; border-radius: 2px; overflow: hidden; background: rgba(128,128,128,0.25); }
+.cm-loading-bar::after { content: ''; position: absolute; top: 0; bottom: 0; width: 35%; background: var(--color-blue-500); animation: cm-load 1.4s ease-in-out infinite; }
+@keyframes cm-load { 0% { left: -35%; } 100% { left: 100%; } }
+
+/* Shared header fit (this stylesheet is loaded only by Sourcing + Condition Monitoring): no subtitle below
+   1100 px, toolbar items never wrap/clip, Pause keeps its label (framework collapses .with-icon to 22 px). */
+#header-toolbar { flex-shrink: 0; align-items: center; }
+#header-toolbar > * { flex: none; white-space: nowrap; }
+#cm-pause.button.with-icon { max-width: none; min-width: 0; overflow: visible; }
+#cm-pause.button.with-icon::before { margin-right: 6px; }
+@media (max-width: 1100px) {
+    #header-subtitle { display: none; }
+    #header-avatar { margin-left: 12px; }
+}
+
+/* compact embedded view (?embedded=compact): tiles + charts only, everything else lives in the full view */
+.cm-fullview { display: none; }
+body.embedded .cm-fullview { display: block; text-align: right; font-size: 12px; }
+body.embedded #header, body.embedded .cm-pipeline, body.embedded #cm-asset, body.embedded #cm-parts, body.embedded #cm-baseline,
+body.embedded #cm-events, body.embedded #cm-ai-insight, body.embedded #cm-maintenance-case, body.embedded #cm-maintenance-case-message,
+body.embedded #cm-case-create, body.embedded #cm-asset-info, body.embedded #cm-asset-info-message, body.embedded #cm-why,
+body.embedded .cm-story-label { display: none !important; }
+body.embedded #condition-monitoring { top: 0; padding: 10px; gap: 10px; }
+body.embedded #cm-tile-ai, body.embedded #cm-summary .cm-tile:last-child { display: none; }

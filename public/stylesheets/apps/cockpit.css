@@ -1,0 +1,96 @@
+/* Shared layout for the read-only workspace cockpits (supplier-center, dpp-readiness, quality-closure, ...).
+   Replaces twelve identical per-app copies; each view marks its container with .cockpit.
+   Content starts below the 68px framework header; workspaces render as compact rows
+   (role/title | workspace | count | actions) instead of tall cards. */
+
+.cockpit {
+    position: absolute;
+    top: 68px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px 24px;
+    overflow-y: auto;
+}
+.fusion-theme .cockpit { top: 50px; }
+
+.cockpit #summary {
+    display: grid;
+    flex: none;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 12px 16px;
+    border-radius: 4px;
+}
+
+.cockpit .summary-label,
+.cockpit .workspace-role {
+    color: var(--color-font-light, #777);
+    font-size: 12px;
+}
+
+.cockpit .summary-value {
+    font-size: 24px;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+.cockpit #workspace-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cockpit .workspace-card {
+    display: grid;
+    grid-template-columns: minmax(180px, 2fr) minmax(110px, 1fr) minmax(110px, 1fr) auto;
+    grid-template-areas:
+        "role  meta count actions"
+        "title meta count actions";
+    align-items: center;
+    column-gap: 16px;
+    row-gap: 2px;
+    padding: 10px 16px;
+    border-radius: 4px;
+}
+
+.cockpit .workspace-role    { grid-area: role; }
+.cockpit .workspace-title   { grid-area: title; font-size: 15px; font-weight: 600; }
+.cockpit .workspace-meta    { grid-area: meta; }
+.cockpit .workspace-count   { grid-area: count; font-variant-numeric: tabular-nums; }
+
+.cockpit .workspace-meta,
+.cockpit .workspace-count {
+    color: var(--color-font-light, #777);
+    font-size: 13px;
+}
+
+.cockpit .workspace-actions {
+    grid-area: actions;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* framework .button can be width-capped; labels like "Fusion Manage" must never clip */
+.cockpit .workspace-actions .button {
+    max-width: none;
+    min-width: 0;
+    overflow: visible;
+    white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+    .cockpit #summary { grid-template-columns: 1fr; }
+    .cockpit .workspace-card {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "role  actions"
+            "title actions"
+            "meta  count";
+    }
+}

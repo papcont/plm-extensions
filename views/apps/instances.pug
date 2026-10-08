@@ -30,6 +30,7 @@ block body
                 #toggle-bom.button.with-toggle.toggle-on(title="Toggle BOM display to the left on and off") Display BOM
                 #toggle-ecad-bom.button.with-toggle.toggle-on.hidden(title="Toggle BOM display to the right on and off") Electrical BOM
                 #toggle-details.button.with-toggle.toggle-off(title="Toggle Item Details panel on and off") Display Details
+                #condition-link.button.with-toggle.toggle-on.hidden(title="Show / hide live Condition Monitoring of this asset") Condition
                 #header-avatar
         
         #landing.screen.no-header
@@ -45,6 +46,8 @@ block body
                 #tabs.tabs
                 #items
             #ecad.surface-level-2.pos-abs-right
+            #condition.surface-level-2.pos-abs-right
+                iframe#condition-frame(title='Condition Monitoring (live)')
 
             #sync.dialog.review-changes
                 .dialog-header 

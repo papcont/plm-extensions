@@ -8,6 +8,7 @@
     --width-details : 400px;
     --width-viewer  : 600px;
     --width-ecad    : 600px;
+    --width-condition : 460px;
     --height-viewer : 400px;
     --height-counter  : 22px;
     --width-counter  : 33px;
@@ -401,3 +402,16 @@ th.sync-column {
 .addin #items > * > .panel-content {
     top : 40px;
 }
+
+/*  LIVE CONDITION PANEL (docked right, only for assets Condition Monitoring is enabled for; without ECAD BOM) */
+/* ----------------------------------------------------------------------------- */
+#condition {
+    border-width : var(--border-v) var(--border-h);
+    width        : var(--width-condition);
+    padding      : 0px;
+    display      : none;
+}
+#condition-frame { border : 0px; height : 100%; width : 100%; }
+.with-condition.no-ecad #condition { display : block; }
+.with-condition.no-ecad:not(.layout-h) .viewer,
+.with-condition.no-ecad #contents { right : calc(var(--width-condition) + (2 * var(--border-h))); }

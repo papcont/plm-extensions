@@ -1,0 +1,114 @@
+extends ../framework/layout
+
+block head
+
+    link(rel='stylesheet', href='/stylesheets/apps/condition-monitoring.css')
+    link(rel='stylesheet', href='/stylesheets/apps/intelligent-sourcing.css')
+
+    script(src='/javascripts/apps/intelligent-sourcing.js')
+
+block body
+
+    body.surface-level-1
+
+        #header.dark
+            #header-logo
+            #header-title= title
+            #header-subtitle Technische Zulässigkeit zuerst, dann Lieferantenranking mit nachvollziehbarer Herkunft
+            #header-toolbar
+                #is-data.is-mode(title='Datenmodus') -
+                #header-avatar
+
+        #intelligent-sourcing
+
+            .is-fullview
+                a#is-fullview-link(target='_blank' rel='noopener') Vollansicht öffnen ↗ · Zulässigkeit, Ranking, Warum, Belege, RFQ
+
+            //- 1 Bedarf: the request. Everything below is derived from it.
+            #is-request.surface-level-2
+                .is-step-label 1 · Bedarf
+                .is-req-main
+                    #is-req-item
+                        .is-req-title
+                            span#is-req-id -
+                            span.is-req-rev#is-req-rev
+                        .is-req-sub#is-req-title
+                    .is-req-facts
+                        .is-fact
+                            .cm-label Werkstoff
+                            .is-fact-v#is-f-material -
+                        .is-fact
+                            .cm-label Blechdicke
+                            .is-fact-v#is-f-thickness -
+                        .is-fact
+                            .cm-label Prozess
+                            .is-fact-v#is-f-process -
+                        label.is-fact
+                            .cm-label Menge
+                            input#is-qty(type='number' min='1' step='1')
+                        label.is-fact
+                            .cm-label Bedarfstermin
+                            input#is-date(type='date')
+                        .is-fact
+                            .cm-label Datenmodus
+                            .is-fact-v#is-f-mode -
+                        .is-fact
+                            .cm-label Analyse
+                            .is-fact-v#is-f-status Nicht gestartet
+                    .is-req-actions
+                        select#is-item(title='Artikel')
+                        button#is-analyze.button.default(type='button') Analysieren
+                #is-basis.is-basis -
+
+            .cm-pipeline
+                span Daten und Evidenz mit Quelle
+                span.cm-pipe-arrow →
+                span Regeln / Engine
+                span.cm-pipe-arrow →
+                span Ergebnis PASS · REVIEW · FAIL
+                span.cm-pipe-arrow →
+                span.cm-pipe-ai KI-Erklärung (nur auf Klick)
+                span.cm-pipe-arrow →
+                span Mensch entscheidet
+
+            #is-steps
+                a(href='#is-hero') Empfehlung
+                a(href='#is-alt') Alternativen
+                a(href='#is-elig') Zulässigkeit
+                a(href='#is-ranking') Ranking
+                a(href='#is-why') Warum
+                a(href='#is-history') Belege
+                a(href='#is-rfq') RFQ
+
+            #is-hero.surface-level-2
+                .cm-events-empty Analyse läuft …
+
+            #is-alt.surface-level-2
+                .is-step-label 2 · Beschaffungsalternativen
+                #is-alt-body.is-alt-grid
+
+            #is-elig.surface-level-2
+                .is-step-label 3 · Technische Zulässigkeit
+                .cm-ai-note Der technische Status PASS / REVIEW / FAIL ist maßgeblich. Er kommt aus der Engine, nicht aus Preis oder Historie.
+                #is-elig-body
+
+            #is-ranking.surface-level-2
+                .is-step-label 4 · Lieferantenranking
+                #is-ranking-body
+                #is-compare(style='display:none')
+
+            #is-why.surface-level-2
+                .is-step-label 5 · Warum diese Empfehlung?
+                .is-assist
+                    .is-assist-title Fragen an den Assistenten
+                    #is-assist-q.is-assist-q
+                    .cm-ai-note AI Interpretation – nur auf Klick, feste Fragen. Der Assistent erklärt das deterministische Ergebnis und erfindet keine Daten.
+                #is-why-body
+
+            #is-history.surface-level-2
+                .is-step-label 6 · Belege / Historie
+                #is-history-body
+
+            #is-rfq.surface-level-2
+                .is-step-label 7 · RFQ
+                #is-rfq-body

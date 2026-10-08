@@ -2467,6 +2467,15 @@ exports.applications = {
         deviceId               : 'MOTOR-DEMO-001'
     },
 
+    intelligentSourcing : {
+        // Intelligent Sourcing prototype. Engine, demo data, AI + RFQ gates live in services/sourcing/config.js
+        // (env-overridable). This block only carries UI defaults; keep it as an anchor for per-tenant overrides.
+        defaultQuantity   : 20,
+        defaultLeadDays   : 38,     // default required date = today + n days
+        primaryItemId     : 'U-HALTER-800',   // conference scenario: preselected and analysed on load
+        primaryRevision   : 'C'               // demo context only: the tenant exposes the working revision
+    },
+
     bomExportAttachmentStudio : {
         defaultBOMView : 'Tree Navigator',
         exportFieldsIn : [],
@@ -2565,9 +2574,101 @@ exports.applications = {
 // Set the lists of commands to an empty array (commands : []) to disable the given menu
 exports.menu = [
     [{
-        label      : 'Business Applications',
+        label      : 'Service & IoT',
         adminsOnly : false,
         commands   : [{
+            icon     : 'icon-activity',
+            title    : 'Condition Monitoring',
+            subtitle : 'Live IoT condition, health and vibration per asset',
+            url      : '/condition-monitoring'
+        },{
+            icon     : 'icon-service',
+            title    : 'Service Portal',
+            subtitle : 'Real time spare parts information',
+            url      : '/service'
+        }]
+    },{
+        label      : 'Einkauf & ERP',
+        adminsOnly : false,
+        commands   : [{
+            icon     : 'icon-compare',
+            title    : 'Intelligent Sourcing',
+            subtitle : 'Technical eligibility first, then supplier ranking',
+            url      : '/intelligent-sourcing'
+        },{
+            icon     : 'icon-gears',
+            title    : 'ERP Integration',
+            subtitle : 'Transfer BOMs from Fusion Manage to Dolibarr',
+            url      : '/erp'
+        },{
+            icon     : 'icon-supplier',
+            title    : 'Supplier Package Center',
+            subtitle : 'Browse packages, shared items, and export their BOMs',
+            url      : '/supplier-package-center'
+        }]
+    },{
+        label      : 'Qualität & Freigabe',
+        adminsOnly : false,
+        commands   : [{
+            icon     : 'icon-important',
+            title    : 'Problem Reporting Dashboard',
+            subtitle : 'Capture and resolve problem reports',
+            url      : '/dashboard?wsId=82'
+        },{
+            icon     : 'icon-released',
+            title    : 'Non Conformances Dashboard',
+            subtitle : 'Capture and resolve quality issues',
+            url      : '/dashboard?wsId=98'
+        },{
+            icon     : 'icon-workflow',
+            title    : 'Change Requests Dashboard',
+            subtitle : 'Create and manage Change Requests',
+            url      : '/dashboard?wsId=83'
+        },{
+            icon     : 'icon-markup',
+            title    : 'Change Orders Dashboard',
+            subtitle : 'Create and manage Change Orders & Tasks',
+            url      : '/dashboard?wsId=84'
+        },{
+            icon     : 'icon-mow',
+            title    : 'Change Tasks Dashboard',
+            subtitle : 'Review, perform and complete assigned tasks',
+            url      : '/dashboard?wsId=80'
+        },{
+            icon     : 'icon-markup',
+            title    : 'Design Reviews',
+            subtitle : 'Perform online design reviews',
+            url      : '/reviews'
+        },{
+            icon     : 'icon-timeline',
+            title    : 'Projects Dashboard',
+            subtitle : 'Review timeline of NPI projects in progress',
+            url      : '/projects'
+        },{
+            icon     : 'icon-dashboard',
+            title    : 'Reports Dashboard',
+            subtitle : 'Gain insights using your PLM reports',
+            url      : '/reports'
+        }]
+    }],[{
+        label      : 'BOM / Engineering',
+        adminsOnly : false,
+        commands   : [{
+            icon     : 'icon-bom-tree',
+            title    : 'Variant BOM Editor',
+            subtitle : 'Swap eligible components and create variants bottom-up',
+            url      : '/variants-bom'
+        },{
+            icon     : 'icon-factory',
+            title    : 'Mechatronic BOM Editor',
+            subtitle : 'Align mechanical BOM with motors, sensors and controls',
+            url      : '/mebom'
+        },{
+            icon     : 'icon-download',
+            title    : 'BOM Export Studio',
+            subtitle : 'PDF, Excel, CSV and attachment gate',
+            url      : '/bom-export-attachment-studio'
+        },{
             icon       : 'icon-3d',
             title      : 'Portal',
             subtitle   : 'Quick access to all product data',
@@ -2584,141 +2685,17 @@ exports.menu = [
             subtitle : 'Manage your master data easily',
             url      : '/navigator'
         },{
-            icon     : 'icon-markup',
-            title    : 'Design Reviews',
-            subtitle : 'Perform online design reviews',
-            url      : '/reviews'
-        },{
             icon     : 'icon-book',
             title    : 'Class Browser',
             subtitle : 'Use classification for your data research',
             url      : '/classes'
         },{
-            icon     : 'icon-status',
-            title    : 'Digital Product Passport Readiness',
-            subtitle : 'Compliance, supplier and document readiness',
-            url      : '/dpp-readiness'
-        },{
             icon     : 'icon-trend-chart',
             title    : 'Product Data Explorer',
             subtitle : 'Track design maturity using defined KPIs',
             url      : '/explorer'
-        },{
-            icon     : 'icon-search-list',
-            title    : 'Product Data Traceability Hub',
-            subtitle : 'Items, documents and release evidence',
-            url      : '/product-traceability'
-        },{
-            icon     : 'icon-download',
-            title    : 'BOM Export Studio',
-            subtitle : 'PDF, Excel, CSV and attachment gate',
-            url      : '/bom-export-attachment-studio'
-        },{
-            icon     : 'icon-service',
-            title    : 'Service Portal',
-            subtitle : 'Real time spare parts information',
-            url      : '/service'
-        },{
-            icon     : 'icon-service',
-            title    : 'Installed Base Service Cockpit',
-            subtitle : 'Installed assets and service readiness',
-            url      : '/installed-base-service'
-        },{
-            icon     : 'icon-service',
-            title    : 'Spare Parts Request Desk',
-            subtitle : 'Spare-part demand and sourcing readiness',
-            url      : '/spare-parts-desk'
-        },{
-            icon     : 'icon-supplier',
-            title    : 'Supplier Command Center',
-            subtitle : 'Supplier packages and request readiness',
-            url      : '/supplier-center'
-        },{
-            icon     : 'icon-supplier',
-            title    : 'Supplier Package Center',
-            subtitle : 'Browse packages, shared items, and export their BOMs',
-            url      : '/supplier-package-center'
-        },{
-            icon     : 'icon-gears',
-            title    : 'ERP Integration',
-            subtitle : 'Transfer BOMs from Fusion Manage to Dolibarr',
-            url      : '/erp'
-        },{
-            icon     : 'icon-status',
-            title    : 'Test And Validation Evidence Hub',
-            subtitle : 'Test records, meetings and evidence readiness',
-            url      : '/test-validation-hub'
-        },{
-            icon     : 'icon-columns',
-            title    : 'Variant Governance Cockpit',
-            subtitle : 'Variant completeness and approval readiness',
-            url      : '/variant-governance'
         }]
-    }],[{
-        label      : 'Dashboards',
-        adminsOnly : false,
-        commands   : [{
-            icon     : 'icon-important',
-            title    : 'Problem Reporting Dashboard',
-            subtitle : 'Capture and resolve problem reports',
-            url      : '/dashboard?wsId=82'
-        },{
-            icon     : 'icon-released',
-            title    : 'Non Conformances Dashboard',
-            subtitle : 'Capture and resolve quality issues',
-            url      : '/dashboard?wsId=98'
-        },{
-            icon     : 'icon-status',
-            title    : 'Quality Closure Cockpit',
-            subtitle : 'Quality issues and closure readiness',
-            url      : '/quality-closure'
-        },{
-            icon     : 'icon-workflow',
-            title    : 'Change Requests Dashboard',
-            subtitle : 'Create and manage Change Requests',
-            url      : '/dashboard?wsId=83'
-        },{
-            icon     : 'icon-markup',
-            title    : 'Change Orders Dashboard',
-            subtitle : 'Create and manage Change Orders & Tasks',
-            url      : '/dashboard?wsId=84'
-        },{
-            icon     : 'icon-released',
-            title    : 'Product Release Readiness Cockpit',
-            subtitle : 'Release approvals and product blockers',
-            url      : '/release-readiness'
-        },{
-            icon     : 'icon-markup',
-            title    : 'Design Review Closure Cockpit',
-            subtitle : 'Open reviews and review task closure',
-            url      : '/design-review-closure'
-        },{
-            icon     : 'icon-search-list',
-            title    : 'Requirements Coverage Matrix',
-            subtitle : 'Requirement, design and verification coverage',
-            url      : '/requirements-coverage'
-        },{
-            icon     : 'icon-mow',
-            title    : 'Change Tasks Dashboard',
-            subtitle : 'Review, perform and complete assigned tasks',
-            url      : '/dashboard?wsId=80'    
-        },{
-            icon     : 'icon-dashboard',
-            title    : 'Reports Dashboard',
-            subtitle : 'Gain insights using your PLM reports',
-            url      : '/reports'
-        },{
-            icon     : 'icon-timeline',
-            title    : 'Projects Dashboard',
-            subtitle : 'Review timeline of NPI projects in progress',
-            url      : '/projects'
-        },{
-            icon     : 'icon-timeline',
-            title    : 'NPI Launch Readiness Board',
-            subtitle : 'Project deliverables and launch blockers',
-            url      : '/launch-readiness'
-        }]
-    }],[{
+    },{
         label      : 'Administration Utilities',
         adminsOnly : true,
         commands   : [{
@@ -2761,6 +2738,71 @@ exports.menu = [
             subtitle : 'Configure standards for new and existing users',
             url      : '/users'
         }]
+    }],[{
+        // Read-only cockpits that today only count workspace records; listed separately until they carry real logic.
+        label      : 'In Entwicklung',
+        adminsOnly : false,
+        commands   : [{
+            icon     : 'icon-supplier',
+            title    : 'Supplier Command Center',
+            subtitle : 'Supplier packages and request readiness',
+            url      : '/supplier-center'
+        },{
+            icon     : 'icon-service',
+            title    : 'Installed Base Service Cockpit',
+            subtitle : 'Installed assets and service readiness',
+            url      : '/installed-base-service'
+        },{
+            icon     : 'icon-service',
+            title    : 'Spare Parts Request Desk',
+            subtitle : 'Spare-part demand and sourcing readiness',
+            url      : '/spare-parts-desk'
+        },{
+            icon     : 'icon-status',
+            title    : 'Quality Closure Cockpit',
+            subtitle : 'Quality issues and closure readiness',
+            url      : '/quality-closure'
+        },{
+            icon     : 'icon-released',
+            title    : 'Product Release Readiness Cockpit',
+            subtitle : 'Release approvals and product blockers',
+            url      : '/release-readiness'
+        },{
+            icon     : 'icon-markup',
+            title    : 'Design Review Closure Cockpit',
+            subtitle : 'Open reviews and review task closure',
+            url      : '/design-review-closure'
+        },{
+            icon     : 'icon-search-list',
+            title    : 'Requirements Coverage Matrix',
+            subtitle : 'Requirement, design and verification coverage',
+            url      : '/requirements-coverage'
+        },{
+            icon     : 'icon-status',
+            title    : 'Test And Validation Evidence Hub',
+            subtitle : 'Test records, meetings and evidence readiness',
+            url      : '/test-validation-hub'
+        },{
+            icon     : 'icon-timeline',
+            title    : 'NPI Launch Readiness Board',
+            subtitle : 'Project deliverables and launch blockers',
+            url      : '/launch-readiness'
+        },{
+            icon     : 'icon-status',
+            title    : 'Digital Product Passport Readiness',
+            subtitle : 'Compliance, supplier and document readiness',
+            url      : '/dpp-readiness'
+        },{
+            icon     : 'icon-search-list',
+            title    : 'Product Data Traceability Hub',
+            subtitle : 'Items, documents and release evidence',
+            url      : '/product-traceability'
+        },{
+            icon     : 'icon-columns',
+            title    : 'Variant Governance Cockpit',
+            subtitle : 'Variant completeness and approval readiness',
+            url      : '/variant-governance'
+        }]
     }]
 ]
 
@@ -2781,6 +2823,7 @@ exports.server = {
         client         : true,  // Mobile Client
         compare        : true,  // BOM Comparison
         'condition-monitoring' : true,  // IoT Condition Monitoring dashboard
+        'intelligent-sourcing' : true,  // Intelligent Sourcing prototype (deterministic engine + Claude explanation)
         dashboard      : true,  // Process Dashboard
         'design-review-closure' : true,  // Design Review Closure Cockpit
         'dpp-readiness' : true,  // Digital Product Passport Readiness

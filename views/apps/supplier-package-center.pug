@@ -54,6 +54,12 @@ block body
                         input#filter-has-items(type='checkbox')
                         span Only packages with items
 
+                    .section-title.item-sourcing-title Sourcing by item
+                    label.input-label(for='item-query') Item (Items workspace)
+                    input#item-query(type='search', placeholder='Number or title, min. 2 characters...')
+                    select#item-pick
+                        option(value='') Search an item first
+
                 #package-list-panel
                     .section-title Supplier Packages
                     table#package-table
@@ -71,7 +77,7 @@ block body
 
                 #package-detail-panel.hidden
                     .section-title
-                        span Package details
+                        span#package-detail-title Package details
                         .section-title-actions
                             select.button#workflow-actions
                             #close-package-detail.button.icon.icon-close(title='Close package details')
@@ -85,6 +91,11 @@ block body
                     .section-title Shared items
                     #shared-items-list
                         .empty-note No shared items on this package.
+
+                    #sourcing-panel.hidden
+                        .section-title Intelligent Sourcing
+                        #sourcing-context.empty-note
+                        #sourcing-frame-wrap
 
                     #bulk-export-panel.hidden
                         .section-title Export all shared items
