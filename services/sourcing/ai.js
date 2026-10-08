@@ -4,6 +4,7 @@
 // supplier the engine marked technical FAIL (or an unknown supplier). It cannot change the ranking.
 
 const S = require('../ai/structured');
+const { CHAT_RULES } = require('../ai/chat');
 const { TECH } = require('./model');
 
 const RULES = [
@@ -37,7 +38,20 @@ const STAGE_RULES = [
     '- recommendedSupplierId is the engine recommendation or "none".',
 ].join('\n');
 
+const CHAT_SOURCING_RULES = [
+    '- Write every field in German (Deutsch). Refer to suppliers by their displayName only; never write internal ids such as DEMO-SRC-SUP-001 or DEMO-SRC-ITEM-003, use item titles.',
+    '- "evidence": at most 3 short facts from the context. "sources": the source categories behind them, using exactly: "Fusion Manage", "Prototype / Local", "Similarity Prototype", "Engine". A technicalCheck with source "prototype-local" is "Prototype / Local".',
+    '- There is NO inventory/stock, NO where-used and NO revision data in the context; never claim any. Never name a price, lead time or capability that is not in the context.',
+    '- recommendedSupplierId is the engine recommendation or "none"; a question about another supplier never changes it.',
+].join('\n');
+
 const MODES = S.defineModes({
+    chat_sourcing: {
+        system: RULES + '\n' + CHAT_SOURCING_RULES + '\n' + CHAT_RULES,
+        appendLimits: true, question: 'Answer userQuestion using only this context.',
+        text: { answer: 600, recommendedSupplierId: 64 },
+        lists: { evidence: 160, sources: 60, openItems: 160 },
+    },
     answer_sourcing_question: {
         system: RULES + '\n' + STAGE_RULES,
         appendLimits: true, question: 'Answer the question in questionFocus using only this context.',
@@ -124,14 +138,16 @@ function guardInsight(insight, analysis) {
 
 function createSourcingAiService({ config, provider }) {
     const svc = S.createStructuredAiService({ config, provider, modes: MODES, subjectOf: ctx => (ctx && ctx.verifiedFacts && ctx.verifiedFacts.item && ctx.verifiedFacts.item.id) || null });
-    async function run(mode, analysis, questionId = null) {
+    // extra = { userQuestion, conversation } for the chat mode: untrusted text, passed as DATA inside the context.
+    async function run(mode, analysis, questionId = null, extra = null) {
         const ctx = buildSourcingContext(analysis);
         if (questionId) ctx.questionFocus = { id: questionId, text: QUESTIONS[questionId].text };
+        if (extra) Object.assign(ctx, extra);
         const r = await svc.run(mode, ctx);
         guardInsight(r.insight, analysis);
         return r;
     }
-    return { run, explain: a => run('explain_sourcing_analysis', a), briefing: a => run('procurement_briefing', a), lastInsight: svc.lastInsight, MODES };
+    return { run, chat: (a, extra) => run('chat_sourcing', a, null, extra), explain: a => run('explain_sourcing_analysis', a), briefing: a => run('procurement_briefing', a), lastInsight: svc.lastInsight, MODES };
 }
 
 module.exports = { createSourcingAiService, buildSourcingContext, guardInsight, MODES, RULES, QUESTIONS };

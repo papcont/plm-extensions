@@ -56,7 +56,7 @@ function createSourcingService({ config, data, source = null, similarity = undef
     async function explain(mode, params) {
         const analysis = await analyze(params);
         if (!aiService) { const e = new Error('AI_DISABLED'); e.status = 503; throw e; }
-        const r = await aiService.run(mode, analysis, params.questionId || null);
+        const r = await aiService.run(mode, analysis, params.questionId || null, params.chat || null);
         return { analysis, insight: r.insight, cached: r.cached, latencyMs: r.latencyMs };
     }
 

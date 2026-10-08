@@ -165,8 +165,9 @@ function showConditionLink(link, title) {
         // Docked live panel (compact Condition Monitoring: tiles + charts, with a link to the full page inside).
         let frameSrc = '/condition-monitoring?wsId=' + match[1] + '&dmsId=' + match[2] + '&descriptor=' + encodeURIComponent(title || '') + '&embedded=compact';
         $('#condition-frame').attr('src', frameSrc);
-        $('body').addClass('with-condition');
-        $('#condition-link').removeClass('hidden').addClass('toggle-on').removeClass('toggle-off').off('click').on('click', function() {
+        let open = window.innerWidth >= 1500;   // on narrow screens the panel would squeeze BOM, viewer and tabs: start closed
+        $('body').toggleClass('with-condition', open);
+        $('#condition-link').removeClass('hidden').toggleClass('toggle-on', open).toggleClass('toggle-off', !open).off('click').on('click', function() {
             let on = $('body').toggleClass('with-condition').hasClass('with-condition');
             $(this).toggleClass('toggle-on', on).toggleClass('toggle-off', !on);
         });

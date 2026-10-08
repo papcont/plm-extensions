@@ -58,7 +58,7 @@ block body
                     label.input-label(for='item-query') Item (Items workspace)
                     input#item-query(type='search', placeholder='Number or title, min. 2 characters...')
                     select#item-pick
-                        option(value='') Search an item first
+                        option(value='') Choose an item...
 
                 #package-list-panel
                     .section-title Supplier Packages
@@ -94,8 +94,23 @@ block body
 
                     #sourcing-panel.hidden
                         .section-title Intelligent Sourcing
+                        #sourcing-picker
+                            label.input-label(for='pkg-item-query') Choose an item (Items workspace)
+                            input#pkg-item-query(type='search', placeholder='Number or title, min. 2 characters...')
+                            select#pkg-item-pick
+                                option(value='') Choose an item...
                         #sourcing-context.empty-note
                         #sourcing-frame-wrap
+                        #sourcing-apply.hidden
+                            .section-title Fill this package from the analysis
+                            label.input-label(for='apply-supplier') Supplier
+                            select#apply-supplier
+                            #apply-preview
+                            label.cm-case-confirm
+                                input#apply-confirm(type='checkbox')
+                                span I understand that this changes the selected package in Fusion Manage
+                            #apply-package.button(role='button') Apply to package
+                            #apply-status.empty-note
 
                     #bulk-export-panel.hidden
                         .section-title Export all shared items

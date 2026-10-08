@@ -4,7 +4,9 @@ block head
 
     link(rel='stylesheet', href='/stylesheets/apps/condition-monitoring.css')
     link(rel='stylesheet', href='/stylesheets/apps/intelligent-sourcing.css')
+    link(rel='stylesheet', href='/stylesheets/apps/ai-chat.css')
 
+    script(src='/javascripts/apps/ai-chat.js')
     script(src='/javascripts/apps/intelligent-sourcing.js')
 
 block body
@@ -102,7 +104,8 @@ block body
                 .is-assist
                     .is-assist-title Fragen an den Assistenten
                     #is-assist-q.is-assist-q
-                    .cm-ai-note AI Interpretation – nur auf Klick, feste Fragen. Der Assistent erklärt das deterministische Ergebnis und erfindet keine Daten.
+                    .cm-ai-note AI Interpretation – nur auf Klick. Der Assistent erklärt das deterministische Ergebnis und erfindet keine Daten.
+                    #is-chat
                 #is-why-body
 
             #is-history.surface-level-2

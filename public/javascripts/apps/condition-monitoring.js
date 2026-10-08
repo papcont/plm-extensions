@@ -479,6 +479,13 @@
         $('#cm-asset-link').attr('href', assetUrl(ws, dms));
         $('#cm-info-link').attr('href', assetUrl(ws, dms));
         loadParts(ws, dms, desc);
+        $('#cm-chat').show();
+        aiChat('#cm-chat', {
+            endpoint    : '/iot/ai/chat',
+            baseBody    : function () { return { assetId: String(dms) }; },
+            placeholder : 'Frage zu Zustand, Baseline oder Events …',
+            suggestions : ['Was bedeutet der aktuelle Zustand?', 'Warum gab es das letzte Condition Event?', 'Wie verlässlich ist die Baseline?', 'Was fehlt für eine Diagnose?']
+        });
         $.getJSON('/iot/asset?wsId=' + encodeURIComponent(ws) + '&assetId=' + encodeURIComponent(dms), function (res) {
             var d = res.data || res;
             if (d && (d.errorCode || d.error || d.status >= 400)) {

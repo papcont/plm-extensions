@@ -3,6 +3,7 @@
 // mode table, bounded output, context-hash cache. No tools, no FM access, no writes.
 
 const S = require('../../ai/structured');
+const { CHAT_RULES } = require('../../ai/chat');
 
 const DOMAIN = [
     'Domain facts you must respect:',
@@ -52,7 +53,23 @@ const BRIEFING_BASE = [
     '- In German, handoverNote and recommendedChecks use the same neutral advisory wording, for example "Zu erwägen: ...", "Empfohlene Prüfung: ..." or "Vorgeschlagene Nachverfolgung: ...". No imperatives or requests such as "Prüfen Sie ...", "Tauschen Sie ... aus" or "Bitte ...".',
 ].join('\n');
 
+const CHAT_SYSTEM = [
+    'You answer questions of a maintenance engineer about one industrial asset. You only interpret the JSON context you are given.',
+    '',
+    DOMAIN,
+    '- "evidence": at most 3 short facts from the context, quoted as the context shows them. "openItems": what the context cannot tell (for example cause, load, spectrum, RPM).',
+    '- Suggestions for checks are suggestions to consider, phrased neutrally ("Zu erwägen: ..."), never instructions, diagnoses or decisions.',
+    '- confidence reflects how well the data supports your answer, not machine health.',
+    LANGUAGE,
+    CHAT_RULES,
+].join('\n');
+
 const MODES = S.defineModes({
+    chat_asset: {
+        system: CHAT_SYSTEM, appendLimits: true, question: 'Answer userQuestion using only this context.',
+        text: { answer: 600 },
+        lists: { evidence: 160, openItems: 160 },
+    },
     explain_asset_state: {
         system: SYSTEM, question: 'What happened here, and how should the current machine state be interpreted?',
         text: { summary: 1200, currentStateExplanation: 1200, historicalContext: 1200, humanAssessmentContext: 1200 },

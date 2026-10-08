@@ -10,6 +10,8 @@ const iotConfig = require('../services/iot/config');
 const { createFusionManageReadRepository } = require('../services/iot/fusionManageReadRepository');
 const { buildContext } = require('../services/iot/ai/contextBuilder');
 const { createAiService } = require('../services/iot/ai/aiService');
+const { cleanMessage, cleanHistory, createRateLimiter } = require('../services/ai/chat');
+const chatAllowed = createRateLimiter({ max: 20, windowMs: 10 * 60 * 1000 });   // unauthenticated + paid: bound it per client
 const anthropic = require('../services/iot/ai/providers/anthropic');
 const { createFusionManageCaseRepository } = require('../services/iot/fusionManageCaseRepository');
 const { createFusionManageCaseSearch } = require('../services/iot/fusionManageCaseSearch');
@@ -251,6 +253,21 @@ router.post('/maintenance-case/create', async function(req, res) {
     }
 });
 
+// The ONLY data the model sees for an asset: server-side sanitized reads, never anything from the browser.
+async function buildAiContext(req, workspaceId, dmsId) {
+    const caseRef = DEMO_CASE_BY_ASSET[dmsId];
+    const repo = getFmReadRepository();
+    const [assetDetails, caseDetails] = await Promise.all([
+        repo.getItem(workspaceId, dmsId),
+        caseRef ? repo.getItem(caseRef.workspaceId, caseRef.dmsId) : null,
+    ]);
+    return buildContext({
+        state: service.getShared().getState(dmsId),
+        asset: sanitizeAsset(assetDetails, workspaceId, dmsId),
+        kase: caseDetails ? sanitizeCase(req, caseDetails, caseRef.workspaceId, caseRef.dmsId) : null,
+    });
+}
+
 // AI Insight, read-only. The server builds the context from its own sanitized reads; nothing from the
 // browser goes into the prompt except the allowlisted asset id. One handler per mode, same guards.
 function aiRoute(mode) {
@@ -267,17 +284,7 @@ function aiRoute(mode) {
             return res.status(503).json({ success: false, message: 'AI credential is not configured' });
         }
         try {
-            const caseRef = DEMO_CASE_BY_ASSET[dmsId];
-            const repo = getFmReadRepository();
-            const [assetDetails, caseDetails] = await Promise.all([
-                repo.getItem(workspaceId, dmsId),
-                caseRef ? repo.getItem(caseRef.workspaceId, caseRef.dmsId) : null,
-            ]);
-            const context = buildContext({
-                state: service.getShared().getState(dmsId),
-                asset: sanitizeAsset(assetDetails, workspaceId, dmsId),
-                kase: caseDetails ? sanitizeCase(req, caseDetails, caseRef.workspaceId, caseRef.dmsId) : null,
-            });
+            const context = await buildAiContext(req, workspaceId, dmsId);
             const r = await getAiService().run(mode, context);
             // Provenance for the UI (live vs cached, which model). Never the key, never the context.
             res.json({ success: true, data: { mode, insight: r.insight, cached: r.cached, latencyMs: r.latencyMs,
@@ -290,6 +297,32 @@ function aiRoute(mode) {
 }
 router.post('/ai/explain', aiRoute('explain_asset_state'));
 router.post('/ai/technician-briefing', aiRoute('technician_briefing'));
+
+// Free-text chat about one asset. Body: exactly { assetId, message, history? }. Same context as the other modes; message and
+// history are sanitized and reach the model only as untrusted DATA inside it. Read-only, no tools, rate limited per client.
+router.post('/ai/chat', async function(req, res) {
+    const body = req.body;
+    if (!body || typeof body !== 'object' || Array.isArray(body) || !Object.keys(body).every(k => ['assetId', 'message', 'history'].includes(k)) || typeof body.assetId !== 'string') {
+        return res.status(400).json({ success: false, message: 'Body must be { assetId, message, history? }' });
+    }
+    const message = cleanMessage(body.message), history = cleanHistory(body.history);
+    if (message === null) return res.status(400).json({ success: false, message: 'message must be 1-500 characters' });
+    if (history === null) return res.status(400).json({ success: false, message: 'history must be [{ role: "user"|"assistant", text }]' });
+    const dmsId = body.assetId;
+    const workspaceId = Object.keys(DEMO_ASSETS).find(ws => DEMO_ASSETS[ws].includes(dmsId));
+    if (!workspaceId) return res.status(403).json({ success: false, message: 'Asset not enabled for monitoring' });
+    if (!iotConfig.ai.enabled) return res.status(503).json({ success: false, message: 'AI Insight is disabled' });
+    if (iotConfig.ai.provider === 'anthropic' && !anthropic.hasAnthropicCredential()) return res.status(503).json({ success: false, message: 'AI credential is not configured' });
+    if (!chatAllowed(req.ip)) return res.status(429).json({ success: false, message: 'Too many chat requests, try again later' });
+    try {
+        const context = Object.assign(await buildAiContext(req, workspaceId, dmsId), { userQuestion: message, conversation: history });
+        const r = await getAiService().run('chat_asset', context);
+        res.json({ success: true, data: { insight: r.insight, cached: r.cached, latencyMs: r.latencyMs, provider: iotConfig.ai.provider, model: iotConfig.ai.model } });
+    } catch (error) {
+        console.log(' /iot/ai/chat failed: ' + (error && (error.status || '') + ' ' + error.message));
+        res.status(502).json({ success: false, message: 'AI Insight could not be generated' });
+    }
+});
 
 // Time series for the charts. range in ms (default 1h of sim time is many points; UI slices).
 router.get('/history', function(req, res) {

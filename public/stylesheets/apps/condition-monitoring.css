@@ -147,6 +147,7 @@ a.cm-fm-title::after { content: '\2197'; font-size: 0.75em; margin-left: 2px; op
 #cm-ai-insight ul { margin: 4px 0 0 18px; padding: 0; font-size: 13px; }
 .cm-case-latest { font-size: 12px; opacity: 0.8; margin: 2px 0 8px; overflow-wrap: anywhere; }
 .cm-case-confirm { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 12px 0 8px; }
+#cm-case-submit { height: auto; min-height: 36px; margin-top: 4px; }   /* framework .button is 20px high; the long label overflowed its border */
 .cm-case-from-event { margin-left: 8px; font-size: 12px; padding: 2px 8px; }
 .cm-events-summary { font-size: 13px; padding: 6px 0 8px; opacity: 0.85; }
 .cm-events-older > summary { cursor: pointer; font-size: 13px; opacity: 0.75; padding: 8px 0 4px; border-top: 1px solid rgba(128, 128, 128, 0.15); }

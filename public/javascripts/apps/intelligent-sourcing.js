@@ -44,6 +44,12 @@
         $('#is-ranking-body').on('change', '.is-cmp', function () { toggleCompare($(this).val(), this.checked); });
         $('#is-rfq-body').on('change', '.is-rfq-pick', function () { rfqIds = $('.is-rfq-pick:checked').map(function () { return this.value; }).get(); loadRfq(); });
         $('#is-assist-q').on('click', '.is-q', function () { askQuestion($(this).data('q')); });
+        aiChat('#is-chat', {
+            endpoint    : '/sourcing/ai/chat',
+            baseBody    : function () { var r = request(); return { itemId: r.itemId, quantity: r.quantity, requiredDate: r.requiredDate }; },
+            placeholder : 'Eigene Frage zur Empfehlung …',
+            suggestions : ['Warum ist der günstigste Lieferant nicht empfohlen?', 'Welche Daten fehlen für eine belastbare Empfehlung?', 'Worauf stützt sich der Kapazitäts-PASS?', 'Was sollte eine Anfrage klären?']
+        });
         $.when($.getJSON('/sourcing/config'), $.getJSON('/sourcing/items')).done(function (a, b) {
             cfg = a[0].data || {}; items = b[0].data || [];
             var mode = (cfg.dataSource || 'demo').toUpperCase();
@@ -128,6 +134,9 @@
     }
     function renderAll() {
         renderRequest(); renderHero(); renderAlternatives(); renderEligibility(); renderRanking(); renderCompare(); renderWhy(); renderHistory(); loadRfq();
+        // Embedded in another app (Supplier Package Center): report WHICH request was analysed. Parameters only; the host
+        // reads the analysis itself from /sourcing/analysis, so nothing in this message is trusted as data.
+        if (window.parent !== window && embeddedQuery.get('embedded')) { var rq = request(); window.parent.postMessage({ type: 'sourcing-analysis', request: { itemId: rq.itemId, quantity: rq.quantity, requiredDate: rq.requiredDate } }, window.location.origin); }
     }
 
     function renderRequest() {

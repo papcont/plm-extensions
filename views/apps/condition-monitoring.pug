@@ -3,7 +3,9 @@ extends ../framework/layout
 block head
 
     link(rel='stylesheet', href='/stylesheets/apps/condition-monitoring.css')
+    link(rel='stylesheet', href='/stylesheets/apps/ai-chat.css')
 
+    script(src='/javascripts/apps/ai-chat.js')
     script(src='/javascripts/apps/cm-format.js')
     script(src='/javascripts/apps/condition-monitoring.js')
 
@@ -208,6 +210,8 @@ block body
                     .cm-case-note#cm-brief-confidence
 
             //- 6 MAINTENANCE CASE
+                #cm-chat(style='display:none')
+
             #cm-maintenance-case.surface-level-2(style='display:none')
                 .cm-section-title Historische Erkennung / Maintenance Case
                 .cm-case-columns

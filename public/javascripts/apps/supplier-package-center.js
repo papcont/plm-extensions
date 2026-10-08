@@ -12,10 +12,14 @@ $(document).ready(function() {
 });
 
 function setUIEvents() {
+    window.addEventListener('message', onSourcingMessage);
+    $('#apply-supplier').change(renderApplyPreview);
+    $('#apply-confirm').change(updateApplyButton);
+    $('#apply-package').click(applyToPackage);
     $('#refresh').click(loadPackages);
     $('#package-search').on('input', debounce(renderPackageTable, 200));
-    $('#item-query').on('input', debounce(searchItems, 350));
-    $('#item-pick').change(pickItem);
+    bindItemPicker('#item-query', '#item-pick', function(match, label, count) { showItemSourcing(match, label, count); });
+    bindItemPicker('#pkg-item-query', '#pkg-item-pick', function(match, label, count) { renderSourcing(match, label, count); });
     $('#filter-type, #filter-status, #filter-supplier, #filter-has-items').change(renderPackageTable);
     $('#close-package-detail').click(function() {
         $('#package-detail-panel').addClass('hidden').removeClass('item-mode');
@@ -125,7 +129,7 @@ function openPackageFromUrl() {
 }
 
 function loadItemCounts() {
-    const concurrency = 8;
+    const concurrency = 3;   // browsers allow ~6 connections per host: keep some free for the user's own clicks and the embedded Sourcing
     let nextIndex = 0;
     let pending = allPackages.length;
 
@@ -145,6 +149,7 @@ function loadItemCounts() {
         }).always(function() {
             pending--;
             if(pending === 0 && $('#filter-has-items').prop('checked')) renderPackageTable();
+            if(pending === 0) loadItemChoices();   // the 500-item list is loaded once the counting is done (or earlier, when a picker is used)
             runNext();
         });
     }
@@ -250,7 +255,7 @@ function selectPackage(link) {
     $('#package-detail-panel').removeClass('hidden').removeClass('item-mode');
     $('body').addClass('with-package-detail');
     $('#shared-items-list').html('<div class="empty-note">Loading...</div>');
-    $('#sourcing-panel').addClass('hidden');
+    resetSourcingPanel();
 
     insertDetails(link, { useCache : true, toggles : true, id : 'package-details', editable : false, openInPLM : true }, {});
     insertAttachments(link, { editable : false, includeRelatedFiles : true, includeVaultFiles : true }, {});
@@ -317,73 +322,277 @@ function addSourcingButton(elemItem, entry) {
 
 }
 
-// Sourcing by item: pick a part from the Items workspace first, then show its compact Intelligent Sourcing.
-let itemSearchToken = 0;
+// Item picker (Items workspace): a single-select dropdown that is filled right away - parts Intelligent Sourcing can analyse
+// first, then the first 500 items of the Items workspace. The input above it narrows the list by a live workspace search
+// (number or title, 2+ characters) for everything else. Used twice: in the filter column (item first, no package needed)
+// and inside the package's Sourcing panel.
+const itemPickers = [];       // { input, pick } selector pairs
+let itemChoices   = null;     // first 500 items of the Items workspace: { value, label }[], null until loaded
+let itemTotal     = 0;
+let itemChoicesRequested = false;
 
-function searchItems() {
-    const query = $('#item-query').val().trim();
-    const elemPick = $('#item-pick');
-
-    if(query.length < 2) {
-        elemPick.html('<option value="">Search an item first</option>');
-        return;
-    }
-
-    const token = ++itemSearchToken;
-    elemPick.html('<option value="">Searching...</option>');
+function loadItemChoices() {
+    if(itemChoicesRequested) return;
+    itemChoicesRequested = true;
 
     $.post('/plm/search', {
-        wsId              : common.workspaceIds.items,
-        filter            : [
-            { field : 'NUMBER', type : '0', comparator : 'contains', value : query },
-            { field : 'TITLE' , type : '0', comparator : 'contains', value : query }
-        ],
-        searchLogicClause : 'OR',
-        fields            : ['NUMBER', 'TITLE'],
-        pageSize          : 30
+        wsId     : common.workspaceIds.items,
+        filter   : [],
+        fields   : ['NUMBER', 'TITLE'],
+        sort     : ['NUMBER'],
+        pageSize : 500
     }, function(response) {
-        if(token !== itemSearchToken) return;   // a newer search is already running
-
         const rows = (response.data && Array.isArray(response.data.row)) ? response.data.row : [];
-        elemPick.html('');
-        $('<option></option>').appendTo(elemPick).attr('value', '').html(rows.length ? rows.length + ' items found - choose one' : 'No items found');
-        const seen = {};   // the search returns one row per revision
-        for(const row of rows) {
-            const key = getFieldText(row, 'NUMBER') + '|' + getFieldText(row, 'TITLE');
-            if(seen[key]) continue;
-            seen[key] = true;
-            $('<option></option>').appendTo(elemPick)
-                .attr('value', JSON.stringify({ number : getFieldText(row, 'NUMBER'), title : getFieldText(row, 'TITLE') }))
-                .text(getFieldText(row, 'DESCRIPTOR') || (getFieldText(row, 'NUMBER') + ' - ' + getFieldText(row, 'TITLE')));
-        }
+        itemTotal = Number(response.data && response.data.totalResultCount) || rows.length;
+        itemChoices = uniqueItemOptions(rows);
     }).fail(function() {
-        if(token === itemSearchToken) $('#item-pick').html('<option value="">Item search failed</option>');
+        itemChoices = [];
+    }).always(refreshIdleItemPickers);
+}
+
+function uniqueItemOptions(rows) {
+    const seen = {};   // the search returns one row per revision
+    const options = [];
+    for(const row of rows) {
+        const number = getFieldText(row, 'NUMBER'), title = getFieldText(row, 'TITLE');
+        if(seen[number + '|' + title]) continue;
+        seen[number + '|' + title] = true;
+        options.push({ value : JSON.stringify({ number : number, title : title }), label : getFieldText(row, 'DESCRIPTOR') || (number + ' - ' + title) });
+    }
+    return options;
+}
+
+function refreshIdleItemPickers() {
+    for(const picker of itemPickers) {
+        if($(picker.input).val().trim().length < 2) renderItemOptions($(picker.pick));
+    }
+}
+
+function renderItemOptions(elemPick) {
+    elemPick.html('');
+    $('<option></option>').appendTo(elemPick).attr('value', '').text('Choose an item...');
+
+    loadSourcingItems(function(known) {
+        if(known.length) {
+            const group = $('<optgroup></optgroup>').appendTo(elemPick).attr('label', 'With Sourcing data (' + known.length + ')');
+            for(const item of known) {
+                $('<option></option>').appendTo(group).attr('value', JSON.stringify({ number : item.id, title : item.title })).text(item.id + ' - ' + item.title);
+            }
+        }
+
+        const group = $('<optgroup></optgroup>').appendTo(elemPick);
+        if(itemChoices === null) {
+            group.attr('label', 'Items workspace');
+            $('<option disabled></option>').appendTo(group).text('Loading items...');
+        } else {
+            group.attr('label', 'Items workspace (' + itemChoices.length + (itemTotal > itemChoices.length ? ' of ' + itemTotal + ' - type to search the rest' : '') + ')');
+            for(const option of itemChoices) $('<option></option>').appendTo(group).attr('value', option.value).text(option.label);
+        }
     });
 }
 
-function pickItem() {
-    const value = $('#item-pick').val();
-    if(isBlank(value)) return;
+function bindItemPicker(inputSelector, pickSelector, onPick) {
 
-    const item  = JSON.parse(value);
-    const label = $('#item-pick option:selected').text();
+    let token = 0;
+    itemPickers.push({ input : inputSelector, pick : pickSelector });
+    $(inputSelector + ', ' + pickSelector).on('focus mousedown', loadItemChoices);   // loads only once
+    renderItemOptions($(pickSelector));
 
-    loadSourcingItems(function(items) {
-        const title = String(item.title).toLowerCase();
-        const match = items.filter(function(i) { return i.id === item.number || String(i.title).toLowerCase() === title; })[0];
-        showItemSourcing(match, label, items.length);
+    $(inputSelector).on('input', debounce(function() {
+        const query = $(inputSelector).val().trim();
+        const elemPick = $(pickSelector);
+
+        if(query.length < 2) {
+            ++token;
+            renderItemOptions(elemPick);
+            return;
+        }
+
+        const current = ++token;
+        elemPick.html('<option value="">Searching...</option>');
+
+        $.post('/plm/search', {
+            wsId              : common.workspaceIds.items,
+            filter            : [
+                { field : 'NUMBER', type : '0', comparator : 'contains', value : query },
+                { field : 'TITLE' , type : '0', comparator : 'contains', value : query }
+            ],
+            searchLogicClause : 'OR',
+            fields            : ['NUMBER', 'TITLE'],
+            pageSize          : 30
+        }, function(response) {
+            if(current !== token) return;   // a newer search is already running
+
+            const rows    = (response.data && Array.isArray(response.data.row)) ? response.data.row : [];
+            const options = uniqueItemOptions(rows);
+            elemPick.html('');
+            $('<option></option>').appendTo(elemPick).attr('value', '').text(options.length ? options.length + ' items found - choose one' : 'No items found');
+            for(const option of options) $('<option></option>').appendTo(elemPick).attr('value', option.value).text(option.label);
+        }).fail(function() {
+            if(current === token) $(pickSelector).html('<option value="">Item search failed</option>');
+        });
+    }, 350));
+
+    $(pickSelector).change(function() {
+        const value = $(pickSelector).val();
+        if(isBlank(value)) return;
+
+        const item  = JSON.parse(value);
+        const label = $(pickSelector + ' option:selected').text();
+
+        loadSourcingItems(function(items) {
+            const title = String(item.title).toLowerCase();
+            const match = items.filter(function(i) { return i.id === item.number || String(i.title).toLowerCase() === title; })[0];
+            onPick(match, label, items.length);
+        });
+    });
+
+}
+
+// ---- Fill the selected package from the Sourcing analysis: supplier + the part to order (Shared Items) ---------------------
+// The embedded Sourcing reports which request it analysed (parameters only). The analysis itself is read from
+// /sourcing/analysis here, so nothing in the message is trusted. A technically failed supplier is never offered.
+let sourcingRequest = null;   // { itemId, quantity, requiredDate }
+let applyContext    = null;   // { link, analysis, itemLink, itemTitle, details }
+
+function onSourcingMessage(event) {
+    const frame = $('#sourcing-frame-wrap iframe')[0];
+    if(event.origin !== window.location.origin || !frame || event.source !== frame.contentWindow) return;
+    if(!event.data || event.data.type !== 'sourcing-analysis' || !event.data.request) return;
+
+    sourcingRequest = event.data.request;
+    prepareApply();
+}
+
+function hideApply() {
+    applyContext = null;
+    $('#sourcing-apply').addClass('hidden');
+    $('#apply-confirm').prop('checked', false);
+    $('#apply-status').html('');
+}
+
+function getDetailsField(details, fieldId) {
+    for(const section of (details.sections || [])) {
+        for(const field of (section.fields || [])) {
+            if((field.__self__ || '').endsWith('/fields/' + fieldId)) return { field : field, sectionId : String(section.link || '').split('/').pop(), locked : !!section.sectionLocked };
+        }
+    }
+    return null;
+}
+
+function prepareApply() {
+    hideApply();
+    const link = selectedPackageLink;
+    if(!link || !sourcingRequest || $('#package-detail-panel').hasClass('item-mode')) return;
+
+    $.when($.getJSON('/sourcing/analysis', sourcingRequest), $.get('/plm/details', { link : link, useCache : false })).done(function(analysisResponse, detailsResponse) {
+        if(link !== selectedPackageLink) return;
+
+        const analysis = analysisResponse[0].data || {};
+        const details  = (detailsResponse[0] && detailsResponse[0].data) || {};
+        const links    = analysis.fmLinks || {};
+        const itemRef  = links.items && links.items[analysis.item && analysis.item.id];
+        const suppliers = (analysis.candidates || []).filter(function(c) {
+            return c.technicalStatus !== 'FAIL' && links.suppliers && links.suppliers[c.supplierId];
+        });
+
+        const elemSupplier = $('#apply-supplier').html('');
+        for(const c of suppliers) {
+            $('<option></option>').appendTo(elemSupplier).attr('value', c.supplierId)
+                .text((c.displayName || c.name) + ' - ' + (c.technicalStatus === 'UNKNOWN' ? 'REVIEW' : c.technicalStatus) + (c.overallScore != null ? ', score ' + c.overallScore : '') + (c.supplierId === analysis.recommendedSupplierId ? ' (recommended)' : ''));
+        }
+        if(analysis.recommendedSupplierId) elemSupplier.val(analysis.recommendedSupplierId);
+
+        applyContext = { link : link, analysis : analysis, details : details, suppliers : suppliers, itemTitle : analysis.item && analysis.item.title,
+            itemLink : itemRef ? '/api/v3/workspaces/' + itemRef.workspaceId + '/items/' + itemRef.dmsId : null };
+
+        $('#sourcing-apply').removeClass('hidden');
+        renderApplyPreview();
     });
 }
 
-function showItemSourcing(match, label, knownCount) {
-    selectedPackageLink = null;
-    $('.package-row').removeClass('selected');
-    $('#bulk-export-panel, #item-viewer-panel').addClass('hidden');
+function renderApplyPreview() {
+    if(!applyContext) return;
 
-    $('#package-detail-title').html('Sourcing by item');
-    $('#package-detail-panel').removeClass('hidden').addClass('item-mode');
-    $('body').addClass('with-package-detail');
+    const ctx         = applyContext;
+    const elemPreview = $('#apply-preview').html('');
+    const supplier    = ctx.suppliers.filter(function(c) { return c.supplierId === $('#apply-supplier').val(); })[0];
+    const current     = getDetailsField(ctx.details, 'SUPPLIER');
+    const notes       = getDetailsField(ctx.details, 'NOTES');
+    const currentName = (current && current.field.value && current.field.value.title) || 'none';
 
+    ctx.problem = null;
+    if(!supplier)           ctx.problem = 'No supplier without a technical failure is available for this part.';
+    else if(!current || !notes) ctx.problem = 'This package has no Supplier / Notes field.';
+    else if(current.locked || notes.locked) ctx.problem = 'The header of this package is locked (checked out or locked by its workflow state) - Fusion Manage would reject the change.';
+
+    if(ctx.problem) {
+        $('<div></div>').appendTo(elemPreview).addClass('empty-note').text(ctx.problem);
+    } else {
+        const supplierName = supplier.displayName || supplier.name;
+        const request = sourcingRequest || {};
+        const line = 'Intelligent Sourcing: ' + ctx.itemTitle + (request.quantity ? ', quantity ' + request.quantity : '') + (request.requiredDate ? ', required by ' + request.requiredDate : '') + ' - supplier ' + supplierName;
+        const supplierRef = ctx.analysis.fmLinks.suppliers[supplier.supplierId];
+        $('<div></div>').appendTo(elemPreview).addClass('apply-line').append($('<span></span>').text('Supplier: ' + currentName + ' \u2192 '), $('<strong></strong>').text(supplierName));
+        $('<div></div>').appendTo(elemPreview).addClass('apply-line').append($('<span></span>').text('Notes: add "'), $('<strong></strong>').text(line), $('<span></span>').text('"'));
+        // ponytail: Fusion Manage silently ignores edits of Shared Items on an existing package (204, value unchanged), so the part goes into Notes.
+        if(supplier.technicalStatus === 'UNKNOWN') $('<div></div>').appendTo(elemPreview).addClass('empty-note').text('Note: this supplier is REVIEW - its technical suitability is not confirmed.');
+        ctx.change = { supplierLink : '/api/v3/workspaces/' + supplierRef.workspaceId + '/items/' + supplierRef.dmsId, supplierName : supplierName,
+            supplierSection : current.sectionId, notesSection : notes.sectionId,
+            notesHtml : (notes.field.value ? String(notes.field.value) : '') + '<p>' + $('<div></div>').text(line).html() + '</p>' };
+    }
+    updateApplyButton();
+}
+
+function updateApplyButton() {
+    const ready = !!(applyContext && !applyContext.problem && $('#apply-confirm').prop('checked'));
+    $('#apply-package').toggleClass('disabled', !ready);
+}
+
+function applyToPackage() {
+    const ctx = applyContext;
+    if(!ctx || ctx.problem || !ctx.change || !$('#apply-confirm').prop('checked') || $('#apply-package').hasClass('busy')) return;
+
+    const sections = {};
+    const add = function(sectionId, field) { (sections[sectionId] = sections[sectionId] || { id : sectionId, fields : [] }).fields.push(field); };
+    add(ctx.change.supplierSection, { fieldId : 'SUPPLIER',     type : 'single-select', value : ctx.change.supplierLink });
+    add(ctx.change.notesSection,    { fieldId : 'NOTES',        value : ctx.change.notesHtml });
+
+    $('#apply-package').addClass('busy disabled');
+    $('#apply-status').text('Writing to Fusion Manage...');
+
+    $.post('/plm/edit', { link : ctx.link, sections : Object.values(sections) }, function(response) {
+        if(response.error) {
+            $('#apply-status').text('Fusion Manage rejected the change: ' + (response.message || response.status || 'unknown error'));
+            return;
+        }
+        const name = ctx.change.supplierName, title = ctx.itemTitle, link = ctx.link;
+        loadPackages();
+        selectPackage(link);
+        setTimeout(function() { $('#apply-status').text('Package updated: supplier ' + name + ', part ' + title + ' noted in Notes.'); }, 0);
+    }).fail(function() {
+        $('#apply-status').text('The change could not be written (no permission or package not editable in its current state).');
+    }).always(function() {
+        $('#apply-package').removeClass('busy');
+        updateApplyButton();
+    });
+}
+
+// Empty sourcing panel of the selected package: only the picker, no analysis until an item is chosen.
+function resetSourcingPanel() {
+    sourcingRequest = null;
+    hideApply();
+    $('#sourcing-panel').removeClass('hidden');
+    $('#sourcing-frame-wrap').html('');
+    $('#sourcing-context').html('Choose an item to analyse its suppliers and alternatives.');
+    $('#pkg-item-query').val('');
+    renderItemOptions($('#pkg-item-pick'));
+}
+
+// Show the compact Intelligent Sourcing for the chosen item, or say honestly that it has no data for it.
+function renderSourcing(match, label, knownCount) {
+    sourcingRequest = null;
+    hideApply();
     const safeLabel = $('<div></div>').text(label).html();
     $('#sourcing-frame-wrap').html('');
     if(match) {
@@ -393,6 +602,19 @@ function showItemSourcing(match, label, knownCount) {
         $('#sourcing-context').html('Intelligent Sourcing has no data for <strong>' + safeLabel + '</strong> yet. It currently covers ' + knownCount + ' parts (capabilities, suppliers, purchase history).');
     }
     $('#sourcing-panel').removeClass('hidden');
+}
+
+// Item first: no package needed, the detail panel shows only the sourcing section.
+function showItemSourcing(match, label, knownCount) {
+    selectedPackageLink = null;
+    $('.package-row').removeClass('selected');
+    $('#bulk-export-panel, #item-viewer-panel').addClass('hidden');
+
+    $('#package-detail-title').html('Sourcing by item');
+    $('#package-detail-panel').removeClass('hidden').addClass('item-mode');
+    $('body').addClass('with-package-detail');
+
+    renderSourcing(match, label, knownCount);
 }
 
 function loadSourcingItems(callback) {
@@ -414,9 +636,6 @@ function getDetailsFieldValue(data, fieldId) {
 // Packages written by Intelligent Sourcing (purchase history) keep their facts in NOTES as "key=value; key=value",
 // e.g. "item=DEMO-SRC-ITEM-002; supplier=DEMO-SRC-SUP-001; quantity=20; unitPriceEUR=18.70". Show the part's compact sourcing next to them.
 function renderSourcingPanel(data) {
-
-    $('#sourcing-panel').addClass('hidden');
-    $('#sourcing-frame-wrap').html('');
 
     const notes = $('<textarea></textarea>').html(getDetailsFieldValue(data, 'NOTES')).text();
     const facts = {};

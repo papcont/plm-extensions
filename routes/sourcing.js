@@ -12,6 +12,8 @@ const { createSourcingAiService } = require('../services/sourcing/ai');
 const anthropic = require('../services/ai/providers/anthropic');
 const { CONFIRM } = require('../services/sourcing/rfq');
 const { QUESTIONS } = require('../services/sourcing/ai');
+const { cleanMessage, cleanHistory, createRateLimiter } = require('../services/ai/chat');
+const chatAllowed = createRateLimiter({ max: 20, windowMs: 10 * 60 * 1000 });   // unauthenticated + paid: bound it per client
 let service;   // resolved once on first request (like routes/iot.js): any SOURCING_* / environment change needs a server restart
 
 function aiReady() { return config.ai.enabled && config.ai.provider === 'anthropic' && anthropic.hasAnthropicCredential(); }
@@ -139,6 +141,31 @@ router.post('/ai/ask', async function(req, res) {
             insight: { answer: f(i.answer), evidence: i.evidence.map(f), sources: i.sources.map(f), openItems: i.openItems.map(f), recommendedSupplierId: i.recommendedSupplierId, confidence: i.confidence } } });
     } catch (e) {
         console.log(' /sourcing/ai/ask failed: ' + (e && e.message));
+        if (/^AI_OVERRIDE_BLOCKED/.test(e && e.message)) return res.status(409).json({ success: false, message: 'AI response rejected: it contradicted the deterministic technical result' });
+        res.status(502).json({ success: false, message: 'AI explanation could not be generated' });
+    }
+});
+// Free-text chat about the selected analysis. Body: { itemId, quantity?, requiredDate?, message, history? }. The server
+// rebuilds the analysis and the bounded context itself; message/history are sanitized and reach the model only as
+// untrusted DATA. The same guard as every other mode blocks a recommendation of a technically failed supplier.
+router.post('/ai/chat', async function(req, res) {
+    if (!onlyKeys(req.body, ['itemId', 'quantity', 'requiredDate', 'message', 'history'])) return res.status(400).json({ success: false, message: 'Body must be { itemId, quantity?, requiredDate?, message, history? }' });
+    const r = parseRequest(req.body);
+    if (r.error) return res.status(400).json({ success: false, message: r.error });
+    const message = cleanMessage(req.body.message), history = cleanHistory(req.body.history);
+    if (message === null) return res.status(400).json({ success: false, message: 'message must be 1-500 characters' });
+    if (history === null) return res.status(400).json({ success: false, message: 'history must be [{ role: "user"|"assistant", text }]' });
+    if (!config.ai.enabled) return res.status(503).json({ success: false, message: 'AI explanation is disabled' });
+    if (!aiReady()) return res.status(503).json({ success: false, message: 'AI credential is not configured' });
+    if (!chatAllowed(req.ip)) return res.status(429).json({ success: false, message: 'Too many chat requests, try again later' });
+    try {
+        const out = await getService().explain('chat_sourcing', Object.assign({ chat: { userQuestion: message, conversation: history } }, r));
+        const i = out.insight, f = t => nameIds(t, out.analysis);
+        res.json({ success: true, data: { cached: out.cached, latencyMs: out.latencyMs, provider: config.ai.provider, model: config.ai.model,
+            recommendedSupplierId: out.analysis.recommendedSupplierId,
+            insight: { answer: f(i.answer), evidence: i.evidence.map(f), sources: i.sources.map(f), openItems: i.openItems.map(f), recommendedSupplierId: i.recommendedSupplierId, confidence: i.confidence } } });
+    } catch (e) {
+        console.log(' /sourcing/ai/chat failed: ' + (e && e.message));
         if (/^AI_OVERRIDE_BLOCKED/.test(e && e.message)) return res.status(409).json({ success: false, message: 'AI response rejected: it contradicted the deterministic technical result' });
         res.status(502).json({ success: false, message: 'AI explanation could not be generated' });
     }

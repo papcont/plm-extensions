@@ -415,3 +415,4 @@ th.sync-column {
 .with-condition.no-ecad #condition { display : block; }
 .with-condition.no-ecad:not(.layout-h) .viewer,
 .with-condition.no-ecad #contents { right : calc(var(--width-condition) + (2 * var(--border-h))); }
+@media (max-width: 1699px) { :root { --width-condition : 380px; } }

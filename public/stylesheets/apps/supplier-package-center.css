@@ -291,3 +291,13 @@ body.with-package-detail #workspace {
 #package-detail-panel.item-mode #workflow-actions { display: none; }
 .item-sourcing-title { margin-top: 18px; }
 #item-pick { width: 100%; }
+#package-detail-panel.item-mode #sourcing-picker { display: none; }
+#pkg-item-pick { width: 100%; }
+#item-query, #pkg-item-query, #item-pick, #pkg-item-pick { box-sizing: border-box; display: block; margin-bottom: 6px; width: 100%; }
+
+#sourcing-apply { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(128, 128, 128, 0.25); }
+#apply-supplier { width: 100%; }
+.apply-line { font-size: 13px; margin: 6px 0; }
+#apply-package { margin-top: 6px; }
+#apply-package.disabled { opacity: 0.45; pointer-events: none; }
+#apply-package.busy { opacity: 0.6; }
