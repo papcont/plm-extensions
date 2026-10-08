@@ -37,3 +37,5 @@ vb-*.png
 /storage/iot/*
 mebom-*.png
 ux-*.png
+# local research material incl. a code-signing certificate (.pfx): never commit
+knowledge/

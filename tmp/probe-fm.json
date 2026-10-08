@@ -1,0 +1,1160 @@
+{
+ "engineVersion": 1,
+ "request": {
+  "itemId": "U-HALTER-800",
+  "quantity": 20,
+  "requiredDate": "2026-11-15",
+  "availableDays": 38,
+  "analyzedAt": "2026-10-07T19:25:55.448Z"
+ },
+ "item": {
+  "id": "U-HALTER-800",
+  "title": "U-Halter 800",
+  "family": "sheet-metal",
+  "requirements": {
+   "process": "LASER_CUTTING+BENDING",
+   "material": "S235JR",
+   "maxDimensionMm": 800,
+   "certifications": []
+  }
+ },
+ "candidates": [
+  {
+   "supplierId": "DEMO-SRC-SUP-005",
+   "name": "DEMO-SRC-SUP-005 Stahlhandel M?ller GmbH",
+   "country": null,
+   "status": null,
+   "technicalStatus": "UNKNOWN",
+   "technicalReasons": [
+    "capacity: no capability data"
+   ],
+   "technicalChecks": [
+    {
+     "check": "supplierStatus",
+     "required": "not BLOCKED",
+     "status": "PASS",
+     "actual": null,
+     "detail": "ok"
+    },
+    {
+     "check": "process",
+     "required": "LASER_CUTTING+BENDING",
+     "status": "PASS",
+     "actual": "LASER_CUTTING+BENDING",
+     "detail": "ok"
+    },
+    {
+     "check": "material",
+     "required": "S235JR",
+     "status": "PASS",
+     "actual": "S235JR",
+     "detail": "ok"
+    },
+    {
+     "check": "maxDimensionMm",
+     "required": 800,
+     "status": "PASS",
+     "actual": 1500,
+     "detail": "ok"
+    },
+    {
+     "check": "capacity",
+     "required": 20,
+     "status": "UNKNOWN",
+     "actual": null,
+     "detail": "no capability data"
+    }
+   ],
+   "unitPrice": 14.74,
+   "priceSource": "history",
+   "priceEvidence": {
+    "unitPrice": 14.74,
+    "source": "history",
+    "date": "2026-06-15"
+   },
+   "leadTimeDays": 3,
+   "leadTimeSource": "capability",
+   "onTimeRate": null,
+   "deliveryRisk": null,
+   "purchaseCount": 1,
+   "similarPurchaseCount": 0,
+   "defectRate": 0,
+   "qualityTrend": null,
+   "capabilitySource": "fusion-manage",
+   "capabilityUpdatedAt": null,
+   "commercialScore": 100,
+   "historyScore": 60,
+   "deliveryScore": 100,
+   "qualityScore": 100,
+   "overallScore": 94,
+   "dataCompleteness": 1,
+   "confidence": "high",
+   "missingData": [],
+   "conflicts": [],
+   "evidence": {
+    "purchases": [
+     {
+      "id": "DEMO-SRC-PO-0029",
+      "date": "2026-06-15",
+      "quantity": 200,
+      "unitPrice": 14.74,
+      "currency": "EUR",
+      "promisedDate": null,
+      "deliveredDate": null,
+      "rejectedQty": 0
+     }
+    ],
+    "similar": []
+   },
+   "rank": 1
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-002",
+   "name": "DEMO-SRC-SUP-002 Las ertechnik Nord GmbH",
+   "country": null,
+   "status": null,
+   "technicalStatus": "UNKNOWN",
+   "technicalReasons": [
+    "capacity: no capability data"
+   ],
+   "technicalChecks": [
+    {
+     "check": "supplierStatus",
+     "required": "not BLOCKED",
+     "status": "PASS",
+     "actual": null,
+     "detail": "ok"
+    },
+    {
+     "check": "process",
+     "required": "LASER_CUTTING+BENDING",
+     "status": "PASS",
+     "actual": "LASER_CUTTING+BENDING",
+     "detail": "ok"
+    },
+    {
+     "check": "material",
+     "required": "S235JR",
+     "status": "PASS",
+     "actual": "S235JR",
+     "detail": "ok"
+    },
+    {
+     "check": "maxDimensionMm",
+     "required": 800,
+     "status": "PASS",
+     "actual": 1000,
+     "detail": "ok"
+    },
+    {
+     "check": "capacity",
+     "required": 20,
+     "status": "UNKNOWN",
+     "actual": null,
+     "detail": "no capability data"
+    }
+   ],
+   "unitPrice": 16.9,
+   "priceSource": "quote",
+   "priceEvidence": {
+    "unitPrice": 16.9,
+    "minQty": 20,
+    "source": "quote"
+   },
+   "leadTimeDays": 3,
+   "leadTimeSource": "capability",
+   "onTimeRate": null,
+   "deliveryRisk": null,
+   "purchaseCount": 0,
+   "similarPurchaseCount": 0,
+   "defectRate": null,
+   "qualityTrend": null,
+   "capabilitySource": "fusion-manage",
+   "capabilityUpdatedAt": null,
+   "commercialScore": 87,
+   "historyScore": null,
+   "deliveryScore": 100,
+   "qualityScore": null,
+   "overallScore": 93,
+   "dataCompleteness": 0.65,
+   "confidence": "medium",
+   "missingData": [
+    "history",
+    "qualityHistory"
+   ],
+   "conflicts": [],
+   "evidence": {
+    "purchases": [],
+    "similar": []
+   },
+   "rank": 2
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-001",
+   "name": "DEMO-SRC-SUP-001 Blechbieger Meier GmbH",
+   "country": null,
+   "status": null,
+   "technicalStatus": "UNKNOWN",
+   "technicalReasons": [
+    "capacity: no capability data"
+   ],
+   "technicalChecks": [
+    {
+     "check": "supplierStatus",
+     "required": "not BLOCKED",
+     "status": "PASS",
+     "actual": null,
+     "detail": "ok"
+    },
+    {
+     "check": "process",
+     "required": "LASER_CUTTING+BENDING",
+     "status": "PASS",
+     "actual": "LASER_CUTTING+BENDING",
+     "detail": "ok"
+    },
+    {
+     "check": "material",
+     "required": "S235JR",
+     "status": "PASS",
+     "actual": "S235JR",
+     "detail": "ok"
+    },
+    {
+     "check": "maxDimensionMm",
+     "required": 800,
+     "status": "PASS",
+     "actual": 1200,
+     "detail": "ok"
+    },
+    {
+     "check": "capacity",
+     "required": 20,
+     "status": "UNKNOWN",
+     "actual": null,
+     "detail": "no capability data"
+    }
+   ],
+   "unitPrice": 18.7,
+   "priceSource": "quote",
+   "priceEvidence": {
+    "unitPrice": 18.7,
+    "minQty": 10,
+    "source": "quote"
+   },
+   "leadTimeDays": 4,
+   "leadTimeSource": "capability",
+   "onTimeRate": null,
+   "deliveryRisk": null,
+   "purchaseCount": 0,
+   "similarPurchaseCount": 0,
+   "defectRate": null,
+   "qualityTrend": null,
+   "capabilitySource": "fusion-manage",
+   "capabilityUpdatedAt": null,
+   "commercialScore": 79,
+   "historyScore": null,
+   "deliveryScore": 100,
+   "qualityScore": null,
+   "overallScore": 89,
+   "dataCompleteness": 0.65,
+   "confidence": "medium",
+   "missingData": [
+    "history",
+    "qualityHistory"
+   ],
+   "conflicts": [],
+   "evidence": {
+    "purchases": [],
+    "similar": []
+   },
+   "rank": 3
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-010",
+   "name": "DEMO-SRC-SUP-010 Normteile K?nig GmbH",
+   "country": null,
+   "status": null,
+   "technicalStatus": "FAIL",
+   "technicalReasons": [
+    "process: LASER_CUTTING+BENDING not offered",
+    "material: S235JR not offered",
+    "maxDimensionMm: no capability data",
+    "capacity: no capability data"
+   ],
+   "technicalChecks": [
+    {
+     "check": "supplierStatus",
+     "required": "not BLOCKED",
+     "status": "PASS",
+     "actual": null,
+     "detail": "ok"
+    },
+    {
+     "check": "process",
+     "required": "LASER_CUTTING+BENDING",
+     "status": "FAIL",
+     "actual": "PURCHASED_STANDARD",
+     "detail": "LASER_CUTTING+BENDING not offered"
+    },
+    {
+     "check": "material",
+     "required": "S235JR",
+     "status": "FAIL",
+     "actual": "8.8 steel",
+     "detail": "S235JR not offered"
+    },
+    {
+     "check": "maxDimensionMm",
+     "required": 800,
+     "status": "UNKNOWN",
+     "actual": null,
+     "detail": "no capability data"
+    },
+    {
+     "check": "capacity",
+     "required": 20,
+     "status": "UNKNOWN",
+     "actual": null,
+     "detail": "no capability data"
+    }
+   ],
+   "unitPrice": 0.18,
+   "priceSource": "quote",
+   "priceEvidence": {
+    "unitPrice": 0.18,
+    "minQty": 1,
+    "source": "quote"
+   },
+   "leadTimeDays": 1,
+   "leadTimeSource": "capability",
+   "onTimeRate": null,
+   "deliveryRisk": null,
+   "purchaseCount": 0,
+   "similarPurchaseCount": 0,
+   "defectRate": null,
+   "qualityTrend": null,
+   "capabilitySource": "fusion-manage",
+   "capabilityUpdatedAt": null,
+   "commercialScore": 100,
+   "historyScore": null,
+   "deliveryScore": 100,
+   "qualityScore": null,
+   "overallScore": null,
+   "dataCompleteness": 0,
+   "confidence": "low",
+   "missingData": [
+    "history",
+    "qualityHistory"
+   ],
+   "conflicts": [],
+   "evidence": {
+    "purchases": [],
+    "similar": []
+   },
+   "rank": 4
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-006",
+   "name": "DEMO-SRC-SUP-006 Oberfl?chentechnik Krause GmbH",
+   "country": null,
+   "status": null,
+   "technicalStatus": "FAIL",
+   "technicalReasons": [
+    "process: LASER_CUTTING+BENDING not offered",
+    "capacity: no capability data"
+   ],
+   "technicalChecks": [
+    {
+     "check": "supplierStatus",
+     "required": "not BLOCKED",
+     "status": "PASS",
+     "actual": null,
+     "detail": "ok"
+    },
+    {
+     "check": "process",
+     "required": "LASER_CUTTING+BENDING",
+     "status": "FAIL",
+     "actual": "POWDER_COATING+DEBURRING",
+     "detail": "LASER_CUTTING+BENDING not offered"
+    },
+    {
+     "check": "material",
+     "required": "S235JR",
+     "status": "PASS",
+     "actual": "S235JR",
+     "detail": "ok"
+    },
+    {
+     "check": "maxDimensionMm",
+     "required": 800,
+     "status": "PASS",
+     "actual": 1000,
+     "detail": "ok"
+    },
+    {
+     "check": "capacity",
+     "required": 20,
+     "status": "UNKNOWN",
+     "actual": null,
+     "detail": "no capability data"
+    }
+   ],
+   "unitPrice": 7.5,
+   "priceSource": "quote",
+   "priceEvidence": {
+    "unitPrice": 7.5,
+    "minQty": 5,
+    "source": "quote"
+   },
+   "leadTimeDays": 5,
+   "leadTimeSource": "capability",
+   "onTimeRate": null,
+   "deliveryRisk": null,
+   "purchaseCount": 0,
+   "similarPurchaseCount": 0,
+   "defectRate": null,
+   "qualityTrend": null,
+   "capabilitySource": "fusion-manage",
+   "capabilityUpdatedAt": null,
+   "commercialScore": 100,
+   "historyScore": null,
+   "deliveryScore": 100,
+   "qualityScore": null,
+   "overallScore": null,
+   "dataCompleteness": 0,
+   "confidence": "low",
+   "missingData": [
+    "history",
+    "qualityHistory"
+   ],
+   "conflicts": [],
+   "evidence": {
+    "purchases": [],
+    "similar": []
+   },
+   "rank": 5
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-007",
+   "name": "DEMO-SRC-SUP-007 Drehtechnik Hansen GmbH",
+   "country": null,
+   "status": null,
+   "technicalStatus": "FAIL",
+   "technicalReasons": [
+    "process: LASER_CUTTING+BENDING not offered",
+    "material: S235JR not offered",
+    "maxDimensionMm: no capability data",
+    "capacity: no capability data"
+   ],
+   "technicalChecks": [
+    {
+     "check": "supplierStatus",
+     "required": "not BLOCKED",
+     "status": "PASS",
+     "actual": null,
+     "detail": "ok"
+    },
+    {
+     "check": "process",
+     "required": "LASER_CUTTING+BENDING",
+     "status": "FAIL",
+     "actual": "TURNING",
+     "detail": "LASER_CUTTING+BENDING not offered"
+    },
+    {
+     "check": "material",
+     "required": "S235JR",
+     "status": "FAIL",
+     "actual": "42CrMo4",
+     "detail": "S235JR not offered"
+    },
+    {
+     "check": "maxDimensionMm",
+     "required": 800,
+     "status": "UNKNOWN",
+     "actual": null,
+     "detail": "no capability data"
+    },
+    {
+     "check": "capacity",
+     "required": 20,
+     "status": "UNKNOWN",
+     "actual": null,
+     "detail": "no capability data"
+    }
+   ],
+   "unitPrice": 8.9,
+   "priceSource": "quote",
+   "priceEvidence": {
+    "unitPrice": 8.9,
+    "minQty": 10,
+    "source": "quote"
+   },
+   "leadTimeDays": 7,
+   "leadTimeSource": "capability",
+   "onTimeRate": null,
+   "deliveryRisk": null,
+   "purchaseCount": 0,
+   "similarPurchaseCount": 0,
+   "defectRate": null,
+   "qualityTrend": null,
+   "capabilitySource": "fusion-manage",
+   "capabilityUpdatedAt": null,
+   "commercialScore": 100,
+   "historyScore": null,
+   "deliveryScore": 100,
+   "qualityScore": null,
+   "overallScore": null,
+   "dataCompleteness": 0,
+   "confidence": "low",
+   "missingData": [
+    "history",
+    "qualityHistory"
+   ],
+   "conflicts": [],
+   "evidence": {
+    "purchases": [],
+    "similar": []
+   },
+   "rank": 6
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-011",
+   "name": "DEMO-SRC-SUP-011 Edelstahlzentrum Nord GmbH",
+   "country": null,
+   "status": null,
+   "technicalStatus": "FAIL",
+   "technicalReasons": [
+    "material: S235JR not offered",
+    "capacity: no capability data"
+   ],
+   "technicalChecks": [
+    {
+     "check": "supplierStatus",
+     "required": "not BLOCKED",
+     "status": "PASS",
+     "actual": null,
+     "detail": "ok"
+    },
+    {
+     "check": "process",
+     "required": "LASER_CUTTING+BENDING",
+     "status": "PASS",
+     "actual": "LASER_CUTTING+BENDING",
+     "detail": "ok"
+    },
+    {
+     "check": "material",
+     "required": "S235JR",
+     "status": "FAIL",
+     "actual": "1.4301",
+     "detail": "S235JR not offered"
+    },
+    {
+     "check": "maxDimensionMm",
+     "required": 800,
+     "status": "PASS",
+     "actual": 1200,
+     "detail": "ok"
+    },
+    {
+     "check": "capacity",
+     "required": 20,
+     "status": "UNKNOWN",
+     "actual": null,
+     "detail": "no capability data"
+    }
+   ],
+   "unitPrice": 22.5,
+   "priceSource": "quote",
+   "priceEvidence": {
+    "unitPrice": 22.5,
+    "minQty": 10,
+    "source": "quote"
+   },
+   "leadTimeDays": 6,
+   "leadTimeSource": "capability",
+   "onTimeRate": null,
+   "deliveryRisk": null,
+   "purchaseCount": 0,
+   "similarPurchaseCount": 0,
+   "defectRate": null,
+   "qualityTrend": null,
+   "capabilitySource": "fusion-manage",
+   "capabilityUpdatedAt": null,
+   "commercialScore": 66,
+   "historyScore": null,
+   "deliveryScore": 100,
+   "qualityScore": null,
+   "overallScore": null,
+   "dataCompleteness": 0,
+   "confidence": "low",
+   "missingData": [
+    "history",
+    "qualityHistory"
+   ],
+   "conflicts": [],
+   "evidence": {
+    "purchases": [],
+    "similar": []
+   },
+   "rank": 7
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-003",
+   "name": "DEMO-SRC-SUP-003 CNC Schmidt GmbH",
+   "country": null,
+   "status": null,
+   "technicalStatus": "FAIL",
+   "technicalReasons": [
+    "process: LASER_CUTTING+BENDING not offered",
+    "material: S235JR not offered",
+    "maxDimensionMm: part needs 800 mm, supplier max 500 mm",
+    "capacity: no capability data"
+   ],
+   "technicalChecks": [
+    {
+     "check": "supplierStatus",
+     "required": "not BLOCKED",
+     "status": "PASS",
+     "actual": null,
+     "detail": "ok"
+    },
+    {
+     "check": "process",
+     "required": "LASER_CUTTING+BENDING",
+     "status": "FAIL",
+     "actual": "MILLING+TURNING",
+     "detail": "LASER_CUTTING+BENDING not offered"
+    },
+    {
+     "check": "material",
+     "required": "S235JR",
+     "status": "FAIL",
+     "actual": "Aluminium 6082",
+     "detail": "S235JR not offered"
+    },
+    {
+     "check": "maxDimensionMm",
+     "required": 800,
+     "status": "FAIL",
+     "actual": 500,
+     "detail": "part needs 800 mm, supplier max 500 mm"
+    },
+    {
+     "check": "capacity",
+     "required": 20,
+     "status": "UNKNOWN",
+     "actual": null,
+     "detail": "no capability data"
+    }
+   ],
+   "unitPrice": 39,
+   "priceSource": "quote",
+   "priceEvidence": {
+    "unitPrice": 39,
+    "minQty": 1,
+    "source": "quote"
+   },
+   "leadTimeDays": 12,
+   "leadTimeSource": "capability",
+   "onTimeRate": null,
+   "deliveryRisk": null,
+   "purchaseCount": 0,
+   "similarPurchaseCount": 0,
+   "defectRate": null,
+   "qualityTrend": null,
+   "capabilitySource": "fusion-manage",
+   "capabilityUpdatedAt": null,
+   "commercialScore": 38,
+   "historyScore": null,
+   "deliveryScore": 100,
+   "qualityScore": null,
+   "overallScore": null,
+   "dataCompleteness": 0,
+   "confidence": "low",
+   "missingData": [
+    "history",
+    "qualityHistory"
+   ],
+   "conflicts": [],
+   "evidence": {
+    "purchases": [],
+    "similar": []
+   },
+   "rank": 8
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-012",
+   "name": "DEMO-SRC-SUP-012 Feinmechanik Hartmann GmbH",
+   "country": null,
+   "status": null,
+   "technicalStatus": "FAIL",
+   "technicalReasons": [
+    "process: LASER_CUTTING+BENDING not offered",
+    "material: S235JR not offered",
+    "maxDimensionMm: part needs 800 mm, supplier max 500 mm",
+    "capacity: no capability data"
+   ],
+   "technicalChecks": [
+    {
+     "check": "supplierStatus",
+     "required": "not BLOCKED",
+     "status": "PASS",
+     "actual": null,
+     "detail": "ok"
+    },
+    {
+     "check": "process",
+     "required": "LASER_CUTTING+BENDING",
+     "status": "FAIL",
+     "actual": "MILLING+TURNING",
+     "detail": "LASER_CUTTING+BENDING not offered"
+    },
+    {
+     "check": "material",
+     "required": "S235JR",
+     "status": "FAIL",
+     "actual": "Aluminium 6082",
+     "detail": "S235JR not offered"
+    },
+    {
+     "check": "maxDimensionMm",
+     "required": 800,
+     "status": "FAIL",
+     "actual": 500,
+     "detail": "part needs 800 mm, supplier max 500 mm"
+    },
+    {
+     "check": "capacity",
+     "required": 20,
+     "status": "UNKNOWN",
+     "actual": null,
+     "detail": "no capability data"
+    }
+   ],
+   "unitPrice": 52,
+   "priceSource": "quote",
+   "priceEvidence": {
+    "unitPrice": 52,
+    "minQty": 1,
+    "source": "quote"
+   },
+   "leadTimeDays": 18,
+   "leadTimeSource": "capability",
+   "onTimeRate": null,
+   "deliveryRisk": null,
+   "purchaseCount": 0,
+   "similarPurchaseCount": 0,
+   "defectRate": null,
+   "qualityTrend": null,
+   "capabilitySource": "fusion-manage",
+   "capabilityUpdatedAt": null,
+   "commercialScore": 28,
+   "historyScore": null,
+   "deliveryScore": 100,
+   "qualityScore": null,
+   "overallScore": null,
+   "dataCompleteness": 0,
+   "confidence": "low",
+   "missingData": [
+    "history",
+    "qualityHistory"
+   ],
+   "conflicts": [],
+   "evidence": {
+    "purchases": [],
+    "similar": []
+   },
+   "rank": 9
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-009",
+   "name": "DEMO-SRC-SUP-009 Schwei?technik Berger GmbH",
+   "country": null,
+   "status": null,
+   "technicalStatus": "FAIL",
+   "technicalReasons": [
+    "process: LASER_CUTTING+BENDING not offered",
+    "capacity: no capability data"
+   ],
+   "technicalChecks": [
+    {
+     "check": "supplierStatus",
+     "required": "not BLOCKED",
+     "status": "PASS",
+     "actual": null,
+     "detail": "ok"
+    },
+    {
+     "check": "process",
+     "required": "LASER_CUTTING+BENDING",
+     "status": "FAIL",
+     "actual": "WELDING+DEBURRING",
+     "detail": "LASER_CUTTING+BENDING not offered"
+    },
+    {
+     "check": "material",
+     "required": "S235JR",
+     "status": "PASS",
+     "actual": "S235JR",
+     "detail": "ok"
+    },
+    {
+     "check": "maxDimensionMm",
+     "required": 800,
+     "status": "PASS",
+     "actual": 2000,
+     "detail": "ok"
+    },
+    {
+     "check": "capacity",
+     "required": 20,
+     "status": "UNKNOWN",
+     "actual": null,
+     "detail": "no capability data"
+    }
+   ],
+   "unitPrice": 88,
+   "priceSource": "quote",
+   "priceEvidence": {
+    "unitPrice": 88,
+    "minQty": 1,
+    "source": "quote"
+   },
+   "leadTimeDays": 12,
+   "leadTimeSource": "capability",
+   "onTimeRate": null,
+   "deliveryRisk": null,
+   "purchaseCount": 1,
+   "similarPurchaseCount": 0,
+   "defectRate": 0,
+   "qualityTrend": null,
+   "capabilitySource": "fusion-manage",
+   "capabilityUpdatedAt": null,
+   "commercialScore": 17,
+   "historyScore": 60,
+   "deliveryScore": 100,
+   "qualityScore": 100,
+   "overallScore": null,
+   "dataCompleteness": 0,
+   "confidence": "low",
+   "missingData": [],
+   "conflicts": [
+    {
+     "type": "CAPABILITY_HISTORY_CONFLICT",
+     "supplierId": "DEMO-SRC-SUP-009",
+     "detail": "capability record fails process but 1 past purchase(s) of U-HALTER-800 exist from this supplier; capability data stays authoritative until reviewed"
+    },
+    {
+     "type": "PRICE_CONFLICT",
+     "supplierId": "DEMO-SRC-SUP-009",
+     "detail": "quoted 88 vs last purchased 16.11 (2024-10-15)"
+    }
+   ],
+   "evidence": {
+    "purchases": [
+     {
+      "id": "DEMO-SRC-PO-0057",
+      "date": "2024-10-15",
+      "quantity": 50,
+      "unitPrice": 16.11,
+      "currency": "EUR",
+      "promisedDate": null,
+      "deliveredDate": null,
+      "rejectedQty": 0
+     }
+    ],
+    "similar": []
+   },
+   "rank": 10
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-004",
+   "name": "DEMO-SRC-SUP-004 Profilhandel Weber GmbH",
+   "country": null,
+   "status": null,
+   "technicalStatus": "FAIL",
+   "technicalReasons": [
+    "process: LASER_CUTTING+BENDING not offered",
+    "capacity: no capability data"
+   ],
+   "technicalChecks": [
+    {
+     "check": "supplierStatus",
+     "required": "not BLOCKED",
+     "status": "PASS",
+     "actual": null,
+     "detail": "ok"
+    },
+    {
+     "check": "process",
+     "required": "LASER_CUTTING+BENDING",
+     "status": "FAIL",
+     "actual": "PROFILE_PROCESSING",
+     "detail": "LASER_CUTTING+BENDING not offered"
+    },
+    {
+     "check": "material",
+     "required": "S235JR",
+     "status": "PASS",
+     "actual": "S235JR",
+     "detail": "ok"
+    },
+    {
+     "check": "maxDimensionMm",
+     "required": 800,
+     "status": "PASS",
+     "actual": 2000,
+     "detail": "ok"
+    },
+    {
+     "check": "capacity",
+     "required": 20,
+     "status": "UNKNOWN",
+     "actual": null,
+     "detail": "no capability data"
+    }
+   ],
+   "unitPrice": null,
+   "priceSource": null,
+   "priceEvidence": null,
+   "leadTimeDays": 2,
+   "leadTimeSource": "capability",
+   "onTimeRate": null,
+   "deliveryRisk": null,
+   "purchaseCount": 0,
+   "similarPurchaseCount": 0,
+   "defectRate": null,
+   "qualityTrend": null,
+   "capabilitySource": "fusion-manage",
+   "capabilityUpdatedAt": null,
+   "commercialScore": null,
+   "historyScore": null,
+   "deliveryScore": 100,
+   "qualityScore": null,
+   "overallScore": null,
+   "dataCompleteness": 0,
+   "confidence": "low",
+   "missingData": [
+    "price",
+    "history",
+    "qualityHistory"
+   ],
+   "conflicts": [],
+   "evidence": {
+    "purchases": [],
+    "similar": []
+   },
+   "rank": 11
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-008",
+   "name": "DEMO-SRC-SUP-008 Kunststofftechnik West GmbH",
+   "country": null,
+   "status": null,
+   "technicalStatus": "FAIL",
+   "technicalReasons": [
+    "process: LASER_CUTTING+BENDING not offered",
+    "material: S235JR not offered",
+    "maxDimensionMm: part needs 800 mm, supplier max 500 mm",
+    "capacity: no capability data"
+   ],
+   "technicalChecks": [
+    {
+     "check": "supplierStatus",
+     "required": "not BLOCKED",
+     "status": "PASS",
+     "actual": null,
+     "detail": "ok"
+    },
+    {
+     "check": "process",
+     "required": "LASER_CUTTING+BENDING",
+     "status": "FAIL",
+     "actual": "MILLING+TURNING",
+     "detail": "LASER_CUTTING+BENDING not offered"
+    },
+    {
+     "check": "material",
+     "required": "S235JR",
+     "status": "FAIL",
+     "actual": "POM",
+     "detail": "S235JR not offered"
+    },
+    {
+     "check": "maxDimensionMm",
+     "required": 800,
+     "status": "FAIL",
+     "actual": 500,
+     "detail": "part needs 800 mm, supplier max 500 mm"
+    },
+    {
+     "check": "capacity",
+     "required": 20,
+     "status": "UNKNOWN",
+     "actual": null,
+     "detail": "no capability data"
+    }
+   ],
+   "unitPrice": null,
+   "priceSource": null,
+   "priceEvidence": null,
+   "leadTimeDays": 5,
+   "leadTimeSource": "capability",
+   "onTimeRate": null,
+   "deliveryRisk": null,
+   "purchaseCount": 0,
+   "similarPurchaseCount": 0,
+   "defectRate": null,
+   "qualityTrend": null,
+   "capabilitySource": "fusion-manage",
+   "capabilityUpdatedAt": null,
+   "commercialScore": null,
+   "historyScore": null,
+   "deliveryScore": 100,
+   "qualityScore": null,
+   "overallScore": null,
+   "dataCompleteness": 0,
+   "confidence": "low",
+   "missingData": [
+    "price",
+    "history",
+    "qualityHistory"
+   ],
+   "conflicts": [],
+   "evidence": {
+    "purchases": [],
+    "similar": []
+   },
+   "rank": 12
+  }
+ ],
+ "recommendedSupplierId": null,
+ "summary": {
+  "passCount": 0,
+  "unknownCount": 3,
+  "failCount": 9,
+  "recommendedSupplierId": null,
+  "reason": "no technically PASS supplier"
+ },
+ "conflicts": [
+  {
+   "type": "CAPABILITY_HISTORY_CONFLICT",
+   "supplierId": "DEMO-SRC-SUP-009",
+   "detail": "capability record fails process but 1 past purchase(s) of U-HALTER-800 exist from this supplier; capability data stays authoritative until reviewed"
+  },
+  {
+   "type": "PRICE_CONFLICT",
+   "supplierId": "DEMO-SRC-SUP-009",
+   "detail": "quoted 88 vs last purchased 16.11 (2024-10-15)"
+  }
+ ],
+ "missingData": [
+  {
+   "supplierId": "DEMO-SRC-SUP-002",
+   "field": "history"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-002",
+   "field": "qualityHistory"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-001",
+   "field": "history"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-001",
+   "field": "qualityHistory"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-010",
+   "field": "history"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-010",
+   "field": "qualityHistory"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-006",
+   "field": "history"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-006",
+   "field": "qualityHistory"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-007",
+   "field": "history"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-007",
+   "field": "qualityHistory"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-011",
+   "field": "history"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-011",
+   "field": "qualityHistory"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-003",
+   "field": "history"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-003",
+   "field": "qualityHistory"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-012",
+   "field": "history"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-012",
+   "field": "qualityHistory"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-004",
+   "field": "price"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-004",
+   "field": "history"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-004",
+   "field": "qualityHistory"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-008",
+   "field": "price"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-008",
+   "field": "history"
+  },
+  {
+   "supplierId": "DEMO-SRC-SUP-008",
+   "field": "qualityHistory"
+  }
+ ],
+ "similarityEvidence": [],
+ "standardAlternatives": [],
+ "similarity": {
+  "status": "none",
+  "provider": null,
+  "error": null
+ },
+ "dataSources": {
+  "item": "fusion-manage",
+  "suppliers": "fusion-manage",
+  "capabilities": "fusion-manage",
+  "purchaseHistory": "fusion-manage",
+  "quotes": "fusion-manage",
+  "similarity": "unavailable"
+ }
+}

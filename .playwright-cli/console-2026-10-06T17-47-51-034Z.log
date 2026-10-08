@@ -1,0 +1,3 @@
+[    1483ms] [WARNING] [LaunchDarkly] The waitForInitialization function was called with a timeout greater than 5 seconds. We recommend a timeout of 5 seconds or less. @ https://signin.autodesk.com/static/js/main.ef522b1f.js:1
+[    1726ms] [INFO] [LaunchDarkly] LaunchDarkly client initialized @ https://signin.autodesk.com/static/js/main.ef522b1f.js:1
+[    3077ms] [WARNING] User has not opted in @ https://swc.autodesk.com/web-utils/conversion-web-analytics-utils/1.71.2/main.js:6

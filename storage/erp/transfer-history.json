@@ -1,5 +1,27 @@
 [
   {
+    "id": 1789986370739,
+    "wsId": "57",
+    "dmsId": "23962",
+    "itemTitle": "00000300 - 00000975_assembly",
+    "dolibarrBomId": null,
+    "status": "error",
+    "errorMessage": "No BOM items found",
+    "overridden": false,
+    "trigger": "manual",
+    "log": [
+      {
+        "at": "2026-09-21T10:26:09.132Z",
+        "message": "Fetched item details: 00000300 - 00000975_assembly"
+      },
+      {
+        "at": "2026-09-21T10:26:10.738Z",
+        "message": "Fetched flat BOM: 0 position(s)"
+      }
+    ],
+    "transferredAt": "2026-09-21T10:26:10.739Z"
+  },
+  {
     "id": 1785916199348,
     "wsId": "57",
     "dmsId": "16763",

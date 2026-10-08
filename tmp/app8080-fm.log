@@ -1,0 +1,79 @@
+
+> plm-extensions@May 2026 start
+> node --max-http-header-size=16384 ./bin/www
+
+ ERP: Lean Change Order webhooks already registered for https://inf-agreed-file-according.trycloudflare.com/erp/webhooks/lean-change-order
+
+  >> Using PLM Tenant       contelosuxdemo
+  >> Using Client ID        wll8QLDL...
+  >> Using redirect Uri     http://localhost:8080/callback
+  >> Using environment file ./environment.js
+  >> Using settings file    custom.js
+  >> Using Default Theme    light
+  >> Cache Enabled?         true
+  >> Debug Mode Enabled?    false
+  >> Fusion Connected?      false
+  >> Listening on           127.0.0.1 port 8080
+  >> Using Admin Client ID  nVIRRZRP...
+
+  Not connected to Vault as Vault Gateway and/or Vault Name are not defined
+
+
+  REMINDERS
+ --------------------------------------------------------------------------------------------------
+  Since the release of July 2024, the UX server uses PKCE for authentication instead of the
+  former mechanism involving the Client Secret. This requries an APS application of type
+  "Desktop, Mobile, Single-Page App" for successful authentication.
+  
+  If not done so yet, create such an app at aps.autodesk.com and provide the given 
+  Client ID in file environments.js. This app must use a callback URL that end with "/callback"
+  (i.e. http://localhost:8080/callback).
+  
+  If your login to the UX solutions fails with an error code 401, you most likely are
+  using an APS of wrong type or with wrong callback URL.
+
+
+[0mGET /sourcing/config [32m200[0m 12.242 ms - 230[0m
+[0mGET /intelligent-sourcing [36m304[0m 391.380 ms - -[0m
+[0mGET /stylesheets/framework/basic.css [36m304[0m 4.630 ms - -[0m
+[0mGET /stylesheets/framework/colors.css [36m304[0m 4.131 ms - -[0m
+[0mGET /stylesheets/contents/item.css [36m304[0m 2.847 ms - -[0m
+[0mGET /stylesheets/framework/dialogs.css [36m304[0m 3.204 ms - -[0m
+[0mGET /stylesheets/framework/fonts.css [36m304[0m 3.974 ms - -[0m
+[0mGET /stylesheets/framework/styles.css [36m304[0m 6.587 ms - -[0m
+[0mGET /stylesheets/contents/nav.css [36m304[0m 3.403 ms - -[0m
+[0mGET /stylesheets/contents/classification.css [36m304[0m 1.982 ms - -[0m
+[0mGET /stylesheets/contents/viewer.css [36m304[0m 0.681 ms - -[0m
+[0mGET /stylesheets/contents/vault.css [36m304[0m 0.908 ms - -[0m
+[0mGET /stylesheets/contents/analytics.css [36m304[0m 2.480 ms - -[0m
+[0mGET /stylesheets/custom.css [36m304[0m 3.003 ms - -[0m
+[0mGET /javascripts/framework/registry.js [36m304[0m 3.294 ms - -[0m
+[0mGET /javascripts/libs/jquery-3.6.1.min [36m304[0m 4.085 ms - -[0m
+[0mGET /stylesheets/apps/condition-monitoring.css [36m304[0m 1.907 ms - -[0m
+[0mGET /javascripts/framework/utils.js [36m304[0m 2.648 ms - -[0m
+[0mGET /javascripts/contents/viewer.js [36m304[0m 2.279 ms - -[0m
+[0mGET /stylesheets/apps/intelligent-sourcing.css [32m200[0m 6.868 ms - 8539[0m
+[0mGET /javascripts/contents/item.js [36m304[0m 4.019 ms - -[0m
+[0mGET /javascripts/contents/nav.js [36m304[0m 5.608 ms - -[0m
+[0mGET /javascripts/contents/classification.js [36m304[0m 2.709 ms - -[0m
+[0mGET /javascripts/contents/vault.js [36m304[0m 1.527 ms - -[0m
+[0mGET /javascripts/contents/admin.js [36m304[0m 1.994 ms - -[0m
+[0mGET /javascripts/contents/analytics.js [36m304[0m 1.204 ms - -[0m
+[0mGET /javascripts/contents/aps.js [36m304[0m 1.528 ms - -[0m
+[0mGET /javascripts/custom.js [36m304[0m 1.729 ms - -[0m
+[0mGET /javascripts/apps/intelligent-sourcing.js [36m304[0m 0.698 ms - -[0m
+ 
+  /me
+ --------------------------------------------
+  req.query.useCache = false
+
+[0mGET /sourcing/config [32m200[0m 2.599 ms - 230[0m
+
+ ERROR REQUESTING : /me?useCache=false
+ ERROR MESSAGE    : The request contains no authorization information.
+
+[0mGET /plm/me?useCache=false [36m304[0m 429.263 ms - -[0m
+[0mGET /fonts/Material_Symbols_Sharp/MaterialSymbolsSharp-VariableFont_FILL,GRAD,opsz,wght.ttf [36m304[0m 0.594 ms - -[0m
+[0mGET /sourcing/items [36m304[0m 6986.270 ms - -[0m
+[0mGET /sourcing/analysis?itemId=U-HALTER-800&quantity=20&requiredDate=2026-11-14 [32m200[0m 6.795 ms - 23789[0m
+[0mGET /sourcing/rfq/preview?itemId=U-HALTER-800&quantity=20&requiredDate=2026-11-14&supplierIds=DEMO-SRC-SUP-005%2CDEMO-SRC-SUP-002%2CDEMO-SRC-SUP-001 [32m200[0m 1.965 ms - 1364[0m

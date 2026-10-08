@@ -1,0 +1,8 @@
+[    2690ms] TypeError: Cannot read properties of undefined (reading 'large')
+    at Object.success (http://localhost:8080/javascripts/framework/utils.js:562:40)
+    at c (http://localhost:8080/javascripts/libs/jquery-3.6.1.min:2:28327)
+    at Object.fireWith [as resolveWith] (http://localhost:8080/javascripts/libs/jquery-3.6.1.min:2:29072)
+    at l (http://localhost:8080/javascripts/libs/jquery-3.6.1.min:2:80045)
+    at XMLHttpRequest.<anonymous> (http://localhost:8080/javascripts/libs/jquery-3.6.1.min:2:82499)
+[   28243ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/iot/state?assetId=30057:0
+[   29244ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/iot/state?assetId=30057:0

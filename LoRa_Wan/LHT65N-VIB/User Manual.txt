@@ -1,0 +1,1 @@
+See online document: http://10.130.2.25:8080/docs/LoRaWAN-End-Node/vibration-sensor/lht65n-vib/

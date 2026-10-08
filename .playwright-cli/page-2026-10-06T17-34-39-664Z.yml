@@ -1,0 +1,18 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e5]:
+    - img "Loading. Please wait..." [ref=f2e7]
+    - link "Anmelden" [ref=f2e9] [cursor=pointer]:
+      - /url: javascript:;
+  - generic [ref=f2e12]:
+    - img "Autodesk" [ref=f2e14]
+    - list [ref=f2e15]:
+      - listitem [ref=f2e16]: © 2026 Autodesk, Inc.
+      - listitem [ref=f2e17]:
+        - link "Datenschutzrichtlinien" [ref=f2e18] [cursor=pointer]:
+          - /url: http://usa.autodesk.com/privacy/
+      - listitem [ref=f2e19]:
+        - link "Bedingungen" [ref=f2e20] [cursor=pointer]:
+          - /url: http://www.autodesk.com/termsofservice
+    - link [ref=f2e22] [cursor=pointer]:
+      - /url: /plm/
+      - img "Autodesk Fusion Manage" [ref=f2e23]

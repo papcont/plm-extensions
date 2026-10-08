@@ -1,0 +1,64 @@
+ M CLAUDE.md
+ M app.js
+ M package.json
+ M public/javascripts/apps/condition-monitoring.js
+ M public/stylesheets/apps/condition-monitoring.css
+ M routes/iot.js
+ M routes/landing.js
+RM services/iot/ai/providers/anthropic.js -> services/ai/providers/anthropic.js
+ M services/iot/ai/aiService.js
+ M services/iot/config.js
+ M services/iot/eventRepository.js
+ M services/iot/service.js
+ M settings.js
+ M storage/erp/transfer-history.json
+ M test/iot/aiInsight.test.js
+ M views/apps/condition-monitoring.pug
+?? .playwright-cli/
+?? LoRa_Wan/
+?? bom-compact.png
+?? bom-compact2.png
+?? bom-final.png
+?? bom-wide.png
+?? cm-page.png
+?? details-below.png
+?? details-final.png
+?? details-fixed.png
+?? details-panel.png
+?? docs/features/intelligent-sourcing/
+?? docs/features/iot-condition-monitoring/PHASE-2A-DESIGN.md
+?? filter-blue-ghost.png
+?? filter-blue-off.png
+?? filter-highlight.png
+?? filter-off.png
+?? highlight-click.png
+?? knowledge/
+?? layout-3col.png
+?? layout-final.png
+?? layout-fixed.png
+?? layout-selected.png
+?? public/javascripts/apps/intelligent-sourcing.js
+?? public/stylesheets/apps/intelligent-sourcing.css
+?? routes/sourcing.js
+?? services/ai/structured.js
+?? services/fusion/
+?? services/iot/ai/providers/
+?? services/iot/caseLinkStore.js
+?? services/iot/caseRepository.js
+?? services/iot/fm907Mapping.js
+?? services/iot/fmTransport.js
+?? services/iot/fusionManageCaseRepository.js
+?? services/iot/fusionManageCaseSearch.js
+?? services/iot/maintenanceCase.js
+?? services/iot/maintenanceCaseFlow.js
+?? services/sourcing/
+?? test/iot/fusionManageCaseRepository.test.js
+?? test/iot/fusionManageCaseSearch.test.js
+?? test/iot/maintenanceCase.test.js
+?? test/iot/maintenanceCaseFlow.test.js
+?? test/sourcing/
+?? tmp/
+?? viewer-32068.png
+?? viewer-state.png
+?? viewer-variant-fixed.png
+?? views/apps/intelligent-sourcing.pug

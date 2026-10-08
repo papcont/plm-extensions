@@ -1,0 +1,237 @@
+[    1535ms] [WARNING] [LaunchDarkly] The waitForInitialization function was called with a timeout greater than 5 seconds. We recommend a timeout of 5 seconds or less. @ https://signin.autodesk.com/static/js/main.ef522b1f.js:1
+[    1696ms] [INFO] [LaunchDarkly] LaunchDarkly client initialized @ https://signin.autodesk.com/static/js/main.ef522b1f.js:1
+[    2568ms] [LOG] JQMIGRATE: Migrate is installed with logging active, version 1.4.1 @ https://contelosuxdemo.autodeskplm360.net/scripts/lib/jquery-migrate-1.4.1.js:22
+[    2598ms] ReferenceError: _plm is not defined
+    at onload (https://contelosuxdemo.autodeskplm360.net/:42:177)
+[    5970ms] [WARNING] [LaunchDarkly] The waitForInitialization function was called with a timeout greater than 5 seconds. We recommend a timeout of 5 seconds or less. @ https://signin.autodesk.com/static/js/main.ef522b1f.js:1
+[    6061ms] [INFO] [LaunchDarkly] LaunchDarkly client initialized @ https://signin.autodesk.com/static/js/main.ef522b1f.js:1
+[    7656ms] [WARNING] User has not opted in @ https://swc.autodesk.com/web-utils/conversion-web-analytics-utils/1.71.2/main.js:6
+[   15943ms] [WARNING] No auto captured element found for link click event @ https://swc.autodesk.com/web-utils/conversion-web-analytics-utils/1.71.2/main.js:6
+[   16455ms] [VERBOSE] [DOM] Password forms should have (optionally hidden) username fields for accessibility: (More info: https://goo.gl/9p2vKq) %o @ https://signin.autodesk.com/?flowId=9DUNUSzHwk:0
+[   22357ms] [WARNING] No auto captured element found for link click event @ https://swc.autodesk.com/web-utils/conversion-web-analytics-utils/1.71.2/main.js:6
+[   31708ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://idp.auth.autodesk.com/as/flows/9DUNUSzHwk?action=checkPassword:0
+[   33974ms] [WARNING] No auto captured element found for link click event @ https://swc.autodesk.com/web-utils/conversion-web-analytics-utils/1.71.2/main.js:6
+[   42003ms] [WARNING] No auto captured element found for link click event @ https://swc.autodesk.com/web-utils/conversion-web-analytics-utils/1.71.2/main.js:6
+[   67038ms] [WARNING] No auto captured element found for link click event @ https://swc.autodesk.com/web-utils/conversion-web-analytics-utils/1.71.2/main.js:6
+[   68568ms] [LOG] JQMIGRATE: Migrate is installed with logging active, version 1.4.1 @ https://contelosuxdemo.autodeskplm360.net/scripts/lib/jquery-migrate-1.4.1.js:22
+[   68592ms] ReferenceError: _plm is not defined
+    at onload (https://contelosuxdemo.autodeskplm360.net/Login.jsp:42:177)
+[   73747ms] [WARNING] [LaunchDarkly] The waitForInitialization function was called with a timeout greater than 5 seconds. We recommend a timeout of 5 seconds or less. @ https://signin.autodesk.com/static/js/main.ef522b1f.js:1
+[   73779ms] [INFO] [LaunchDarkly] LaunchDarkly client initialized @ https://signin.autodesk.com/static/js/main.ef522b1f.js:1
+[   77491ms] [LOG] JQMIGRATE: Migrate is installed with logging active, version 1.4.1 @ https://contelosuxdemo.autodeskplm360.net/scripts/lib/jquery-migrate-1.4.1.js:22
+[   77513ms] ReferenceError: _plm is not defined
+    at onload (https://contelosuxdemo.autodeskplm360.net/Login.jsp:42:177)
+[   80907ms] [WARNING] [LaunchDarkly] The waitForInitialization function was called with a timeout greater than 5 seconds. We recommend a timeout of 5 seconds or less. @ https://signin.autodesk.com/static/js/main.ef522b1f.js:1
+[   80941ms] [INFO] [LaunchDarkly] LaunchDarkly client initialized @ https://signin.autodesk.com/static/js/main.ef522b1f.js:1
+[   81819ms] [LOG] JQMIGRATE: Migrate is installed with logging active, version 1.4.1 @ https://contelosuxdemo.autodeskplm360.net/scripts/lib/jquery-migrate-1.4.1.js:22
+[   81843ms] ReferenceError: _plm is not defined
+    at onload (https://contelosuxdemo.autodeskplm360.net/:42:177)
+[   83717ms] [WARNING] [LaunchDarkly] The waitForInitialization function was called with a timeout greater than 5 seconds. We recommend a timeout of 5 seconds or less. @ https://signin.autodesk.com/static/js/main.ef522b1f.js:1
+[   83750ms] [INFO] [LaunchDarkly] LaunchDarkly client initialized @ https://signin.autodesk.com/static/js/main.ef522b1f.js:1
+[   96881ms] [WARNING] No auto captured element found for link click event @ https://swc.autodesk.com/web-utils/conversion-web-analytics-utils/1.71.2/main.js:6
+[   97384ms] [VERBOSE] [DOM] Password forms should have (optionally hidden) username fields for accessibility: (More info: https://goo.gl/9p2vKq) %o @ https://signin.autodesk.com/?flowId=9jzJq7wVIy:0
+[  101819ms] [WARNING] No auto captured element found for link click event @ https://swc.autodesk.com/web-utils/conversion-web-analytics-utils/1.71.2/main.js:6
+[  127764ms] [WARNING] No auto captured element found for link click event @ https://swc.autodesk.com/web-utils/conversion-web-analytics-utils/1.71.2/main.js:6
+[  129134ms] [LOG] JQMIGRATE: Migrate is installed with logging active, version 1.4.1 @ https://contelosuxdemo.autodeskplm360.net/scripts/lib/jquery-migrate-1.4.1.js:22
+[  129158ms] ReferenceError: _plm is not defined
+    at onload (https://contelosuxdemo.autodeskplm360.net/Login.jsp:42:177)
+[  168149ms] NetworkError: Failed to execute 'send' on 'XMLHttpRequest': Failed to load 'https://events.launchdarkly.com/a/5ac3898f7720e82c6f212c44.gif?d=W3sia2luZCI6ImlkZW50aWZ5Iiwia2V5IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sImNyZWF0aW9uRGF0ZSI6MTc5MTMwODI0NTE0M31d': Synchronous XHR in page dismissal. See https://www.chromestatus.com/feature/4664843055398912 for more details.
+    at o (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700216)
+    at l (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700330)
+    at n.flush (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700988)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2711011
+    at AuthenticationService.requestRelogin (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:22332)
+    at Function.<anonymous> (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:1654111)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:6000
+    at tn.br (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:3166002)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:5939
+    at tn.br (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:3165946)
+    at callRegExps (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:5874)
+    at EventService.send (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:7963)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:1645842
+    at processQueue (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:311263)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:312262
+    at Scope.$digest (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:322327)
+[  168149ms] NetworkError: Failed to execute 'send' on 'XMLHttpRequest': Failed to load 'https://events.launchdarkly.com/a/5a8338fd8ea1130ae167871f.gif?d=W3sia2luZCI6ImlkZW50aWZ5Iiwia2V5IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sImNyZWF0aW9uRGF0ZSI6MTc5MTMwODI0NTE0NH1d': Synchronous XHR in page dismissal. See https://www.chromestatus.com/feature/4664843055398912 for more details.
+    at o (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700216)
+    at l (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700330)
+    at n.flush (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700988)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2711011
+    at AuthenticationService.requestRelogin (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:22332)
+    at Function.<anonymous> (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:1654111)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:6000
+    at tn.br (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:3166002)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:5939
+    at tn.br (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:3165946)
+    at callRegExps (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:5874)
+    at EventService.send (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:7963)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:1645842
+    at processQueue (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:311263)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:312262
+    at Scope.$digest (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:322327)
+[  168519ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://contelosuxdemo.autodeskplm360.net/api/v3/token:0
+[  168521ms] NetworkError: Failed to execute 'send' on 'XMLHttpRequest': Failed to load 'https://events.launchdarkly.com/a/5ac3898f7720e82c6f212c44.gif?d=W3sia2luZCI6ImlkZW50aWZ5Iiwia2V5IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sImNyZWF0aW9uRGF0ZSI6MTc5MTMwODI0NTE0M31d': Synchronous XHR in page dismissal. See https://www.chromestatus.com/feature/4664843055398912 for more details.
+    at o (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700216)
+    at l (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700330)
+    at n.flush (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700988)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2711011
+    at AuthenticationService.requestRelogin (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:22332)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:36133
+    at processQueue (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:311263)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:312262
+    at Scope.$digest (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:322327)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:325062
+    at TaskTracker.completeTask (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:337489)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:172297
+[  168521ms] NetworkError: Failed to execute 'send' on 'XMLHttpRequest': Failed to load 'https://events.launchdarkly.com/a/5a8338fd8ea1130ae167871f.gif?d=W3sia2luZCI6ImlkZW50aWZ5Iiwia2V5IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sImNyZWF0aW9uRGF0ZSI6MTc5MTMwODI0NTE0NH1d': Synchronous XHR in page dismissal. See https://www.chromestatus.com/feature/4664843055398912 for more details.
+    at o (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700216)
+    at l (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700330)
+    at n.flush (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700988)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2711011
+    at AuthenticationService.requestRelogin (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:22332)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:36133
+    at processQueue (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:311263)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:312262
+    at Scope.$digest (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:322327)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:325062
+    at TaskTracker.completeTask (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:337489)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:172297
+[  168522ms] NetworkError: Failed to execute 'send' on 'XMLHttpRequest': Failed to load 'https://events.launchdarkly.com/a/5ac3898f7720e82c6f212c44.gif?d=W3sia2luZCI6ImZlYXR1cmUiLCJrZXkiOiJzc2UtZGVidWdnaW5nIiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sInZhbHVlIjpmYWxzZSwiZGVmYXVsdCI6bnVsbCwiY3JlYXRpb25EYXRlIjoxNzkxMzA4MjQ1MzE2fSx7ImtpbmQiOiJmZWF0dXJlIiwia2V5IjoicXVpY2stcmVsZWFzZSIsInVzZXIiOnsia2V5IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwiY3VzdG9tIjp7Imhvc3RuYW1lIjoiY29udGVsb3N1eGRlbW...GlyZWN0IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sInZhbHVlIjp0cnVlLCJkZWZhdWx0IjpudWxsLCJjcmVhdGlvbkRhdGUiOjE3OTEzMDgyNDUzMTZ9LHsia2luZCI6ImZlYXR1cmUiLCJrZXkiOiJuZXctYXV0aC1mbG93IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sInZhbHVlIjpmYWxzZSwiZGVmYXVsdCI6bnVsbCwiY3JlYXRpb25EYXRlIjoxNzkxMzA4MjQ1MzE2fV0': Synchronous XHR in page dismissal. See https://www.chromestatus.com/feature/4664843055398912 for more details.
+    at o (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700216)
+    at l (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700330)
+    at n.flush (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700988)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2711011
+    at AuthenticationService.requestRelogin (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:22332)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:36133
+    at processQueue (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:311263)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:312262
+    at Scope.$digest (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:322327)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:325062
+    at TaskTracker.completeTask (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:337489)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:172297
+[  168564ms] NetworkError: Failed to execute 'send' on 'XMLHttpRequest': Failed to load 'https://events.launchdarkly.com/a/5a8338fd8ea1130ae167871f.gif?d=W3sia2luZCI6ImZlYXR1cmUiLCJrZXkiOiJ3ZWItc29ja2V0LXRyYW5zcG9ydC1leHBlcmltZW50IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sInZhbHVlIjpmYWxzZSwiZGVmYXVsdCI6bnVsbCwiY3JlYXRpb25EYXRlIjoxNzkxMzA4MjQ1MzE0fSx7ImtpbmQiOiJmZWF0dXJlIiwia2V5IjoidmVyaWZpZWQtc3R1ZGVudCIsInVzZXIiOnsia2V5IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwiY3VzdG9tIjp7Imhvc3...IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwiY3VzdG9tIjp7Imhvc3RuYW1lIjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0In19LCJ2YWx1ZSI6dHJ1ZSwiZGVmYXVsdCI6bnVsbCwiY3JlYXRpb25EYXRlIjoxNzkxMzA4MjQ1MzE0fSx7ImtpbmQiOiJmZWF0dXJlIiwia2V5IjoidG9nZ2xlLWNvYXJzZS1ncmFpbmVkLXRyYW5zYWN0aW9uIiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sInZhbHVlIjp0cnVlLCJkZWZhdWx0IjpudWxsLCJjcmVhdGlvbkRhdGUiOjE3OTEzMDgyNDUzMTR9XQ': Synchronous XHR in page dismissal. See https://www.chromestatus.com/feature/4664843055398912 for more details.
+    at o (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700216)
+    at l (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700330)
+    at n.flush (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700988)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2711011
+    at AuthenticationService.requestRelogin (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:22332)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:36133
+    at processQueue (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:311263)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:312262
+    at Scope.$digest (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:322327)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:325062
+    at TaskTracker.completeTask (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:337489)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:172297
+[  168565ms] NetworkError: Failed to execute 'send' on 'XMLHttpRequest': Failed to load 'https://events.launchdarkly.com/a/5ac3898f7720e82c6f212c44.gif?d=W3sia2luZCI6ImlkZW50aWZ5Iiwia2V5IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sImNyZWF0aW9uRGF0ZSI6MTc5MTMwODI0NTE0M31d': Synchronous XHR in page dismissal. See https://www.chromestatus.com/feature/4664843055398912 for more details.
+    at o (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700216)
+    at l (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700330)
+    at n.flush (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700988)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2711011
+    at AuthenticationService.requestRelogin (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:22332)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:36133
+    at processQueue (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:311263)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:312262
+    at Scope.$digest (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:322327)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:325062
+    at TaskTracker.completeTask (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:337489)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:172297
+[  168565ms] NetworkError: Failed to execute 'send' on 'XMLHttpRequest': Failed to load 'https://events.launchdarkly.com/a/5a8338fd8ea1130ae167871f.gif?d=W3sia2luZCI6ImlkZW50aWZ5Iiwia2V5IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sImNyZWF0aW9uRGF0ZSI6MTc5MTMwODI0NTE0NH1d': Synchronous XHR in page dismissal. See https://www.chromestatus.com/feature/4664843055398912 for more details.
+    at o (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700216)
+    at l (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700330)
+    at n.flush (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700988)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2711011
+    at AuthenticationService.requestRelogin (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:22332)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:36133
+    at processQueue (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:311263)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:312262
+    at Scope.$digest (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:322327)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:325062
+    at TaskTracker.completeTask (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:337489)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:172297
+[  168567ms] NetworkError: Failed to execute 'send' on 'XMLHttpRequest': Failed to load 'https://events.launchdarkly.com/a/5ac3898f7720e82c6f212c44.gif?d=W3sia2luZCI6ImZlYXR1cmUiLCJrZXkiOiJzc2UtZGVidWdnaW5nIiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sInZhbHVlIjpmYWxzZSwiZGVmYXVsdCI6bnVsbCwiY3JlYXRpb25EYXRlIjoxNzkxMzA4MjQ1MzE2fSx7ImtpbmQiOiJmZWF0dXJlIiwia2V5IjoicXVpY2stcmVsZWFzZSIsInVzZXIiOnsia2V5IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwiY3VzdG9tIjp7Imhvc3RuYW1lIjoiY29udGVsb3N1eGRlbW...GlyZWN0IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sInZhbHVlIjp0cnVlLCJkZWZhdWx0IjpudWxsLCJjcmVhdGlvbkRhdGUiOjE3OTEzMDgyNDUzMTZ9LHsia2luZCI6ImZlYXR1cmUiLCJrZXkiOiJuZXctYXV0aC1mbG93IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sInZhbHVlIjpmYWxzZSwiZGVmYXVsdCI6bnVsbCwiY3JlYXRpb25EYXRlIjoxNzkxMzA4MjQ1MzE2fV0': Synchronous XHR in page dismissal. See https://www.chromestatus.com/feature/4664843055398912 for more details.
+    at o (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700216)
+    at l (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700330)
+    at n.flush (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700988)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2711011
+    at AuthenticationService.requestRelogin (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:22332)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:36133
+    at processQueue (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:311263)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:312262
+    at Scope.$digest (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:322327)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:325062
+    at TaskTracker.completeTask (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:337489)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:172297
+[  168594ms] NetworkError: Failed to execute 'send' on 'XMLHttpRequest': Failed to load 'https://events.launchdarkly.com/a/5a8338fd8ea1130ae167871f.gif?d=W3sia2luZCI6ImZlYXR1cmUiLCJrZXkiOiJ3ZWItc29ja2V0LXRyYW5zcG9ydC1leHBlcmltZW50IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sInZhbHVlIjpmYWxzZSwiZGVmYXVsdCI6bnVsbCwiY3JlYXRpb25EYXRlIjoxNzkxMzA4MjQ1MzE0fSx7ImtpbmQiOiJmZWF0dXJlIiwia2V5IjoidmVyaWZpZWQtc3R1ZGVudCIsInVzZXIiOnsia2V5IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwiY3VzdG9tIjp7Imhvc3...IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwiY3VzdG9tIjp7Imhvc3RuYW1lIjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0In19LCJ2YWx1ZSI6dHJ1ZSwiZGVmYXVsdCI6bnVsbCwiY3JlYXRpb25EYXRlIjoxNzkxMzA4MjQ1MzE0fSx7ImtpbmQiOiJmZWF0dXJlIiwia2V5IjoidG9nZ2xlLWNvYXJzZS1ncmFpbmVkLXRyYW5zYWN0aW9uIiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sInZhbHVlIjp0cnVlLCJkZWZhdWx0IjpudWxsLCJjcmVhdGlvbkRhdGUiOjE3OTEzMDgyNDUzMTR9XQ': Synchronous XHR in page dismissal. See https://www.chromestatus.com/feature/4664843055398912 for more details.
+    at o (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700216)
+    at l (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700330)
+    at n.flush (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700988)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2711011
+    at AuthenticationService.requestRelogin (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:22332)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:36133
+    at processQueue (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:311263)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:312262
+    at Scope.$digest (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:322327)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:325062
+    at TaskTracker.completeTask (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:337489)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:172297
+[  168595ms] NetworkError: Failed to execute 'send' on 'XMLHttpRequest': Failed to load 'https://events.launchdarkly.com/a/5ac3898f7720e82c6f212c44.gif?d=W3sia2luZCI6ImlkZW50aWZ5Iiwia2V5IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sImNyZWF0aW9uRGF0ZSI6MTc5MTMwODI0NTE0M31d': Synchronous XHR in page dismissal. See https://www.chromestatus.com/feature/4664843055398912 for more details.
+    at o (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700216)
+    at l (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700330)
+    at n.flush (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700988)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2711011
+    at AuthenticationService.requestRelogin (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:22332)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:36133
+    at processQueue (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:311263)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:312262
+    at Scope.$digest (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:322327)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:325062
+    at TaskTracker.completeTask (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:337489)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:172297
+[  168595ms] NetworkError: Failed to execute 'send' on 'XMLHttpRequest': Failed to load 'https://events.launchdarkly.com/a/5a8338fd8ea1130ae167871f.gif?d=W3sia2luZCI6ImlkZW50aWZ5Iiwia2V5IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sImNyZWF0aW9uRGF0ZSI6MTc5MTMwODI0NTE0NH1d': Synchronous XHR in page dismissal. See https://www.chromestatus.com/feature/4664843055398912 for more details.
+    at o (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700216)
+    at l (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700330)
+    at n.flush (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700988)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2711011
+    at AuthenticationService.requestRelogin (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:22332)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:36133
+    at processQueue (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:311263)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:312262
+    at Scope.$digest (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:322327)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:325062
+    at TaskTracker.completeTask (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:337489)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:172297
+[  168596ms] NetworkError: Failed to execute 'send' on 'XMLHttpRequest': Failed to load 'https://events.launchdarkly.com/a/5ac3898f7720e82c6f212c44.gif?d=W3sia2luZCI6ImZlYXR1cmUiLCJrZXkiOiJzc2UtZGVidWdnaW5nIiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sInZhbHVlIjpmYWxzZSwiZGVmYXVsdCI6bnVsbCwiY3JlYXRpb25EYXRlIjoxNzkxMzA4MjQ1MzE2fSx7ImtpbmQiOiJmZWF0dXJlIiwia2V5IjoicXVpY2stcmVsZWFzZSIsInVzZXIiOnsia2V5IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwiY3VzdG9tIjp7Imhvc3RuYW1lIjoiY29udGVsb3N1eGRlbW...GlyZWN0IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sInZhbHVlIjp0cnVlLCJkZWZhdWx0IjpudWxsLCJjcmVhdGlvbkRhdGUiOjE3OTEzMDgyNDUzMTZ9LHsia2luZCI6ImZlYXR1cmUiLCJrZXkiOiJuZXctYXV0aC1mbG93IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sInZhbHVlIjpmYWxzZSwiZGVmYXVsdCI6bnVsbCwiY3JlYXRpb25EYXRlIjoxNzkxMzA4MjQ1MzE2fV0': Synchronous XHR in page dismissal. See https://www.chromestatus.com/feature/4664843055398912 for more details.
+    at o (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700216)
+    at l (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700330)
+    at n.flush (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700988)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2711011
+    at AuthenticationService.requestRelogin (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:22332)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:36133
+    at processQueue (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:311263)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:312262
+    at Scope.$digest (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:322327)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:325062
+    at TaskTracker.completeTask (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:337489)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:172297
+[  168625ms] NetworkError: Failed to execute 'send' on 'XMLHttpRequest': Failed to load 'https://events.launchdarkly.com/a/5a8338fd8ea1130ae167871f.gif?d=W3sia2luZCI6ImZlYXR1cmUiLCJrZXkiOiJ3ZWItc29ja2V0LXRyYW5zcG9ydC1leHBlcmltZW50IiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sInZhbHVlIjpmYWxzZSwiZGVmYXVsdCI6bnVsbCwiY3JlYXRpb25EYXRlIjoxNzkxMzA4MjQ1MzE0fSx7ImtpbmQiOiJmZWF0dXJlIiwia2V5IjoidmVyaWZpZWQtc3R1ZGVudCIsInVzZXIiOnsia2V5IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwiY3VzdG9tIjp7Imhvc3...IjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0IiwiY3VzdG9tIjp7Imhvc3RuYW1lIjoiY29udGVsb3N1eGRlbW8uYXV0b2Rlc2twbG0zNjAubmV0In19LCJ2YWx1ZSI6dHJ1ZSwiZGVmYXVsdCI6bnVsbCwiY3JlYXRpb25EYXRlIjoxNzkxMzA4MjQ1MzE0fSx7ImtpbmQiOiJmZWF0dXJlIiwia2V5IjoidG9nZ2xlLWNvYXJzZS1ncmFpbmVkLXRyYW5zYWN0aW9uIiwidXNlciI6eyJrZXkiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQiLCJjdXN0b20iOnsiaG9zdG5hbWUiOiJjb250ZWxvc3V4ZGVtby5hdXRvZGVza3BsbTM2MC5uZXQifX0sInZhbHVlIjp0cnVlLCJkZWZhdWx0IjpudWxsLCJjcmVhdGlvbkRhdGUiOjE3OTEzMDgyNDUzMTR9XQ': Synchronous XHR in page dismissal. See https://www.chromestatus.com/feature/4664843055398912 for more details.
+    at o (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700216)
+    at l (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700330)
+    at n.flush (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2700988)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:2711011
+    at AuthenticationService.requestRelogin (https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:22332)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/builtApp.js?v=3.32.45:1:36133
+    at processQueue (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:311263)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:312262
+    at Scope.$digest (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:322327)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:325062
+    at TaskTracker.completeTask (https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:337489)
+    at https://contelosuxdemo.autodeskplm360.net/plm/js/vendor.min.js?v=3.32.45:1:172297
+[  168955ms] [WARNING] [LaunchDarkly] The waitForInitialization function was called with a timeout greater than 5 seconds. We recommend a timeout of 5 seconds or less. @ https://signin.autodesk.com/static/js/main.ef522b1f.js:1
+[  168985ms] [INFO] [LaunchDarkly] LaunchDarkly client initialized @ https://signin.autodesk.com/static/js/main.ef522b1f.js:1
+[  181035ms] [WARNING] No auto captured element found for link click event @ https://swc.autodesk.com/web-utils/conversion-web-analytics-utils/1.71.2/main.js:6
+[  181567ms] [VERBOSE] [DOM] Password forms should have (optionally hidden) username fields for accessibility: (More info: https://goo.gl/9p2vKq) %o @ https://signin.autodesk.com/?flowId=QUJrJKuvGm:0
+[  185728ms] [WARNING] No auto captured element found for link click event @ https://swc.autodesk.com/web-utils/conversion-web-analytics-utils/1.71.2/main.js:6
+[  219864ms] [WARNING] No auto captured element found for link click event @ https://swc.autodesk.com/web-utils/conversion-web-analytics-utils/1.71.2/main.js:6
+[  221018ms] [LOG] JQMIGRATE: Migrate is installed with logging active, version 1.4.1 @ https://contelosuxdemo.autodeskplm360.net/scripts/lib/jquery-migrate-1.4.1.js:22
+[  221046ms] ReferenceError: _plm is not defined
+    at onload (https://contelosuxdemo.autodeskplm360.net/Login.jsp:42:177)

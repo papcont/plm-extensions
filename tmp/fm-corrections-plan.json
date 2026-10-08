@@ -1,0 +1,58 @@
+[
+ {
+  "ws": 14,
+  "dms": "34016",
+  "field": "NAME",
+  "before": "DEMO-SRC-SUP-005 Stahlhandel M?ller GmbH",
+  "after": "DEMO-SRC-SUP-005 Stahlhandel Müller GmbH"
+ },
+ {
+  "ws": 14,
+  "dms": "34013",
+  "field": "NAME",
+  "before": "DEMO-SRC-SUP-002 Las ertechnik Nord GmbH",
+  "after": "DEMO-SRC-SUP-002 Lasertechnik Nord GmbH"
+ },
+ {
+  "ws": 147,
+  "dms": "34205",
+  "field": "NOTES",
+  "before": "demo&#61;true; stableId&#61;DEMO-SRC-PO-0071; supplier&#61;DEMO-SRC-SUP-011; item&#61;DEMO-SRC-ITEM-015; quantity&#61;20; unitPriceEUR&#61;22.96; orderDate&#61;2026-12-15; leadTimeDays&#61;10; delivered&#61;on-time; rejectedQty&#61;0; qualityIssue&#61;NO",
+  "after": "demo&#61;true; stableId&#61;DEMO-SRC-PO-0071; supplier&#61;DEMO-SRC-SUP-011; item&#61;DEMO-SRC-ITEM-015; quantity&#61;20; unitPriceEUR&#61;22.96; orderDate&#61;2025-12-15; leadTimeDays&#61;10; delivered&#61;on-time; rejectedQty&#61;0; qualityIssue&#61;NO"
+ },
+ {
+  "ws": 147,
+  "dms": "34181",
+  "field": "NOTES",
+  "before": "demo&#61;true; stableId&#61;DEMO-SRC-PO-0059; supplier&#61;DEMO-SRC-SUP-011; item&#61;DEMO-SRC-ITEM-003; quantity&#61;200; unitPriceEUR&#61;18.85; orderDate&#61;2026-12-15; leadTimeDays&#61;7; delivered&#61;on-time; rejectedQty&#61;0; qualityIssue&#61;NO",
+  "after": "demo&#61;true; stableId&#61;DEMO-SRC-PO-0059; supplier&#61;DEMO-SRC-SUP-011; item&#61;DEMO-SRC-ITEM-003; quantity&#61;200; unitPriceEUR&#61;18.85; orderDate&#61;2025-12-15; leadTimeDays&#61;7; delivered&#61;on-time; rejectedQty&#61;0; qualityIssue&#61;NO"
+ },
+ {
+  "ws": 147,
+  "dms": "34158",
+  "field": "NOTES",
+  "before": "demo&#61;true; stableId&#61;DEMO-SRC-PO-0047; supplier&#61;DEMO-SRC-SUP-011; item&#61;DEMO-SRC-ITEM-019; quantity&#61;50; unitPriceEUR&#61;14.74; orderDate&#61;2026-12-15; leadTimeDays&#61;4; delivered&#61;on-time; rejectedQty&#61;0; qualityIssue&#61;NO",
+  "after": "demo&#61;true; stableId&#61;DEMO-SRC-PO-0047; supplier&#61;DEMO-SRC-SUP-011; item&#61;DEMO-SRC-ITEM-019; quantity&#61;50; unitPriceEUR&#61;14.74; orderDate&#61;2025-12-15; leadTimeDays&#61;4; delivered&#61;on-time; rejectedQty&#61;0; qualityIssue&#61;NO"
+ },
+ {
+  "ws": 147,
+  "dms": "34138",
+  "field": "NOTES",
+  "before": "demo&#61;true; stableId&#61;DEMO-SRC-PO-0035; supplier&#61;DEMO-SRC-SUP-011; item&#61;DEMO-SRC-ITEM-007; quantity&#61;500; unitPriceEUR&#61;22.96; orderDate&#61;2026-12-15; leadTimeDays&#61;10; delivered&#61;late; rejectedQty&#61;0; qualityIssue&#61;NO",
+  "after": "demo&#61;true; stableId&#61;DEMO-SRC-PO-0035; supplier&#61;DEMO-SRC-SUP-011; item&#61;DEMO-SRC-ITEM-007; quantity&#61;500; unitPriceEUR&#61;22.96; orderDate&#61;2025-12-15; leadTimeDays&#61;10; delivered&#61;late; rejectedQty&#61;0; qualityIssue&#61;NO"
+ },
+ {
+  "ws": 147,
+  "dms": "34126",
+  "field": "NOTES",
+  "before": "demo&#61;true; stableId&#61;DEMO-SRC-PO-0023; supplier&#61;DEMO-SRC-SUP-011; item&#61;DEMO-SRC-ITEM-023; quantity&#61;100; unitPriceEUR&#61;18.85; orderDate&#61;2026-12-15; leadTimeDays&#61;7; delivered&#61;on-time; rejectedQty&#61;0; qualityIssue&#61;NO",
+  "after": "demo&#61;true; stableId&#61;DEMO-SRC-PO-0023; supplier&#61;DEMO-SRC-SUP-011; item&#61;DEMO-SRC-ITEM-023; quantity&#61;100; unitPriceEUR&#61;18.85; orderDate&#61;2025-12-15; leadTimeDays&#61;7; delivered&#61;on-time; rejectedQty&#61;0; qualityIssue&#61;NO"
+ },
+ {
+  "ws": 147,
+  "dms": "34114",
+  "field": "NOTES",
+  "before": "demo&#61;true; stableId&#61;DEMO-SRC-PO-0011; supplier&#61;DEMO-SRC-SUP-011; item&#61;DEMO-SRC-ITEM-011; quantity&#61;20; unitPriceEUR&#61;14.74; orderDate&#61;2026-12-15; leadTimeDays&#61;4; delivered&#61;on-time; rejectedQty&#61;0; qualityIssue&#61;NO",
+  "after": "demo&#61;true; stableId&#61;DEMO-SRC-PO-0011; supplier&#61;DEMO-SRC-SUP-011; item&#61;DEMO-SRC-ITEM-011; quantity&#61;20; unitPriceEUR&#61;14.74; orderDate&#61;2025-12-15; leadTimeDays&#61;4; delivered&#61;on-time; rejectedQty&#61;0; qualityIssue&#61;NO"
+ }
+]

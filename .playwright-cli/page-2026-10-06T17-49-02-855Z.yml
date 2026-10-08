@@ -1,0 +1,86 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3] [cursor=pointer]
+    - generic [ref=e4] [cursor=pointer]: Condition Monitoring
+    - generic [ref=e5] [cursor=pointer]: Asset health, vibration and temperature from live telemetry
+    - generic [ref=e6]:
+      - generic "Telemetry source" [ref=e7]: "source: live · sensor · asset 30057"
+      - generic "Pause / resume all mock data (client poll + unattended server ticker)" [ref=e8] [cursor=pointer]: Pause
+      - generic "Restart the demo scenario" [ref=e9] [cursor=pointer]: 
+  - generic [ref=e11]:
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - generic [ref=e14]: Asset
+        - generic [ref=e15]: 904/30057
+        - link "Open in Fusion Manage" [ref=e16] [cursor=pointer]:
+          - /url: https://contelosuxdemo.autodeskplm360.net/plm/workspaces/904/items/itemDetails?view=full&tab=detail&mode=view&itemId=urn%60adsk,plm%60tenant,workspace,item%60CONTELOSUXDEMO,904,30057
+      - generic [ref=e17]:
+        - generic [ref=e18]: Sensors on this asset
+        - generic [ref=e20]:
+          - generic [ref=e22]: Live sensor
+          - generic [ref=e23]: lht65n-vib-01
+    - generic [ref=e24]: Machine observation
+    - generic [ref=e25]:
+      - generic [ref=e26]:
+        - generic [ref=e27]: Status
+        - generic [ref=e28]: NORMAL
+      - generic [ref=e31]:
+        - generic [ref=e32]: Health
+        - generic [ref=e33]: 100 %
+      - generic [ref=e34]:
+        - generic [ref=e35]: AI model
+        - generic [ref=e36]: READY
+        - generic [ref=e37]: samples 200
+      - generic [ref=e38]:
+        - generic [ref=e39]: Anomaly
+        - generic [ref=e40]: "0.00"
+      - generic [ref=e41]:
+        - generic [ref=e42]: Vibration
+        - generic [ref=e43]: 0.02 g –
+      - generic [ref=e44]:
+        - generic [ref=e45]: Temperature
+        - generic [ref=e46]: 29.1 °C
+      - generic [ref=e47]:
+        - generic [ref=e48]: Trend
+        - generic [ref=e49]: STABLE
+      - generic [ref=e50]:
+        - generic [ref=e51]: Humidity
+        - generic [ref=e52]: 37.0 %
+      - generic [ref=e53]:
+        - generic [ref=e54]: Last update
+        - generic [ref=e55]: 19:46:54
+      - generic [ref=e56]:
+        - generic [ref=e57]: Last event
+        - generic [ref=e58]: "-"
+    - generic [ref=e59]:
+      - generic [ref=e60]: Why is this unusual?
+      - generic [ref=e61]:
+        - generic [ref=e62]: Within learned normal · anomaly 0.00
+        - generic [ref=e63]: "Vibration: ? g (learned median 0.02 g, normal 0–0.05 g)"
+        - generic [ref=e64]: "Temperature: within normal range"
+        - generic [ref=e65]: "Trend: STABLE"
+      - generic [ref=e66]:
+        - generic [ref=e67]: Learned baseline vs fixed threshold
+        - generic [ref=e68]: "Learned baseline: asset-specific normal behavior learned from recent healthy observations."
+        - generic [ref=e69]: "Fixed threshold: an absolute safety guardrail independent of learned behavior."
+    - generic [ref=e70]:
+      - generic [ref=e71]: Time range
+      - combobox [ref=e72]:
+        - option "Last 1h"
+        - option "Last 6h"
+        - option "Last 12h"
+        - option "Last 24h" [selected]
+        - option "Last 7d"
+        - option "All"
+      - generic [ref=e73]:
+        - generic [ref=e74]: Normal
+        - generic [ref=e76]: Warning
+        - generic [ref=e78]: Critical
+    - generic [ref=e80]:
+      - generic [ref=e81]: Health trend
+      - generic [ref=e84]: Vibration trend (g) · band = learned normal
+      - generic [ref=e87]: Temperature trend (°C)
+      - generic [ref=e90]: Humidity trend (%)
+    - generic [ref=e93]:
+      - generic [ref=e94]: Condition events
+      - generic [ref=e95]: No local Condition Event history available.

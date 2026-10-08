@@ -1,0 +1,13 @@
+v1.4
+Added VIBMOD=6 function
+
+v1.3
+Added VIBMOD=5 function
+
+v1.2
+In mode 1, mode 2, mode 3, the time unit is set in seconds, and in mode 4, the time unit is set in milliseconds
+
+v1.1
+The alarm time and interrupt counting interval of the setting mode also have the acquisition time, and the time unit is modified to milliseconds.
+
+

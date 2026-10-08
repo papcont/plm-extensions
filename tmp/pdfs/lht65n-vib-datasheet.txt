@@ -1,0 +1,44 @@
+LoRaWAN Vibration Sensor
+LHT65N-VIB
+
+
+
+
+ OVERVIEW:                                                                                                Sensor Spec:
+   The Dragino LHT65N-VIB LoRaWAN Vibration Sensor is designed to detect and measure vibrations,
+   shocks, or accelerations of an object. By analyze the motion of the object, LHT65N-VIB can send         Built-in Temperature Sensor:
+   meaningful resulte such as: Alarm, device runtime, counting, vibration strenght to IoT platform for       Resolution: 0.01°C
+   further analyze.                                                                                          Accuracy Tolerance : Typ ±0.3 °C
+                                                                                                             Long Term Drift: < 0.02 °C/yr
+   It targets professional wireless sensor network applications such as monitoring equipment status,         Operating Range: -40 ~ 80 °C
+   water leakage alarm, usage statistics, vibration intensity detection, etc.
+                                                                                                           Built-in Humidity Sensor:
+   The LHT65N-VIB allows users to send data and reach extremely long ranges. It provides ultra-long          Resolution: 0.04 %RH
+   range spread spectrum communication and high interference immunity whilst minimizing current              Accuracy Tolerance : Typ ±3% RH
+   consumption.
+                                                                                                             Long Term Drift: < 0.25 RH/yr
+                                                                                                             Operating Range: 0 ~ 96 %RH
+   LHT65N-VIB has a built-in 2400mAh non-chargeable battery which can be used for more than 3 years*.
+
+   LHT65N-VIB is full compatible with LoRaWAN v1.0.3 Class A protocol, it can work with a standard
+                                                                                                           External Vibration Sensor:
+   LoRaWAN gateway.                                                                                          Detecting object vibration status
+                                                                                                             accelerator for x,y,z
+   *The actual battery life depends on how often to send data, please see battery analyzer chapter.          Small size for easy installation
+
+ Features:
+     Detecting object vibration status            Bands: CN470/EU433/KR920/US915/EU868/AS923/AU915        Order Info: LHT65N-VIB-XX
+     Detect vibration alarm                       Firmware upgradable via program port                     XX: The default frequency band
+     Calcula device runtime                       Built-in Temperature & Humidity sensor
+                                                                                                             XX: Frequency Bands, options:
+     3-axis accelerator for x,y,z                 Remote confgure parameters via LoRaWAN Downlink                EU433,CN470,EU868,IN865,
+     LoRaWAN v1.0.3 Class A protocol              AT Commands to change parameters                               KR920,AS923,AU915,US915
+     Built-in 2400mAh battery for long time use
+
+
+
+Dragino Technology Co., Limited
+Room 202, Block B, BCT Incubation Bases (BaoChengTai), No.8 CaiYunRoad                                   WWW.DRAGINO.COM
+LongCheng Street, LongGang District ; Shenzhen 518116,China                                                         sales@dragino.com
+Direct: +86 755 86610829 |Fax: +86 755 86647123
+
