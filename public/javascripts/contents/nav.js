@@ -573,6 +573,12 @@ function insertWorkspaceSearch(wsId, params) {
         }
     }
 
+    if(settings[id].tileRevision) {
+        if(!settings[id].searchReturnFields.includes('LC_RELEASE_LETTER')) {
+            settings[id].searchReturnFields.push('LC_RELEASE_LETTER');
+        }
+    }
+
     if(settings[id].stateColors.length > 0) {
         if(!settings[id].searchReturnFields.includes('WF_CURRENT_STATE')) {
             settings[id].searchReturnFields.push('WF_CURRENT_STATE');
@@ -614,7 +620,11 @@ function insertWorkspaceSearch(wsId, params) {
             insertWorkspaceSearchData(id, false);
         });
 
-    if(!isBlank(settings[id].searchButtonIcon)) elemButton.addClass('with-icon').addClass(settings[id].searchButtonIcon);
+    if(!isBlank(settings[id].searchButtonIcon)) {
+        elemButton.addClass(settings[id].searchButtonIcon);
+        if(isBlank(settings[id].searchButtonLabel)) elemButton.addClass('icon'); else elemButton.addClass('with-icon');
+    }
+  
 
     insertWorkspaceSearchDone(id);
 
@@ -718,7 +728,8 @@ function insertWorkspaceSearchData(id, isNext) {
                 link : '/api/v3/workspaces/' + settings[id].wsId + '/items/' + row.dmsId
             })
 
-            contentItem.filters = [];
+            contentItem.filters  = [];
+            contentItem.revision = 'w';
 
             if(settings[id].filterByStatus) {
                 stateName = row.data.WF_CURRENT_STATE.displayValue;
@@ -751,6 +762,7 @@ function insertWorkspaceSearchData(id, isNext) {
                 if(field.key === settings[id].groupBy         ) contentItem.group      = field.fieldData.value;
                 if(field.key === 'DESCRIPTOR'                 ) contentItem.descriptor = field.fieldData.value;
                 if(field.key === 'WF_CURRENT_STATE'           ) contentItem.status     = field.fieldData.value;
+                if(field.key === 'LC_RELEASE_LETTER'          ) contentItem.revision   = field.fieldData.value;
 
                 if(typeof settings[id].tileTitle == 'string') {
                     if(field.key === settings[id].tileTitle) contentItem.title = field.fieldData.value;
@@ -831,13 +843,9 @@ function insertWorkspaceSearchData(id, isNext) {
         sortArray(listStates, 0);
         setPanelFilterOptions(id, 'status', listStates);
         finishPanelContentUpdate(id, items);
-        $('#' + id + '-search-content-input').focus();
+        setPanelPaginationControls(id, responses[0].data.totalResultCount);
 
-        // The v1 /plm/search response carries no total count, so derive the
-        // pagination state from the page fill: a full page implies there may be more.
-        let pageRows = responses[0].data.row.length;
-        let shown    = $('#' + id + '-content').find('.content-item').length;
-        setPanelPaginationControls(id, (pageRows >= settings[id].limit) ? shown + 1 : shown);
+        $('#' + id + '-search-content-input').focus();
 
         if(!isNext) {
             if(settings[id].autoClick) {
@@ -878,6 +886,7 @@ function insertSearch(params) {
         })
         .keypress(function(e) {
             if(e.which == 13) {
+                resetSearch(id, false);
                 settings[id].mode = 'initial';
                 insertSearchData(id, false);
             }
@@ -919,6 +928,9 @@ function resetSearch(id, resetInput) {
     $('#' + id + '-processing').hide();
     $('#' + id + '-no-data'   ).hide();
     $('#' + id + '-search-content-button').removeClass('disabled');
+
+    settings[id].page   = 1;
+    settings[id].offset = 0;
 
 }
 function insertSearchData(id, isNext) {
@@ -1365,11 +1377,10 @@ function insertResultsDataDone(id, data) {}
 // Insert tasks in defined status with acknowledgement actions
 function insertNewTasks(wsId, filters, params) {
 
-    if(isBlank(params)) params = {};
-    
-    const id = isBlank(params.id) ? 'new-tasks' : params.id;
-
-    getPanelSettings('insertNewTasks', id, params);
+    const id = getPanelSettings('insertNewTasks', params, {
+        wsId    : wsId,
+        filters : filters
+    });
 
     settings[id].layout = 'list';
 
@@ -1388,7 +1399,7 @@ function insertNewTasksData(id) {
         wsId      : settings[id].wsId,
         filter    : settings[id].filters,
         fields    : [],
-        pageSize  : settings[id].pageSize,
+        pageSize  : settings[id].limit,
         sort      : settings[id].sortBy,
         timestamp : settings[id].timestamp,
         useCache  : settings[id].useCache

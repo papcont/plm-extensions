@@ -1,3 +1,7 @@
+require('./lib/console-buffer').start();
+
+const crypto = require('crypto');
+
 let pathEnvironment = './environment.js';
 if (!require('fs').existsSync(pathEnvironment) && process.env.NODE_ENV === 'production') {
     pathEnvironment = './environments/template.js';
@@ -35,8 +39,8 @@ if ((process.argv.length > 2) && (!fs.existsSync(pathEnvironment))) {
     const path        = require('path');
     const favicon     = require('serve-favicon');
     const morgan      = require('morgan');
-    const serveIndex  = require('serve-index');
     const bodyParser  = require('body-parser');
+    const storage     = require('./routes/storage');
     const landing     = require('./routes/landing');
     const plm         = require('./routes/plm');
     const vault       = require('./routes/pdm');
@@ -62,12 +66,17 @@ if ((process.argv.length > 2) && (!fs.existsSync(pathEnvironment))) {
     app.locals.fusionConnected   = process.env.FUSION_CONNECTED    || environment.fusionConnected   || false;
     app.locals.adminClientId     = process.env.ADMIN_CLIENT_ID     || environment.adminClientId     || '' ;
     app.locals.adminClientSecret = process.env.ADMIN_CLIENT_SECRET || environment.adminClientSecret || '';
+    app.locals.ssaAccountId      = process.env.SSA_ACCOUNT_ID      || environment.ssaAccountId      || '';
+    app.locals.ssaKeyId          = process.env.SSA_KEY_ID          || environment.ssaKeyId          || '';
+    app.locals.ssaPrivateKey     = process.env.SSA_PRIVATE_KEY     || environment.ssaPrivateKey     || '';
     app.locals.vaultGateway      = process.env.VAULT_GATEWAY       || environment.vaultGateway      || '';
     app.locals.vaultName         = process.env.VAULT_NAME          || environment.vaultName         || '';
     app.locals.dolibarr          = {
         apiUrl : process.env.DOLIBARR_API_URL || environment.dolibarrApiUrl || '',
         apiKey : process.env.DOLIBARR_API_KEY || environment.dolibarrApiKey || ''
     };
+    // AI key: a real ANTHROPIC_API_KEY env var (e.g. Google hosting) wins over environment.anthropicApiKey
+    if(!process.env.ANTHROPIC_API_KEY && environment.anthropicApiKey) process.env.ANTHROPIC_API_KEY = environment.anthropicApiKey;
     app.locals.erpServiceAccountEmail = process.env.ERP_SERVICE_ACCOUNT_EMAIL || environment.erpServiceAccountEmail || '';
     app.locals.tenantLink        = 'https://' + app.locals.tenant + '.autodeskplm360.net';
     app.locals.protocol          = process.env.PROTOCOL || app.locals.redirectUri.split('://')[0];
@@ -92,6 +101,8 @@ if ((process.argv.length > 2) && (!fs.existsSync(pathEnvironment))) {
     removeDisabledServicesFromMenu(settings.menu, settings.server);
 
     settings.chrome.workspaces = settings.common.workspaceIds;
+    
+    const sessionStore = new session.MemoryStore();
 
     app.locals.debugMode    = environment.debugMode;
     app.locals.common       = settings.common;
@@ -100,6 +111,7 @@ if ((process.argv.length > 2) && (!fs.existsSync(pathEnvironment))) {
     app.locals.server       = settings.server;
     app.locals.chrome       = settings.chrome;
     app.locals.colors       = settings.colors;
+    app.locals.sessionStore = sessionStore;
 
     // IoT: fold per-deployment settings (admin creds, tenant link, `exports.iot` block) into the IoT
     // config singleton, then start the optional unattended server ticker (off unless serverTickMs set).
@@ -132,18 +144,46 @@ if ((process.argv.length > 2) && (!fs.existsSync(pathEnvironment))) {
     app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
     app.use(morgan('dev'));
     app.use(session({
-        secret: "XASDSEDR",
+        secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
         proxy: true,
         resave: false,
-        saveUninitialized: false
+        saveUninitialized: false,
+        rolling: true,
+        store: sessionStore,
+        cookie: {
+            httpOnly : true,
+            sameSite : 'lax',
+            secure   : 'auto',          // Secure flag only when the request arrived via HTTPS (also behind a proxy, see proxy: true)
+            maxAge   : 90 * 60 * 1000   // 90 minutes, renewed with every request
+        }
     }));
     // Stashes the raw bytes alongside the parsed body - needed by /erp/webhooks/lean-change-order
     // to verify Autodesk's x-adsk-signature (HMAC over the exact bytes sent, not a re-serialized copy).
     app.use(bodyParser.json({limit: "50mb", verify: function(req, res, buf) { req.rawBody = buf; }}));
     app.use(bodyParser.urlencoded({limit: "50mb", extended: true, parameterLimit:50000}));
+    
+
+    // MAINTENANCE MODE
+    // Set by /monitoring/api/deploy/update while it pulls the latest code and
+    // relaunches the server. Blocks every request (assets included) with a
+    // self-contained holding page until the new process comes back online.
+    app.locals.maintenance = { active : false, startedAt : null, etaMinutes : 10 };
+    app.use(function(req, res, next) {
+
+        if(!app.locals.maintenance.active) return next();
+
+        res.status(503);
+        res.set('Retry-After', '60');
+        res.render('framework/maintenance', {
+            startedAt  : app.locals.maintenance.startedAt,
+            etaMinutes : app.locals.maintenance.etaMinutes
+        });
+
+    });
+
     app.use(express.static(path.join(__dirname, 'public')));
-    
-    
+
+
     // ROUTING
     app.use('/', landing);
     app.use('/plm', plm);
@@ -153,7 +193,7 @@ if ((process.argv.length > 2) && (!fs.existsSync(pathEnvironment))) {
     app.use('/erp', erp);
     app.use('/iot', iot);
     app.use('/sourcing', sourcing);
-    app.use('/storage', express.static(__dirname + '/storage'), serveIndex(__dirname + '/storage', { icons: true }));
+    app.use('/storage', storage);
 
 
     // CATCH 404 AND FORWARD TO ERROR HANDLER
@@ -171,6 +211,9 @@ if ((process.argv.length > 2) && (!fs.existsSync(pathEnvironment))) {
         // set locals, only providing error in development
         res.locals.message = err.message;
         res.locals.error = req.app.get('env') === 'development' ? err : {};
+
+        err.type        = err?.response?.data?.error             ?? '';
+        err.description = err?.response?.data?.error_description ?? '';
 
         // render the error page
         res.status(err.status || 500);
@@ -192,10 +235,47 @@ function mergeSettings(master, custom) {
     mergeSettingsProperty(master, custom, 'server');
     mergeSettingsProperty(master, custom, 'chrome');
 
+    let isFirst   = true;
+    let variables = Object.keys(process.env);
+
+    for(let variable of variables) {
+
+        if(variable.startsWith('settings_')) {
+
+            const path    = variable.substring(9);
+            const keys    = path.split("_");
+            const lastKey = keys.pop();
+            const target  = keys.reduce((current, key) => current[key], master);
+
+            target[lastKey] = process.env[variable];            
+
+            if(isFirst) {
+
+                console.log();
+                console.log('  Updating settings per environment variables');
+                console.log(' --------------------------------------------------------------------------------------------------');
+
+            }
+
+            console.log('  -> exports.' + variable.substring(9).replaceAll('_', '.') + ' = ' + process.env[variable])
+
+            isFirst = false;
+
+        }
+
+    }
+
+    if(!isFirst) console.log();
+
 }
 function mergeSettingsProperty(master, custom, property) {
 
     if(typeof custom[property] === 'undefined') return;
+
+    if(custom[property] === null) {
+        master[property] = null;
+        return;
+    }
 
     let keysCustom = Object.keys(custom[property]);
 
@@ -234,6 +314,8 @@ function mergeSettingsProperty(master, custom, property) {
 
 }
 
+
+// Disable endpoints / services per definition in settings file (see exports.server.servicesEnabled)
 function removeDisabledServicesFromMenu(menu, server) {
 
     for(let column of menu) {

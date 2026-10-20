@@ -167,24 +167,33 @@
 }
 
 .with-icon,
-.append-icon {
+.append-icon,
+.append-chevron {
     display : flex;
 }
-.append-icon {
+.append-icon,
+.append-chevron {
     justify-content : space-between;
 }
 .with-icon::before,
-.append-icon::after {
+.append-icon::after,
+.append-chevron::after {
     font-family            : 'Material Symbols Sharp';
-    margin-right           : var(--spacer-xxs);
     text-rendering         : optimizeLegibility;
     -webkit-font-smoothing : antialiased;
+}
+.with-icon::before {
+    margin-right : var(--spacer-xxs);
+}
+.append-icon::after {
+    margin-left : var(--spacer-xxs);
 }
 .icon.filled,
 .with-icon.filled::before,
 .append-icon.filled::after {
     font-variation-settings : 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 48
 }
+.append-chevron::after { content : '\e5cc'; }
 
 
 /* Buttons with on/off toggles */
@@ -211,6 +220,8 @@
 /* Icons */
 .icon-3d::before                { content : '\e9fe'; }
 .icon-activity::before          { content : '\e53f'; }
+.icon-add::before               { content : '\e145'; }
+.icon-add-comment::before       { content : '\e266'; }
 .icon-add-left::before          { content : '\f425'; }
 .icon-add-right::before         { content : '\f424'; }
 .icon-add-above::before         { content : '\f423'; }
@@ -232,6 +243,7 @@
 .icon-bom::before               { content : '\e242'; }
 .icon-bom-tree::before          { content : '\e94b'; }
 .icon-bottom::before            { content : '\e258'; }
+.icon-cable::before             { content : '\efe6'; }
 .icon-calendar::before          { content : '\ebcc'; }
 .icon-cancel::before            { content : '\e5c9'; }
 .icon-cart-add::before          { content : '\e854'; }
@@ -274,6 +286,7 @@
 .icon-deselect-all::before      { content : '\e9d3'; }
 .icon-details::before           { content : '\e0ee'; }
 .icon-disconnect::before        { content : '\e16f'; }
+.icon-dissolve::before          { content : '\f50d'; }
 .icon-donut-chart::before       { content : '\e917'; }
 .icon-double-arrow-left::before { content : '\eac3'; }
 .icon-download::before          { content : '\e8d7'; }
@@ -301,6 +314,7 @@
 .icon-group::before             { content : '\e7ef'; }
 .icon-group-add::before         { content : '\e7f0'; }
 .icon-help::before              { content : '\f1c0'; }
+.icon-health-monitor::before    { content : '\eaa2'; }
 .icon-help-circle::before       { content : '\e887'; }
 .icon-hide::before              { content : '\e8f5'; }
 .icon-highlight::before         { content : '\e518'; }
@@ -389,6 +403,7 @@
 .icon-side-panel::before        { content : '\f7e5'; }
 .icon-skip::before              { content : '\e01f'; }
 .icon-sliders::before           { content : '\e429'; }
+.icon-square::before            { content : '\e3c6'; }
 .icon-start::before             { content : '\e1c4'; }
 .icon-starts-with::before       { content : '\ec73'; }
 .icon-status::before            { content : '\ea50'; }
@@ -396,6 +411,7 @@
 .icon-stop:before               { content : '\ef71'; }
 .icon-stopwatch:before          { content : '\e425'; }
 .icon-strike-through:before     { content : '\e246'; }
+.icon-sum:before                { content : '\e24a'; }
 .icon-summary:before            { content : '\f071'; }
 .icon-swap:before               { content : '\e8d4'; }
 .icon-swap-circle:before        { content : '\e933'; }
@@ -424,6 +440,7 @@
 .icon-underline::before         { content : '\e249'; }
 .icon-undo::before              { content : '\e166'; }
 .icon-unfold::before            { content : '\e5d7'; }
+.icon-unlock::before            { content : '\e898'; }
 .icon-upload::before            { content : '\e2c3'; }
 .icon-user::before              { content : '\e7fd'; }
 .icon-user-info::before         { content : '\f567'; }

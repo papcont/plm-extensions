@@ -23,6 +23,7 @@
     "express-fileupload": "*",
     "express-session": "*",
     "form-data": "*",
+    "jsonwebtoken": "^9.0.3",
     "morgan": "*",
     "mqtt": "^5.15.2",
     "pug": "*",

@@ -530,4 +530,18 @@ function getToken(req, code, res, callback) {
     
 }
 
+// Guards routes that serve cached/exported files: requires a PLM login in the session (used by routes/storage.js)
+function validatePLMSession(req, res, next) {
+
+    let headers = req.session && req.session.headers;
+
+    if(!headers || !headers.token) return res.status(401).send('PLM login required.');
+
+    if(headers.expires && headers.expires < Date.now() && !headers.refreshToken) return res.status(401).send('Session expired.');
+
+    next();
+
+}
+
 module.exports = router;
+module.exports.validatePLMSession = validatePLMSession;
