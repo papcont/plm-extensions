@@ -297,6 +297,9 @@ function selectNodeForSwap(elemClicked) {
     // then the item details panel with an open-in-FM link. Scrollable so the details fit below.
     let elem = $('#item').removeClass().addClass('surface-level-3').html('').css({ overflowY : 'auto' });
 
+    // Ausführungen 1-4 (GEN-TITLEn / GEN-WERKn), filled once the details below are loaded.
+    let executionsBox = $('<div></div>').appendTo(elem).attr('id', 'vb-executions');
+
     if(eligible) {
         let box = $('<div></div>').appendTo(elem).addClass('vb-material-box').css({ padding : '12px' });
         $('<div></div>').appendTo(box).css({ marginBottom : '6px', fontWeight : 'bold' })
@@ -328,6 +331,11 @@ function selectNodeForSwap(elemClicked) {
         vb.selected.materialart = getSectionFieldValue(r.data.sections, vb.fieldIds.materialart) || '';
         let current = getSectionFieldValue(r.data.sections, vb.fieldIds.material) || '';
         if(current) $('#vb-material').val(current);
+        let f = vb.fieldIds;
+        vbShowExecutions(vbExecutions(
+            [f.genTitle1, f.genTitle2, f.genTitle3, f.genTitle4].map(id => getSectionFieldValue(r.data.sections, id, '')),
+            [f.genWerk1,  f.genWerk2,  f.genWerk3,  f.genWerk4 ].map(id => getSectionFieldValue(r.data.sections, id, ''))
+        ), executionsBox);
     });
 
     // Component picker scoped to the item workspace; click a result to record a replace swap.
@@ -386,6 +394,50 @@ function vbListExistingVariants(partNumber, elem) {
         }
 
     });
+}
+
+
+// Ausführungen 1-4 of a part from its GEN-TITLEn / GEN-WERKn values (Feige iProperties).
+// A slot may list several article numbers ("2046972 2046973"): split only when every token is a
+// number, so norm texts like "DIN 6912 - M5 x 16" stay one entry. Empty slots are skipped.
+function vbExecutions(titles, materials) {
+    let result = [];
+    for(let i = 0; i < titles.length; i++) {
+        let title = String(titles[i] || '').trim();
+        if(title === '') continue;
+        let tokens = title.split(/\s+/);
+        result.push({
+            slot     : i + 1,
+            articles : tokens.every(t => /^\d+$/.test(t)) ? tokens : [title],
+            material : String(materials[i] || '').trim()
+        });
+    }
+    return result;
+}
+
+// One button per article of every Ausführung: the choice is made per position and per article.
+// ponytail: nothing is drawn for parts without GEN-TITLE values - keeps #item lean.
+function vbShowExecutions(executions, elem) {
+
+    if(executions.length === 0) return;
+
+    let sel    = vb.selected;
+    let chosen = vb.swaps[sel.edgeId] ? vb.swaps[sel.edgeId].toNumber : null;
+    let box    = $('<div></div>').appendTo(elem).addClass('vb-executions-box').css({ padding : '12px' });
+
+    $('<div></div>').appendTo(box).css({ marginBottom : '6px', fontWeight : 'bold' })
+        .html('Ausführungen of "' + sel.partNumber + '"');
+
+    for(let e of executions) {
+        $('<div></div>').appendTo(box).css({ marginTop : '8px', opacity : 0.75 })
+            .html('Ausführung ' + e.slot + (e.material ? ' · ' + e.material : ''));
+        for(let article of e.articles) {
+            let mark = (article === chosen) ? '✓ ' : (article === sel.partNumber) ? '● ' : '→ ';
+            $('<div></div>').appendTo(box).addClass('button').css({ marginTop : '4px', width : '100%' })
+                .html(mark + article + (article === sel.partNumber ? '  (current)' : ''))
+                .click(function() { recordExecutionSwap(e.slot, article, e.material); });
+        }
+    }
 }
 
 
@@ -457,6 +509,51 @@ function recordSwap(picked) {
     vbMarkPartVaried(vb.selected.partNumber);   // varied part turns green in the viewer
 
     $('#button-save').removeClass('disabled');
+}
+
+
+// Choose Ausführung <slot> / <article> for the selected position (mode 'execution').
+// Article already in Fusion (NUMBER = article) -> reused as-is, like a replace swap. Otherwise toLink
+// stays null: creating the missing article is #23476, until then the plan blocks the save.
+function recordExecutionSwap(slot, article, material) {
+
+    let sel = vb.selected;
+    if(sel === null) return;
+
+    if(article === sel.partNumber) { clearSwap(sel.edgeId); return; }   // back to the current one
+
+    $.post('/plm/search', {
+        wsId   : vb.ws.id,
+        fields : [ vb.fieldIds.number, 'DESCRIPTOR' ],
+        filter : [{ field : vb.fieldIds.number, type : 0, comparator : 15, value : article }]
+    }).done(function(r) {
+
+        let rows  = (r.data && r.data.row) ? r.data.row : [];
+        let found = rows.length > 0 ? rows[0] : null;
+
+        vb.swaps[sel.edgeId] = {
+            mode       : 'execution',
+            slot       : slot,
+            material   : material,
+            fromLink   : sel.link,
+            fromNumber : sel.partNumber,
+            fromTitle  : sel.title,
+            toNumber   : article,   // identity in the parent fingerprint (= the APplus article number)
+            toLink     : found ? '/api/v3/workspaces/' + vb.ws.id + '/items/' + found.dmsId : null,
+            toTitle    : found ? getSearchResultFieldValue(found, 'DESCRIPTOR', article) : article,
+            row        : sel.row
+        };
+
+        let row = sel.row;
+        row.addClass('swapped');
+        row.find('.swap-badge').remove();
+        $('<span></span>').addClass('swap-badge').html('→ Ausführung ' + slot + ': ' + article + (found ? '' : ' (new)'))
+            .appendTo(row.find('.tree-descriptor').closest('td'));
+
+        vbMarkPartVaried(sel.partNumber);
+
+        $('#button-save').removeClass('disabled');
+    });
 }
 
 
@@ -605,6 +702,13 @@ function variantsBomSelfTest() {
     console.assert(vbSwapIdentity(steel) === vbSwapIdentity({ mode : 'material', fromNumber : 'PIPE', material : 'Stahl', materialart : 'Rohr' }), 'FAIL: material identity must be deterministic');
     console.assert(vbSwapIdentity(steel) !== vbSwapIdentity(alu), 'FAIL: different material must change identity');
     console.assert(vbSwapIdentity(steel) !== 'PIPE', 'FAIL: material variant must differ from the base leaf number');
+
+    // Ausführungen: number lists split per article, norm texts stay whole, empty slots skipped.
+    let ex = vbExecutions(['2046592', '2046972 2046973', '', 'DIN 6912 - M5 x 16'], ['1.4301', 'VA']);
+    console.assert(ex.length === 3, 'FAIL: empty Ausführung must be skipped');
+    console.assert(ex[1].slot === 2 && ex[1].articles.join() === '2046972,2046973' && ex[1].material === 'VA', 'FAIL: number list must split per article');
+    console.assert(ex[2].slot === 4 && ex[2].articles.length === 1 && ex[2].material === '', 'FAIL: norm text must stay one article');
+    console.assert(vbSwapIdentity({ mode : 'execution', toNumber : '2046973' }) === '2046973', 'FAIL: execution identity is the article number');
 
     console.log('variantsBomSelfTest: all assertions passed');
     return true;
@@ -806,8 +910,8 @@ async function saveVariant() {
             if(s.mode === 'material') {
                 s._leafFp       = vbLeafFingerprint(s);
                 s._leafExisting = await vbFindByFingerprint(s._leafFp);
-            } else {
-                s.toNumber = await vbGetItemNumber(s.toLink);
+            } else if(s.mode === 'replace') {
+                s.toNumber = await vbGetItemNumber(s.toLink);   // 'execution' already carries its article number
             }
         }
 
@@ -852,6 +956,16 @@ function vbShowPlan(tree, changed) {
         else                line.html('＋ Create ' + s.material + ' variant of <b>' + s.fromNumber + '</b>');
     }
 
+    // Ausführung choices: existing articles are reused, missing ones block the save for now (#23476).
+    let missing = 0;
+    for(let edgeId in vb.swaps) {
+        let s = vb.swaps[edgeId];
+        if(s.mode !== 'execution') continue;
+        let line = $('<div></div>').appendTo(body).css({ margin : '6px 0' });
+        if(s.toLink) line.html('↻ Use <b>' + s.toNumber + '</b> (Ausführung ' + s.slot + ') for "' + s.fromNumber + '"');
+        else { missing++; line.html('✕ <b>' + s.toNumber + '</b> (Ausführung ' + s.slot + ') does not exist in Fusion yet'); }
+    }
+
     for(let n of changed) {
         let line = $('<div></div>').appendTo(body).css({ margin : '6px 0' });
         if(n._existing) {
@@ -867,10 +981,15 @@ function vbShowPlan(tree, changed) {
     $('<div></div>').appendTo(body).css({ margin : '12px 0', opacity : 0.7 })
         .html(createCount + ' to create, ' + reuseCount + ' to reuse.');
 
-    $('<div></div>').appendTo(body)
-        .addClass('button').addClass('default').addClass('with-icon').addClass('icon-create')
-        .html('Confirm & Create')
-        .click(function() { vbExecutePlan(tree, changed); });
+    if(missing > 0) {
+        $('<div></div>').appendTo(body).css({ margin : '12px 0' })
+            .html(missing + ' chosen article(s) are not in Fusion yet - creating them is not supported in this version.');
+    } else {
+        $('<div></div>').appendTo(body)
+            .addClass('button').addClass('default').addClass('with-icon').addClass('icon-create')
+            .html('Confirm & Create')
+            .click(function() { vbExecutePlan(tree, changed); });
+    }
 
     // Escape route: close the plan preview without committing. Swaps are kept (rows stay marked,
     // Save stays enabled) so the user can review the BOM and re-open the plan.

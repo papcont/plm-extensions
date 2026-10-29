@@ -2068,6 +2068,12 @@ exports.applications = {
             variantAllowed : 'VARIANT_ALLOWED',   // legacy checkbox, no longer the eligibility gate (see genTitle1/3)
             genTitle1      : 'GENTITLE1POSI',     // eligibility: item is variant-eligible when genTitle1 AND genTitle2 are both filled
             genTitle2      : 'GENTITLE2POSI',     // (replaces the VARIANT_ALLOWED checkbox); GENTITLE3POSI stays optional/free
+            genTitle3      : 'GENTITLE3POSI',     // Ausführung 3/4 article number(s), shown in the Ausführungen picker
+            genTitle4      : 'GENTITLE4POSI',
+            genWerk1       : 'GENWERK1POSI',      // material text per Ausführung 1..4 (GEN-WERKn-POSI)
+            genWerk2       : 'GENWERK2POSI',
+            genWerk3       : 'GENWERK3POSI',
+            genWerk4       : 'GENWERK4POSI',
             bomFingerprint : 'BOM_FINGERPRINT',   // searchable text: canonical BOM hash for dedup
             material       : 'MATERIAL',          // freetext: material value written on a material variant
             materialart    : 'MATERIALART',       // freetext: material category, part of the leaf identity
