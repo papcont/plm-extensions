@@ -42,6 +42,7 @@ The `common.workspaceIds` block in `settings/custom.js` is the most commonly ten
 - `/vault` → `routes/pdm.js` — Vault REST passthrough for the Vault/Inventor add-ins.
 - `/services` → `routes/services.js` — misc service endpoints.
 - `/erp` → `routes/erp.js` — ERP Integration: transfers BOMs from Fusion Manage to Dolibarr (`services/erp*.js`), history persisted as JSON in `storage/erp/`. Requires `dolibarrApiUrl`/`dolibarrApiKey` in `environment.js` (or `DOLIBARR_API_URL`/`DOLIBARR_API_KEY`).
+- `/applus` → `routes/applus.js` — APplus BOM exports (Excel 2003 XML, one file per head article) for the Feige Variant BOM Editor: import, article lookup, assembly match by level-1 fingerprint, level-1 diff. Pure logic in `services/applus/applus.js` (tests `test/applus/`), imported data as JSON in `storage/applus/` (gitignored - customer data). No APplus interface; a fingerprint match can return several APplus BOMs with identical level-1 composition, the caller disambiguates.
 - `/iot` → `routes/iot.js` — IoT / Condition Monitoring: ingests LoRaWAN sensor uplinks (`POST /iot/uplink`), derives health + condition (`services/iot/*`), writes back to the Asset in Fusion Manage. See the IoT subsystem section below.
 - `/storage` → static + directory listing of `./storage/` (download cache, exports, uploads).
 

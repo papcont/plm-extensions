@@ -35,6 +35,7 @@ variants-bom-*.png
 vb-*.png
 /storage/erp/*
 /storage/iot/*
+/storage/applus/*
 mebom-*.png
 ux-*.png
 # local research material incl. a code-signing certificate (.pfx): never commit
