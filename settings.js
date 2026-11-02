@@ -2074,18 +2074,18 @@ exports.applications = {
             genWerk2       : 'GENWERK2POSI',
             genWerk3       : 'GENWERK3POSI',
             genWerk4       : 'GENWERK4POSI',
-            oberflBeh1     : 'OBERFLBEH1',        // surface per Ausführung 1..4 (Oberflächenbehandlung, ...2, ...3, ...4)
-            oberflBeh2     : 'OBERFLBEH2',
-            oberflBeh3     : 'OBERFLBEH3',
-            oberflBeh4     : 'OBERFLBEH4',
+            oberflBeh1     : 'OBERFLAECHENBEHANDLUNG1',        // surface per Ausführung 1..4 (Oberflächenbehandlung, ...2, ...3, ...4)
+            oberflBeh2     : 'OBERFLAECHENBEHANDLUNG2',
+            oberflBeh3     : 'OBERFLAECHENBEHANDLUNG3',
+            oberflBeh4     : 'OBERFLAECHENBEHANDLUNG4',
             ausfuehrung1   : 'AUSFUEHRUNG1',      // label per Ausführung 1..4 (4.1..4.4 Ausführung, e.g. ATEX)
             ausfuehrung2   : 'AUSFUEHRUNG2',
             ausfuehrung3   : 'AUSFUEHRUNG3',
             ausfuehrung4   : 'AUSFUEHRUNG4',
-            sapNr1         : 'SAPNR1',            // SAP number per Ausführung 1..4 (SAP-Nummer1..4)
-            sapNr2         : 'SAPNR2',
-            sapNr3         : 'SAPNR3',
-            sapNr4         : 'SAPNR4',
+            sapNr1         : 'SAPNUMMER1',            // SAP number per Ausführung 1..4 (SAP-Nummer1..4)
+            sapNr2         : 'SAPNUMMER2',
+            sapNr3         : 'SAPNUMMER3',
+            sapNr4         : 'SAPNUMMER4',
             bomFingerprint : 'BOM_FINGERPRINT',   // searchable text: canonical BOM hash for dedup
             material       : 'MATERIAL',          // freetext: material value written on a material variant
             materialart    : 'MATERIALART',       // freetext: material category, part of the leaf identity
