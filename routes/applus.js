@@ -103,6 +103,8 @@ const STATUS = {
     NO_ARTICLE     : 'Ohne Artikel'
 };
 
+const TONE = { green: 'FFD2E9B0', yellow: 'FFF7CC93', blue: 'FFCDEAF7', red: 'FFFBD4D4' };
+
 router.post('/order-bom/excel', async function(req, res) {
     let result;
     try { result = orderBom(req.body); } catch (e) { return res.status(404).json({ success: false, message: e.message }); }
@@ -113,6 +115,7 @@ router.post('/order-bom/excel', async function(req, res) {
         ws.columns = columns.map(([header, width]) => ({ header, width }));
         ws.addRows(rows);
         ws.getRow(1).font = { bold: true };
+        return ws;
     };
     sheet('Auftragsstückliste', [['Pos.', 12], ['Artikel', 12], ['Kennung', 24], ['Benennung', 50], ['Menge', 8], ['Gesamtmenge', 13],
                                  ['Werkstoff', 20], ['Prüfung', 30], ['APplus-Stückliste', 18]],
@@ -121,9 +124,14 @@ router.post('/order-bom/excel', async function(req, res) {
     sheet('Anzulegen', [['Artikel', 12], ['Kennung', 24], ['Benennung', 50], ['Werkstoff', 20], ['Basis-Item', 24], ['Grund', 44]],
         toCreate.map(l => [l.article, l.number, l.title, l.material, l.base,
                            l.status === 'TO_CREATE' ? 'Neue Baugruppe, keine passende APplus-Stückliste' : 'Gewählter Artikel, gegen Artikelstamm prüfen']));
-    if (diff) sheet('Differenz', [['Ergebnis', 46], ['Artikel APplus', 14], ['Benennung APplus', 40], ['Pos. APplus', 12], ['Menge APplus', 13], ['Einheit', 8],
-                                  ['Ausführung', 11], ['Artikel Fusion', 14], ['Position Fusion', 50], ['Menge Fusion', 13]],
-        diff.map(d => [d.text, d.article, d.name, d.pos, d.applusQty, d.unit, d.slot, d.fmArticle, d.fmLabel, d.fmQty]));
+    if (diff) {
+        const ws = sheet('Differenz', [['Ergebnis', 46], ['Artikel APplus', 14], ['Benennung APplus', 40], ['Pos. APplus', 12], ['Menge APplus', 13], ['Einheit', 8],
+                                       ['Ausführung', 11], ['Artikel Fusion', 14], ['Position Fusion', 50], ['Menge Fusion', 13]],
+            diff.map(d => [d.text, d.article, d.name, d.pos, d.applusQty, d.unit, d.slot, d.fmArticle, d.fmLabel, d.fmQty]));
+        diff.forEach((d, i) => {
+            for (let c = 1; c <= ws.columnCount; c++) ws.getRow(i + 2).getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TONE[d.tone] } };
+        });
+    }
     sheet('Hinweise', [['Hinweis', 110]], [
         [req.body.title || ''],
         [diff ? 'Differenz auf Ebene 1 gegen APplus-Stückliste ' + req.body.head + '.' : 'Keine Differenz gewählt.'],

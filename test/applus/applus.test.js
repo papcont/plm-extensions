@@ -75,15 +75,18 @@ test('diffLevel1: executions find the position, exact articles keep theirs', () 
 
 test('diffLevel1: only-APplus classes', () => {
     const d = applus.diffLevel1(boms(), '9000200', [
-        { article: '9000021', qty: 1 },
-        { article: '8000001', qty: 3, name: 'Set screw M6', label: 'other screw' },
-        { article: '8000002', qty: 7, name: 'Plate', label: 'plate' }
+        { id: 'r1', article: '9000021', qty: 1 },
+        { id: 'r2', article: '8000001', qty: 3, name: 'Set screw M6', label: 'other screw' },
+        { id: 'r3', article: '8000002', qty: 7, name: 'Plate', label: 'plate' }
     ]);
     const by = a => d.find(x => x.article === a);
+    assert.deepStrictEqual([by('9000021').fmIds, by('9000002').fmIds, d.find(x => x.status === 'ONLY_FM').fmIds], [['r1'], ['r2'], ['r3']]);
     assert.deepStrictEqual([by('9000002').status, by('9000002').fmArticle], ['ARTICLE_DIFF', '8000001']);
     assert.strictEqual(by('9000001').status, 'NO_MODEL');
     assert.deepStrictEqual(d.filter(x => x.status === 'ONLY_FM').map(x => x.fmArticle), ['8000002']);
-    assert.ok(d.every(x => x.text), 'every row has a text');
+    assert.ok(d.every(x => x.text && x.tone), 'every row has a text and a colour');
+    assert.deepStrictEqual([by('9000021').tone, by('9000002').tone, by('9000001').tone], ['green', 'yellow', 'red']);
+    assert.strictEqual(d.find(x => x.status === 'ONLY_FM').tone, 'blue');
 });
 
 test('rankHeads: own article first, then the share of known articles', () => {

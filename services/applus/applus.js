@@ -158,8 +158,13 @@ const DIFF_TEXT = {
     NO_MODEL        : 'Nur in APplus: ohne 3D-Modell, zu bestätigen'
 };
 
+// Colour code: green = in both, yellow = deviation or hint on an existing position, blue = missing in APplus,
+// red = missing in Fusion. Same meaning in the BOM, the 3D model, the panel and Excel.
+const DIFF_TONE = { MATCH: 'green', OTHER_EXECUTION: 'yellow', QTY_DIFF: 'yellow', UNIT_DIFF: 'yellow', CANDIDATE: 'yellow',
+                    ARTICLE_DIFF: 'yellow', ONLY_FM: 'blue', NO_MODEL: 'red' };
+
 // Level-1 difference between an APplus BOM and a Fusion BOM level.
-// fmLines: [{ article, executions, qty, unit, label }] - article may be '' (CAD item without article number),
+// fmLines: [{ id, article, executions, qty, unit, label }] - article may be '' (CAD item without article number),
 // executions = { article: slot } of the position's GEN-TITLE fields, so an APplus article of another Ausführung
 // or of a number list still finds its position. Exact articles go first: they must not lose their line to that.
 function diffLevel1(boms, head, fmLines) {
@@ -173,7 +178,7 @@ function diffLevel1(boms, head, fmLines) {
         const l = fmLines[hits[0]], fmQty = hits.reduce((s, i) => s + toNumber(fmLines[i].qty), 0);
         if (r.unit !== normalizeUnit(l.unit || '')) status = 'UNIT_DIFF';
         else if (fmQty !== r.qty) status = 'QTY_DIFF';
-        rows[r.article] = { status, fmQty, fmArticle: l.article || '', fmLabel: l.label || '', slot: slotOf(l, r.article) };
+        rows[r.article] = { status, fmQty, fmArticle: l.article || '', fmLabel: l.label || '', slot: slotOf(l, r.article), fmIds: hits.map(i => fmLines[i].id) };
     };
 
     for (const r of ap) {
@@ -197,14 +202,14 @@ function diffLevel1(boms, head, fmLines) {
         }
         if (i < 0) { rows[r.article] = { status: 'NO_MODEL' }; continue; }
         used.add(i);
-        rows[r.article] = { status, fmArticle: fmLines[i].article || '', fmLabel: fmLines[i].label || '' };
+        rows[r.article] = { status, fmArticle: fmLines[i].article || '', fmLabel: fmLines[i].label || '', fmIds: [fmLines[i].id] };
     }
 
     const result = ap.map(r => Object.assign({ article: r.article, name: r.name, pos: r.pos.join(', '), applusQty: r.qty, unit: r.unit }, rows[r.article]));
     fmLines.forEach((l, i) => {
-        if (!used.has(i)) result.push({ status: 'ONLY_FM', article: '', name: '', fmArticle: l.article || '', fmLabel: l.label || '', fmQty: toNumber(l.qty) });
+        if (!used.has(i)) result.push({ status: 'ONLY_FM', article: '', name: '', fmArticle: l.article || '', fmLabel: l.label || '', fmQty: toNumber(l.qty), fmIds: [l.id] });
     });
-    return result.map(r => Object.assign(r, { text: DIFF_TEXT[r.status] }));
+    return result.map(r => Object.assign(r, { text: DIFF_TEXT[r.status], tone: DIFF_TONE[r.status] }));
 }
 
 // APplus BOMs worth comparing with this Fusion level, best first: share of their level-1 articles that occur on it.
@@ -228,7 +233,7 @@ function rankHeads(boms, index, fmLines, own) {
 function orderLevel1(lines) {
     const root = lines.find(l => l.parent === null);
     return lines.filter(l => root && l.parent === root.id && l.status !== 'MERGED')
-                .map(l => ({ article: l.article, executions: l.executions, qty: l.qty, name: l.title, label: l.number + ' - ' + l.title }));
+                .map(l => ({ id: l.id, article: l.article, executions: l.executions, qty: l.qty, name: l.title, label: l.number + ' - ' + l.title }));
 }
 
 // Order BOM (one line per BOM position, root first) against the imported exports.

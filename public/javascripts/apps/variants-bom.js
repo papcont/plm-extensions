@@ -13,6 +13,7 @@ let vb = {
     articles  : null,                        // { dmsId: ARTIKELNUMMER } of the whole workspace (fingerprint identity)
     variants  : null,                        // { dmsId: { base, material } } of all generated items (order BOM)
     executions: null,                        // { dmsId: { article: slot } } from GEN-TITLE1..4 (difference to APplus)
+    diffParts : null,                        // { tone: [partNumber] } of the difference shown, repainted once the model is there
     swaps     : {}                           // edgeId -> { mode, fromLink, fromTitle, toLink/material, row }
 };
 
@@ -272,7 +273,7 @@ function openAssembly(link) {
         // model IS translated - geometry is identical for material variants, close enough for swaps.
         let baseDmsId  = getSectionFieldValue(response.data.sections, config.fieldIds.dmsIdBaseItem || 'DMS_ID_BASE_ITEM');
         let viewerLink = isBlank(baseDmsId) ? link : '/api/v3/workspaces/' + vb.ws.id + '/items/' + baseDmsId;
-        insertViewer(viewerLink, { features : config.viewerFeatures });
+        insertViewer(viewerLink, { features : config.viewerFeatures, afterCompletion : vbPaintDiff });
 
         vbShowItemPlaceholder();
 
@@ -547,6 +548,7 @@ function vbShowExecutions(executions, elem) {
 // colors (viewerSelectModel). Repaint every swapped row on BOM reload if persistent green is needed.
 function vbMarkPartVaried(partNumber) {
     if(isBlank(partNumber)) return;
+    vbClearDiffMarks();   // the difference shows the saved BOM, a new choice makes its colours stale
     viewerSetColors([partNumber], { color : [0.30, 0.69, 0.31, 1], resetColors : false, isolate : false, fitToView : false });
 }
 
@@ -872,6 +874,8 @@ function variantsBomSelfTest() {
     console.assert(order[2].totalQty === 6, 'FAIL: total quantity must multiply');
     console.assert(order[2].title === 'Bolt', 'FAIL: title without number and revision');
     console.assert(order[1].executions[2000009] === 2 && Object.keys(order[2].executions).length === 0, 'FAIL: executions per line');
+    console.assert(vbDiffBadge({ status : 'QTY_DIFF', applusQty : 2, fmQty : 3 }) === 'Menge APplus 2, Fusion 3', 'FAIL: quantity badge');
+    console.assert(vbDiffBadge({ status : 'MATCH', slot : 2 }) === 'Ausführung 2' && vbDiffBadge({ status : 'MATCH' }) === '', 'FAIL: match badge');
     console.assert(order[2].variant === true && order[2].material === 'VA' && order[2].base === 'BASE' && order[1].variant === false, 'FAIL: variant data');
 
     console.log('variantsBomSelfTest: all assertions passed');
@@ -1382,11 +1386,78 @@ function vbShowOrderBom(data, lines) {
     $('<div></div>').appendTo(body)
         .addClass('button').css({ marginTop : '8px' })
         .html('Close')
-        .click(function() { vbShowItemPlaceholder(); });
+        .click(function() { vbClearDiffMarks(); vbShowItemPlaceholder(); });
 
 }
 
-// Difference of the opened level to the chosen APplus BOM. Matches are only counted, the rest is listed.
+const vbDiffTones = {
+    green  : { label : 'In beiden vorhanden', vector : [0.42, 0.59, 0.16, 0.9] },
+    yellow : { label : 'Abweichung'         , vector : [0.98, 0.64, 0.11, 0.9] },
+    blue   : { label : 'Fehlt in APplus'    , vector : [0.02, 0.59, 0.84, 0.9] },
+    red    : { label : 'Fehlt in Fusion'    }    // has no BOM row and no geometry, shown as an extra row
+};
+
+// Short note on a coloured BOM row.
+function vbDiffBadge(d) {
+    switch(d.status) {
+        case 'OTHER_EXECUTION' : return 'APplus: ' + d.article + (d.slot ? ' (Ausführung ' + d.slot + ')' : '');
+        case 'QTY_DIFF'        : return 'Menge APplus ' + d.applusQty + ', Fusion ' + d.fmQty;
+        case 'UNIT_DIFF'       : return 'Einheit APplus ' + d.unit;
+        case 'CANDIDATE'       : return 'Kandidat für ' + d.article;
+        case 'ARTICLE_DIFF'    : return 'APplus: ' + d.article;
+        case 'ONLY_FM'         : return 'Fehlt in APplus';
+        default                : return d.slot ? 'Ausführung ' + d.slot : '';
+    }
+}
+
+function vbClearDiffMarks() {
+    $('#bom tr').removeClass('vb-diff-green vb-diff-yellow vb-diff-blue');
+    $('#bom .vb-diff-badge, #bom .vb-diff-missing').remove();
+    if(vb.diffParts !== null) viewerResetColors();
+    vb.diffParts = null;
+}
+
+function vbPaintDiff() {
+    let first = true;
+    for(let tone in vb.diffParts) {
+        if(vb.diffParts[tone].length === 0) continue;
+        viewerSetColors(vb.diffParts[tone], { color : vbDiffTones[tone].vector, resetColors : first, isolate : false, fitToView : false });
+        first = false;
+    }
+}
+
+// Colour the compared BOM level and the 3D model, add a row for what only APplus has.
+function vbMarkDiff(diff) {
+
+    vbClearDiffMarks();
+
+    let rows    = $('#bom tr[data-link]');
+    let numbers = { green : [], yellow : [], blue : [] };
+
+    for(let d of diff) {
+        for(let id of (d.fmIds || [])) {
+            let row = rows.filter(function() { return this.getAttribute('data-number-path') === id; });
+            row.addClass('vb-diff-' + d.tone);
+            numbers[d.tone].push(row.attr('data-part-number'));
+            let badge = vbDiffBadge(d);
+            if(badge) $('<span></span>').addClass('vb-diff-badge').html(badge).appendTo(row.find('.tree-column-revision'));
+        }
+    }
+
+    let columns = rows.first().children('td:visible').length;
+
+    for(let d of diff.filter(d => d.tone === 'red')) {
+        let row = $('<tr></tr>').addClass('vb-diff-missing').insertBefore(rows.first());
+        $('<td></td>').appendTo(row).attr('colspan', columns)
+            .html('Fehlt in Fusion: ' + [d.article, d.name, d.applusQty + ' ' + d.unit].filter(Boolean).join(' · '));
+    }
+
+    vb.diffParts = numbers;
+    vbPaintDiff();
+
+}
+
+// Difference of the opened level to the chosen APplus BOM, with the colour code as legend.
 async function vbShowDiff(lines, elem) {
 
     let head = $('#vb-head').val();
@@ -1396,14 +1467,20 @@ async function vbShowDiff(lines, elem) {
 
     elem.html('');
 
-    let matches = r.data.diff.filter(d => d.status === 'MATCH');
-    let slots   = matches.filter(d => d.slot).map(d => 'A' + d.slot + ': ' + d.article).join(', ');
+    vbMarkDiff(r.data.diff);
 
-    $('<div></div>').appendTo(elem).css({ margin : '8px 0 4px' }).html(matches.length + ' × In beiden vorhanden' + (slots ? ' (' + slots + ')' : ''));
+    let legend = $('<div></div>').appendTo(elem).addClass('vb-diff-legend');
 
-    for(let d of r.data.diff.filter(d => d.status !== 'MATCH')) {
+    for(let tone in vbDiffTones) {
+        let count = r.data.diff.filter(d => d.tone === tone).length;
+        $('<span></span>').appendTo(legend).addClass('vb-diff-chip').addClass('vb-diff-chip-' + tone).html(count + ' ' + vbDiffTones[tone].label);
+    }
+
+    let order = [ 'red', 'blue', 'yellow' ];
+
+    for(let d of r.data.diff.filter(d => d.tone !== 'green').sort((a, b) => order.indexOf(a.tone) - order.indexOf(b.tone))) {
         let qty = (d.applusQty !== undefined || d.fmQty !== undefined) ? [d.applusQty, d.fmQty].filter(q => q !== undefined).join(' / ') + ' ' + (d.unit || 'Stk') : '';
-        $('<div></div>').appendTo(elem).css({ margin : '4px 0' })
+        $('<div></div>').appendTo(elem).addClass('vb-diff-line').addClass('vb-diff-line-' + d.tone)
             .html(['<b>' + d.text + '</b>', d.article, d.slot ? 'Ausführung ' + d.slot : '', d.name, d.fmLabel ? 'Fusion: ' + d.fmLabel : '', qty].filter(Boolean).join(' · '));
     }
 

@@ -100,3 +100,28 @@ body.variant-filter #bom tr[data-link]:not(.variant-allowed) { display : none; }
 }
 .vb-placeholder-title { font-weight : 600; font-size : 15px; margin-bottom : 6px; }
 .vb-placeholder-text  { font-size : 13px; line-height : 1.5; max-width : 240px; }
+
+/* Difference to APplus: same colour code in the BOM, the legend and the list below it. */
+#bom.vb-flags-resolved tr[data-link][class*='vb-diff-'] > td { opacity : 1; }
+#bom tr.vb-diff-green  > td { background : var(--color-status-green-brighter);  color : #1f2a10; }
+#bom tr.vb-diff-yellow > td { background : var(--color-status-yellow-brighter); color : #3a2a08; }
+#bom tr.vb-diff-blue   > td { background : var(--color-blue-100);               color : #0b2f40; }
+#bom tr.vb-diff-missing > td {
+    background : var(--color-status-red-brighter);
+    color      : #5a0d0d;
+    padding    : 6px 8px;
+    font-style : italic;
+}
+.vb-diff-badge { margin-left : 10px; font-weight : 600; white-space : nowrap; }
+
+.vb-diff-legend { display : flex; flex-wrap : wrap; gap : 6px; margin : 10px 0; }
+.vb-diff-chip   { padding : 3px 8px; border-radius : 3px; font-weight : 600; }
+.vb-diff-chip-green  { background : var(--color-status-green-brighter);  color : #1f2a10; }
+.vb-diff-chip-yellow { background : var(--color-status-yellow-brighter); color : #3a2a08; }
+.vb-diff-chip-blue   { background : var(--color-blue-100);               color : #0b2f40; }
+.vb-diff-chip-red    { background : var(--color-status-red-brighter);    color : #5a0d0d; }
+
+.vb-diff-line { margin : 4px 0; padding-left : 8px; border-left : 4px solid transparent; }
+.vb-diff-line-yellow { border-color : var(--color-status-yellow); }
+.vb-diff-line-blue   { border-color : var(--color-blue-500); }
+.vb-diff-line-red    { border-color : var(--color-status-red); }
