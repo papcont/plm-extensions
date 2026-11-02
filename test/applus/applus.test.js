@@ -45,6 +45,55 @@ test('parseExport: head, levels, units, entities', () => {
     assert.strictEqual(b.rows[1].hasBom, true);
 });
 
+test('diffLevel1: an APplus article at two positions is one line with the summed quantity', () => {
+    const d = applus.diffLevel1(boms(), '9000100', [
+        { article: '9000001', qty: 1 }, { article: '9000011', qty: 1 }, { article: '9000002', qty: 2 }, { article: '9000002', qty: 1 }
+    ]);
+    assert.ok(d.every(x => x.status === 'MATCH'), JSON.stringify(d));
+    assert.strictEqual(d.find(x => x.article === '9000002').pos, '30, 40');
+});
+
+test('diffLevel1: a sub-BOM contained in two exports counts once', () => {
+    const b = boms();
+    b.copy = { file: 'copy.xls', rows: b['9000200'].rows };
+    const d = applus.diffLevel1(b, '9000200', [{ article: '9000002', qty: 3 }]);
+    assert.strictEqual(d.find(x => x.article === '9000002').applusQty, 3);
+});
+
+test('diffLevel1: executions find the position, exact articles keep theirs', () => {
+    const d = applus.diffLevel1(boms(), '9000200', [
+        { article: '',        executions: { 9000011: 1, 9000021: 2 }, qty: 1, label: 'number list' },   // no article: reads off the Ausführung
+        { article: '9000099', executions: { 9000099: 1, 9000001: 2 }, qty: 1, label: 'other choice' },
+        { article: '9000002', executions: { 9000002: 1, 9000021: 2 }, qty: 3, label: 'exact' }          // must not take 9000021 away
+    ]);
+    const by = a => d.find(x => x.article === a);
+    assert.deepStrictEqual([by('9000021').status, by('9000021').slot, by('9000021').fmLabel], ['MATCH', 2, 'number list']);
+    assert.deepStrictEqual([by('9000001').status, by('9000001').slot, by('9000001').fmArticle], ['OTHER_EXECUTION', 2, '9000099']);
+    assert.strictEqual(by('9000002').status, 'MATCH');
+    assert.strictEqual(d.length, 3);
+});
+
+test('diffLevel1: only-APplus classes', () => {
+    const d = applus.diffLevel1(boms(), '9000200', [
+        { article: '9000021', qty: 1 },
+        { article: '8000001', qty: 3, name: 'Set screw M6', label: 'other screw' },
+        { article: '8000002', qty: 7, name: 'Plate', label: 'plate' }
+    ]);
+    const by = a => d.find(x => x.article === a);
+    assert.deepStrictEqual([by('9000002').status, by('9000002').fmArticle], ['ARTICLE_DIFF', '8000001']);
+    assert.strictEqual(by('9000001').status, 'NO_MODEL');
+    assert.deepStrictEqual(d.filter(x => x.status === 'ONLY_FM').map(x => x.fmArticle), ['8000002']);
+    assert.ok(d.every(x => x.text), 'every row has a text');
+});
+
+test('rankHeads: own article first, then the share of known articles', () => {
+    const b = boms(), index = applus.buildIndex(b);
+    const fm = [{ article: '9000021' }, { article: '9000001' }, { article: '9000002' }];
+    assert.deepStrictEqual(applus.rankHeads(b, index, fm, []).map(h => h.head), ['9000200', '9000100']);
+    assert.deepStrictEqual(applus.rankHeads(b, index, fm, ['9000100']).map(h => h.head), ['9000100', '9000200']);
+    assert.strictEqual(applus.rankHeads(b, index, [{ article: '1' }], []).length, 0);
+});
+
 test('checkOrderBom: statuses, BOM match, dedup of the create list', () => {
     const index = applus.buildIndex(boms());
     const line = (id, parent, article, extra) => Object.assign({ id, parent, article, qty: 1, assembly: false, variant: false, number: 'N' + id }, extra);
@@ -128,8 +177,8 @@ test('diffLevel1: match, qty diff, only-APplus with CAD candidate, only-FM', () 
     const by = s => d.filter(x => x.status === s);
     assert.strictEqual(by('MATCH').length, 1);
     assert.strictEqual(by('QTY_DIFF')[0].article, '9000001');
-    assert.strictEqual(by('ONLY_APPLUS')[0].article, '9000002');
-    assert.strictEqual(by('ONLY_APPLUS')[0].candidate, 'FEOD-1 set screw (no number)');
-    assert.deepStrictEqual(by('ONLY_FM').map(x => x.article), ['9999999']);
+    assert.strictEqual(by('CANDIDATE')[0].article, '9000002');
+    assert.strictEqual(by('CANDIDATE')[0].fmLabel, 'FEOD-1 set screw (no number)');
+    assert.deepStrictEqual(by('ONLY_FM').map(x => x.fmArticle), ['9999999']);
     assert.throws(() => applus.diffLevel1(boms(), '0000000', []), /not imported/);
 });

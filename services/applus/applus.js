@@ -130,39 +130,105 @@ function matchBom(index, lines) {
     return index.fingerprints[fingerprint(lines)] || [];
 }
 
+// Level 1 of an APplus BOM, one entry per article: APplus lists an article at several positions. A sub-BOM can be
+// part of several exports, so only the first one counts.
+function bomLevel1(boms, head) {
+    for (const bom of Object.values(boms)) {
+        const rows = bom.rows.filter(r => r.parent === head);
+        if (rows.length === 0) continue;
+        const byArticle = {};
+        for (const r of rows) {
+            const a = byArticle[r.article] || (byArticle[r.article] = { article: r.article, name: r.name, unit: r.unit, qty: 0, pos: [] });
+            a.qty += r.qty;
+            if (r.pos) a.pos.push(r.pos);
+        }
+        return Object.values(byArticle);
+    }
+    return [];
+}
+
+const DIFF_TEXT = {
+    MATCH           : 'In beiden vorhanden',
+    OTHER_EXECUTION : 'Andere Ausführung als in APplus',
+    QTY_DIFF        : 'Abweichende Menge',
+    UNIT_DIFF       : 'Abweichende Einheit',
+    ONLY_FM         : 'Nur in Fusion',
+    CANDIDATE       : 'Nur in APplus: möglicher Kandidat im CAD ohne Artikelnummer (gleiche Menge)',
+    ARTICLE_DIFF    : 'Nur in APplus: abweichender Artikel',
+    NO_MODEL        : 'Nur in APplus: ohne 3D-Modell, zu bestätigen'
+};
+
 // Level-1 difference between an APplus BOM and a Fusion BOM level.
-// fmLines: [{ article, qty, unit, label }] - article may be '' (CAD item without article number).
+// fmLines: [{ article, executions, qty, unit, label }] - article may be '' (CAD item without article number),
+// executions = { article: slot } of the position's GEN-TITLE fields, so an APplus article of another Ausführung
+// or of a number list still finds its position. Exact articles go first: they must not lose their line to that.
 function diffLevel1(boms, head, fmLines) {
-    const ap = [];
-    for (const bom of Object.values(boms)) for (const r of bom.rows) if (r.parent === head) ap.push(r);
+    const ap = bomLevel1(boms, head);
     if (ap.length === 0) throw new Error(`APplus BOM ${head} not imported`);
 
-    const fmByArticle = {};
-    fmLines.forEach((l, i) => { if (l.article) (fmByArticle[l.article] = fmByArticle[l.article] || []).push(i); });
-    const usedFm = new Set(), result = [];
+    const used = new Set(), rows = {};
+    const slotOf = (l, article) => (l.executions || {})[article] || null;
+    const compare = (r, hits, status) => {
+        hits.forEach(i => used.add(i));
+        const l = fmLines[hits[0]], fmQty = hits.reduce((s, i) => s + toNumber(fmLines[i].qty), 0);
+        if (r.unit !== normalizeUnit(l.unit || '')) status = 'UNIT_DIFF';
+        else if (fmQty !== r.qty) status = 'QTY_DIFF';
+        rows[r.article] = { status, fmQty, fmArticle: l.article || '', fmLabel: l.label || '', slot: slotOf(l, r.article) };
+    };
 
     for (const r of ap) {
-        const i = (fmByArticle[r.article] || []).find(x => !usedFm.has(x));
-        if (i === undefined) {
-            // ponytail: candidate = FM line without article number and the same quantity - a hint for data
-            // cleansing in CAD, never counted as a match.
-            const cand = fmLines.findIndex((l, x) => !l.article && !usedFm.has(x) && r.unit === 'Stk' && toNumber(l.qty) === r.qty);
-            if (cand >= 0) usedFm.add(cand);
-            result.push({ status: 'ONLY_APPLUS', article: r.article, name: r.name, pos: r.pos, applusQty: r.qty, unit: r.unit,
-                          candidate: cand >= 0 ? fmLines[cand].label || '' : null });
-            continue;
-        }
-        usedFm.add(i);
-        const l = fmLines[i];
-        const status = r.unit !== normalizeUnit(l.unit || '') ? 'UNIT_DIFF' : (toNumber(l.qty) === r.qty ? 'MATCH' : 'QTY_DIFF');
-        result.push({ status, article: r.article, name: r.name, pos: r.pos,
-                      applusQty: r.qty, fmQty: toNumber(l.qty), unit: r.unit });
+        const hits = fmLines.map((l, i) => (l.article === r.article ? i : -1)).filter(i => i >= 0);
+        if (hits.length) compare(r, hits, 'MATCH');
     }
+    for (const r of ap.filter(a => !rows[a.article])) {
+        const i = fmLines.findIndex((l, x) => !used.has(x) && slotOf(l, r.article));
+        if (i >= 0) compare(r, [i], fmLines[i].article ? 'OTHER_EXECUTION' : 'MATCH');
+    }
+    // ponytail: both hints are for data cleansing in CAD and never count as a match. Same quantity for a line without
+    // number, same quantity and first word of the name for a line with another article. Names are not normalised.
+    const firstWord = s => String(s || '').trim().split(/[\s,]+/)[0].toLowerCase();
+    for (const r of ap.filter(a => !rows[a.article])) {
+        const free = (l, x) => !used.has(x) && toNumber(l.qty) === r.qty;
+        let i = r.unit === 'Stk' ? fmLines.findIndex((l, x) => free(l, x) && !l.article && !Object.keys(l.executions || {}).length) : -1;
+        let status = 'CANDIDATE';
+        if (i < 0) {
+            i = fmLines.findIndex((l, x) => free(l, x) && l.article && firstWord(l.name) === firstWord(r.name));
+            status = 'ARTICLE_DIFF';
+        }
+        if (i < 0) { rows[r.article] = { status: 'NO_MODEL' }; continue; }
+        used.add(i);
+        rows[r.article] = { status, fmArticle: fmLines[i].article || '', fmLabel: fmLines[i].label || '' };
+    }
+
+    const result = ap.map(r => Object.assign({ article: r.article, name: r.name, pos: r.pos.join(', '), applusQty: r.qty, unit: r.unit }, rows[r.article]));
     fmLines.forEach((l, i) => {
-        if (!usedFm.has(i)) result.push({ status: 'ONLY_FM', article: l.article || '', name: l.label || '', fmQty: toNumber(l.qty),
-                                          reason: l.article ? 'not in this APplus BOM' : 'no article number' });
+        if (!used.has(i)) result.push({ status: 'ONLY_FM', article: '', name: '', fmArticle: l.article || '', fmLabel: l.label || '', fmQty: toNumber(l.qty) });
     });
-    return result;
+    return result.map(r => Object.assign(r, { text: DIFF_TEXT[r.status] }));
+}
+
+// APplus BOMs worth comparing with this Fusion level, best first: share of their level-1 articles that occur on it.
+// own = articles of the assembly itself (its ARTIKELNUMMER and GEN-TITLE fields), those come first.
+function rankHeads(boms, index, fmLines, own) {
+    const known = new Set(), parents = {};
+    for (const l of fmLines) {
+        if (l.article) known.add(l.article);
+        Object.keys(l.executions || {}).forEach(a => known.add(a));
+    }
+    for (const bom of Object.values(boms)) for (const r of bom.rows) (parents[r.parent] = parents[r.parent] || new Set()).add(r.article);
+    return Object.entries(parents)
+        .map(([head, set]) => ({ head, name: (index.articles[head] || {}).name || '', own: own.includes(head), size: set.size,
+                                 hits: [...set].filter(a => known.has(a)).length }))
+        .filter(h => h.hits > 0)
+        .sort((a, b) => (b.own - a.own) || (b.hits / b.size - a.hits / a.size) || (b.hits - a.hits))
+        .slice(0, 10);
+}
+
+// The level-1 positions of a checked order BOM in the shape diffLevel1 and rankHeads take.
+function orderLevel1(lines) {
+    const root = lines.find(l => l.parent === null);
+    return lines.filter(l => root && l.parent === root.id && l.status !== 'MERGED')
+                .map(l => ({ article: l.article, executions: l.executions, qty: l.qty, name: l.title, label: l.number + ' - ' + l.title }));
 }
 
 // Order BOM (one line per BOM position, root first) against the imported exports.
@@ -212,4 +278,4 @@ function checkOrderBom(index, lines) {
     return { lines: result, toCreate, summary };
 }
 
-module.exports = { parseExport, level1, fingerprint, buildIndex, lookup, matchBom, diffLevel1, checkOrderBom, normalizeUnit };
+module.exports = { parseExport, level1, fingerprint, buildIndex, lookup, matchBom, diffLevel1, rankHeads, orderLevel1, checkOrderBom, normalizeUnit };

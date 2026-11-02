@@ -6,8 +6,9 @@
 //   POST /applus/lookup  { articles: ['2034147', ...] }    -> existence per article
 //   POST /applus/match   { lines: [{ article, qty, unit }] } -> APplus BOMs with exactly this level-1 composition
 //   POST /applus/diff    { head, lines: [{ article, qty, unit, label }] } -> level-1 difference list
-//   POST /applus/order-bom       { lines }        -> order BOM with one check status per line (see checkOrderBom)
-//   POST /applus/order-bom/excel { title, lines } -> the same as .xlsx
+//   POST /applus/order-bom       { lines, head? }        -> order BOM with one check status per line (see checkOrderBom),
+//                                                           the APplus BOMs worth comparing, the difference to head
+//   POST /applus/order-bom/excel { title, lines, head? } -> the same as .xlsx
 
 const express = require('express');
 const router  = express.Router();
@@ -74,9 +75,23 @@ router.post('/diff', function(req, res) {
     }
 });
 
-router.post('/order-bom', function(req, res) {
+function orderBom(body) {
     const { boms, index } = load();
-    res.json({ success: true, data: Object.assign(applus.checkOrderBom(index, (req.body && req.body.lines) || []), { exports: Object.keys(boms).length }) });
+    const result = applus.checkOrderBom(index, (body && body.lines) || []);
+    const fm     = applus.orderLevel1(result.lines);
+    const root   = result.lines.find(l => l.parent === null) || {};
+    result.exports = Object.keys(boms).length;
+    result.heads   = applus.rankHeads(boms, index, fm, [root.article].concat(Object.keys(root.executions || {})));
+    if (body && body.head) result.diff = applus.diffLevel1(boms, body.head, fm);
+    return result;
+}
+
+router.post('/order-bom', function(req, res) {
+    try {
+        res.json({ success: true, data: orderBom(req.body) });
+    } catch (e) {
+        res.status(404).json({ success: false, message: e.message });
+    }
 });
 
 const STATUS = {
@@ -89,8 +104,9 @@ const STATUS = {
 };
 
 router.post('/order-bom/excel', async function(req, res) {
-    const { boms, index } = load();
-    const { lines, toCreate, summary } = applus.checkOrderBom(index, (req.body && req.body.lines) || []);
+    let result;
+    try { result = orderBom(req.body); } catch (e) { return res.status(404).json({ success: false, message: e.message }); }
+    const { lines, toCreate, summary, diff } = result;
     const workbook = new ExcelJS.Workbook();
     const sheet = (name, columns, rows) => {
         const ws = workbook.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 1 }] });
@@ -105,9 +121,13 @@ router.post('/order-bom/excel', async function(req, res) {
     sheet('Anzulegen', [['Artikel', 12], ['Kennung', 24], ['Benennung', 50], ['Werkstoff', 20], ['Basis-Item', 24], ['Grund', 44]],
         toCreate.map(l => [l.article, l.number, l.title, l.material, l.base,
                            l.status === 'TO_CREATE' ? 'Neue Baugruppe, keine passende APplus-Stückliste' : 'Gewählter Artikel, gegen Artikelstamm prüfen']));
+    if (diff) sheet('Differenz', [['Ergebnis', 46], ['Artikel APplus', 14], ['Benennung APplus', 40], ['Pos. APplus', 12], ['Menge APplus', 13], ['Einheit', 8],
+                                  ['Ausführung', 11], ['Artikel Fusion', 14], ['Position Fusion', 50], ['Menge Fusion', 13]],
+        diff.map(d => [d.text, d.article, d.name, d.pos, d.applusQty, d.unit, d.slot, d.fmArticle, d.fmLabel, d.fmQty]));
     sheet('Hinweise', [['Hinweis', 110]], [
         [req.body.title || ''],
-        ['Geprüft gegen ' + Object.keys(boms).length + ' APplus-Stücklisten-Exporte, nicht gegen den Artikelstamm.'],
+        [diff ? 'Differenz auf Ebene 1 gegen APplus-Stückliste ' + req.body.head + '.' : 'Keine Differenz gewählt.'],
+        ['Geprüft gegen ' + result.exports + ' APplus-Stücklisten-Exporte, nicht gegen den Artikelstamm.'],
         ['"Nicht in den Exporten" heißt nicht, dass der Artikel in APplus fehlt.'],
         [(summary.MERGED || 0) + ' Positionen mit demselben Artikel wie ihre Baugruppe sind nicht als eigene Zeile aufgeführt (Annahme, Klärung in #23488).']
     ]);

@@ -12,6 +12,7 @@ let vb = {
     flagged   : null,                        // { dmsId: true } of VARIANT_ALLOWED items (gates node selection)
     articles  : null,                        // { dmsId: ARTIKELNUMMER } of the whole workspace (fingerprint identity)
     variants  : null,                        // { dmsId: { base, material } } of all generated items (order BOM)
+    executions: null,                        // { dmsId: { article: slot } } from GEN-TITLE1..4 (difference to APplus)
     swaps     : {}                           // edgeId -> { mode, fromLink, fromTitle, toLink/material, row }
 };
 
@@ -167,6 +168,28 @@ async function vbSearchNotBlank(field, fields) {
         result   = result.concat(rows);
         if(rows.length < pageSize) return result;
     }
+
+}
+
+// Article -> Ausführung of every item with GEN-TITLE values: the difference to APplus has to find a position
+// by any of its articles, an item with a number list has no ARTIKELNUMMER at all.
+async function ensureExecutions() {
+
+    if(vb.executions !== null) return;
+
+    let ids        = [1, 2, 3, 4].map(n => vb.fieldIds['genTitle' + n]);
+    let executions = {};
+    let rows       = await vbSearchNotBlank(vb.fieldIds.genTitle1, ids);
+
+    for(let row of rows) {
+        let map = {};
+        for(let e of vbExecutions(ids.map(id => ({ title : getSearchResultFieldValue(row, id, '') })))) {
+            for(let article of e.articles) if(!map[article]) map[article] = e.slot;
+        }
+        executions[row.dmsId] = map;
+    }
+
+    vb.executions = executions;
 
 }
 
@@ -843,11 +866,12 @@ function variantsBomSelfTest() {
             { number : 'P', article : '2000002', link : '/items/3', edgeId : 11, path : 'ROOT|SUB|P', pos : '1.1', quantity : '3.0', title : 'P - Bolt [REV:w]', children : [] }
         ]}
     ]};
-    let order = vbOrderLines(orderTree, { 3 : { base : 'BASE', material : 'VA' } });
+    let order = vbOrderLines(orderTree, { 3 : { base : 'BASE', material : 'VA' } }, { 2 : { 2000001 : 1, 2000009 : 2 } });
     console.assert(order.length === 3 && order[0].parent === null && order[0].qty === 1, 'FAIL: root line first');
     console.assert(order[1].assembly === true && order[2].parent === order[1].id, 'FAIL: parent link');
     console.assert(order[2].totalQty === 6, 'FAIL: total quantity must multiply');
     console.assert(order[2].title === 'Bolt', 'FAIL: title without number and revision');
+    console.assert(order[1].executions[2000009] === 2 && Object.keys(order[2].executions).length === 0, 'FAIL: executions per line');
     console.assert(order[2].variant === true && order[2].material === 'VA' && order[2].base === 'BASE' && order[1].variant === false, 'FAIL: variant data');
 
     console.log('variantsBomSelfTest: all assertions passed');
@@ -1217,6 +1241,7 @@ async function vbExecutePlan(tree, changed) {
 
         vb.articles = null;   // the new variant items carry articles too
         vb.variants = null;
+        vb.executions = null;
 
         $('#overlay').hide();
 
@@ -1243,13 +1268,14 @@ async function vbExecutePlan(tree, changed) {
 // =====================================================================================
 
 // One line per BOM position, root first. id = path: a sub-assembly used twice repeats its edge ids.
-function vbOrderLines(tree, variants) {
+function vbOrderLines(tree, variants, executions) {
 
     let lines = [];
 
     let add = function(node, parent, totalQty) {
         let id      = node.path || 'root';
-        let variant = variants[node.link.split('/').pop()];
+        let dmsId   = node.link.split('/').pop();
+        let variant = variants[dmsId];
         let qty     = (node.edgeId === null) ? 1 : parseFloat(node.quantity);
         lines.push({
             id       : id,
@@ -1263,7 +1289,8 @@ function vbOrderLines(tree, variants) {
             assembly : node.children.length > 0,
             variant  : !!variant,
             material : variant ? variant.material : '',
-            base     : variant ? variant.base : ''
+            base     : variant ? variant.base : '',
+            executions : executions[dmsId] || {}
         });
         for(let c of node.children) add(c, id, totalQty * qty);
     };
@@ -1289,8 +1316,9 @@ async function vbOrderBom() {
 
         await ensureArticles();
         await ensureVariantItems();
+        await ensureExecutions();
 
-        let lines = vbOrderLines(buildTreeFromDOM(), vb.variants);
+        let lines = vbOrderLines(buildTreeFromDOM(), vb.variants, vb.executions);
         let r     = await $.ajax({ url : '/applus/order-bom', method : 'POST', contentType : 'application/json', data : JSON.stringify({ lines : lines }) });
 
         $('#overlay').hide();
@@ -1335,6 +1363,17 @@ function vbShowOrderBom(data, lines) {
         }
     }
 
+    if(data.heads.length > 0) {
+        $('<div></div>').appendTo(body).css({ margin : '12px 0 6px', fontWeight : 'bold' }).html('Differenz zu APplus-Stückliste (Ebene 1)');
+        let select = $('<select></select>').appendTo(body).attr('id', 'vb-head').css({ width : '100%' });
+        for(let h of data.heads) {
+            $('<option></option>').appendTo(select).val(h.head).html(h.head + ' · ' + h.hits + ' von ' + h.size + (h.name ? ' · ' + h.name : ''));
+        }
+        let diffBox = $('<div></div>').appendTo(body).attr('id', 'vb-diff');
+        select.change(function() { vbShowDiff(lines, diffBox); });
+        vbShowDiff(lines, diffBox);
+    }
+
     $('<div></div>').appendTo(body)
         .addClass('button').addClass('default').addClass('with-icon').addClass('icon-download').css({ marginTop : '12px' })
         .html('Download Excel')
@@ -1347,12 +1386,35 @@ function vbShowOrderBom(data, lines) {
 
 }
 
+// Difference of the opened level to the chosen APplus BOM. Matches are only counted, the rest is listed.
+async function vbShowDiff(lines, elem) {
+
+    let head = $('#vb-head').val();
+    let r    = await $.ajax({ url : '/applus/order-bom', method : 'POST', contentType : 'application/json', data : JSON.stringify({ lines : lines, head : head }) });
+
+    if(head !== $('#vb-head').val()) return;   // another BOM was chosen meanwhile
+
+    elem.html('');
+
+    let matches = r.data.diff.filter(d => d.status === 'MATCH');
+    let slots   = matches.filter(d => d.slot).map(d => 'A' + d.slot + ': ' + d.article).join(', ');
+
+    $('<div></div>').appendTo(elem).css({ margin : '8px 0 4px' }).html(matches.length + ' × In beiden vorhanden' + (slots ? ' (' + slots + ')' : ''));
+
+    for(let d of r.data.diff.filter(d => d.status !== 'MATCH')) {
+        let qty = (d.applusQty !== undefined || d.fmQty !== undefined) ? [d.applusQty, d.fmQty].filter(q => q !== undefined).join(' / ') + ' ' + (d.unit || 'Stk') : '';
+        $('<div></div>').appendTo(elem).css({ margin : '4px 0' })
+            .html(['<b>' + d.text + '</b>', d.article, d.slot ? 'Ausführung ' + d.slot : '', d.name, d.fmLabel ? 'Fusion: ' + d.fmLabel : '', qty].filter(Boolean).join(' · '));
+    }
+
+}
+
 async function vbDownloadOrderBom(lines) {
 
     let response = await fetch('/applus/order-bom/excel', {
         method  : 'POST',
         headers : { 'Content-Type' : 'application/json' },
-        body    : JSON.stringify({ title : vb.root.title, lines : lines })
+        body    : JSON.stringify({ title : vb.root.title, lines : lines, head : $('#vb-head').val() })
     });
 
     if(!response.ok) { showErrorMessage('Download failed', 'The Excel file could not be created.'); return; }
