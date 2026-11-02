@@ -331,11 +331,14 @@ function selectNodeForSwap(elemClicked) {
         vb.selected.materialart = getSectionFieldValue(r.data.sections, vb.fieldIds.materialart) || '';
         let current = getSectionFieldValue(r.data.sections, vb.fieldIds.material) || '';
         if(current) $('#vb-material').val(current);
-        let f = vb.fieldIds;
-        vbShowExecutions(vbExecutions(
-            [f.genTitle1, f.genTitle2, f.genTitle3, f.genTitle4].map(id => getSectionFieldValue(r.data.sections, id, '')),
-            [f.genWerk1,  f.genWerk2,  f.genWerk3,  f.genWerk4 ].map(id => getSectionFieldValue(r.data.sections, id, ''))
-        ), executionsBox);
+        let value = id => getSectionFieldValue(r.data.sections, vb.fieldIds[id], '');
+        vbShowExecutions(vbExecutions([1, 2, 3, 4].map(n => ({
+            title    : value('genTitle' + n),
+            material : value('genWerk' + n),
+            surface  : value('oberflBeh' + n),
+            label    : value('ausfuehrung' + n),
+            sap      : value('sapNr' + n)
+        }))), executionsBox);
     });
 
     // Component picker scoped to the item workspace; click a result to record a replace swap.
@@ -399,17 +402,22 @@ function vbListExistingVariants(partNumber, elem) {
 
 // Ausführungen 1-4 of a part from its GEN-TITLEn / GEN-WERKn values (Feige iProperties).
 // A slot may list several article numbers ("2046972 2046973"): split only when every token is a
-// number, so norm texts like "DIN 6912 - M5 x 16" stay one entry. Empty slots are skipped.
-function vbExecutions(titles, materials) {
+// number, so norm texts like "DIN 6912 - M5 x 16" stay one entry. Empty slots are skipped, and so are
+// the CAD placeholders ("0", "000", "--", "_"), which stand for "not maintained".
+function vbExecutions(slots) {
+    let clean  = v => { let s = String(v || '').trim(); return /^[0_-]*$/.test(s) ? '' : s; };
     let result = [];
-    for(let i = 0; i < titles.length; i++) {
-        let title = String(titles[i] || '').trim();
+    for(let i = 0; i < slots.length; i++) {
+        let title = clean(slots[i].title);
         if(title === '') continue;
         let tokens = title.split(/\s+/);
         result.push({
             slot     : i + 1,
             articles : tokens.every(t => /^\d+$/.test(t)) ? tokens : [title],
-            material : String(materials[i] || '').trim()
+            material : clean(slots[i].material),
+            surface  : clean(slots[i].surface),
+            label    : clean(slots[i].label),
+            sap      : clean(slots[i].sap)
         });
     }
     return result;
@@ -430,7 +438,7 @@ function vbShowExecutions(executions, elem) {
 
     for(let e of executions) {
         $('<div></div>').appendTo(box).css({ marginTop : '8px', opacity : 0.75 })
-            .html('Ausführung ' + e.slot + (e.material ? ' · ' + e.material : ''));
+            .html(['Ausführung ' + e.slot, e.label, e.material, e.surface, e.sap ? 'SAP ' + e.sap : ''].filter(Boolean).join(' · '));
         for(let article of e.articles) {
             let mark = (article === chosen) ? '✓ ' : (article === sel.partNumber) ? '● ' : '→ ';
             $('<div></div>').appendTo(box).addClass('button').css({ marginTop : '4px', width : '100%' })
@@ -703,11 +711,18 @@ function variantsBomSelfTest() {
     console.assert(vbSwapIdentity(steel) !== vbSwapIdentity(alu), 'FAIL: different material must change identity');
     console.assert(vbSwapIdentity(steel) !== 'PIPE', 'FAIL: material variant must differ from the base leaf number');
 
-    // Ausführungen: number lists split per article, norm texts stay whole, empty slots skipped.
-    let ex = vbExecutions(['2046592', '2046972 2046973', '', 'DIN 6912 - M5 x 16'], ['1.4301', 'VA']);
+    // Ausführungen: number lists split per article, norm texts stay whole, empty slots and placeholders skipped.
+    let ex = vbExecutions([
+        { title : '2046592', material : '1.4301', surface : 'FOS01', label : 'ATEX', sap : '211292348' },
+        { title : '2046972 2046973', material : 'VA' },
+        { title : '' },
+        { title : 'DIN 6912 - M5 x 16', material : '000' }
+    ]);
     console.assert(ex.length === 3, 'FAIL: empty Ausführung must be skipped');
+    console.assert(ex[0].surface === 'FOS01' && ex[0].label === 'ATEX' && ex[0].sap === '211292348', 'FAIL: slot values must be kept');
     console.assert(ex[1].slot === 2 && ex[1].articles.join() === '2046972,2046973' && ex[1].material === 'VA', 'FAIL: number list must split per article');
-    console.assert(ex[2].slot === 4 && ex[2].articles.length === 1 && ex[2].material === '', 'FAIL: norm text must stay one article');
+    console.assert(ex[2].slot === 4 && ex[2].articles.length === 1 && ex[2].material === '', 'FAIL: norm text must stay one article, 000 is no material');
+    for(let placeholder of ['0', '000', '--', '_']) console.assert(vbExecutions([{ title : placeholder }]).length === 0, 'FAIL: placeholder must not become an article: ' + placeholder);
     console.assert(vbSwapIdentity({ mode : 'execution', toNumber : '2046973' }) === '2046973', 'FAIL: execution identity is the article number');
 
     console.log('variantsBomSelfTest: all assertions passed');
