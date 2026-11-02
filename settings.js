@@ -2064,10 +2064,12 @@ exports.applications = {
             bomViewName : null    // null -> common.workspaces.items.defaultBOMView ('Tree Navigator')
         },
         fieldIds : {
-            number         : 'NUMBER',            // identity used as the leaf fingerprint
+            number         : 'NUMBER',            // leaf identity for items without ARTIKELNUMMER
             variantAllowed : 'VARIANT_ALLOWED',   // legacy checkbox, no longer the eligibility gate (see genTitle1/3)
             genTitle1      : 'GENTITLE1POSI',     // eligibility: item is variant-eligible when genTitle1 AND genTitle2 are both filled
             genTitle2      : 'GENTITLE2POSI',     // (replaces the VARIANT_ALLOWED checkbox); GENTITLE3POSI stays optional/free
+            artikelNummer  : 'ARTIKELNUMMER',     // the one APplus article this item stands for; NUMBER stays the Vault id
+            category       : 'PDM_CATEGORY',      // Part / Assembly / Purchased, decides between items sharing an article
             genTitle3      : 'GENTITLE3POSI',     // Ausführung 3/4 article number(s), shown in the Ausführungen picker
             genTitle4      : 'GENTITLE4POSI',
             genWerk1       : 'GENWERK1POSI',      // material text per Ausführung 1..4 (GEN-WERKn-POSI)

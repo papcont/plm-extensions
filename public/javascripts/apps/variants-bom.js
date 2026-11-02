@@ -10,6 +10,7 @@ let vb = {
     selected  : null,                        // BOM node currently being replaced
     materials : null,                        // cached material picklist labels (Phase 8)
     flagged   : null,                        // { dmsId: true } of VARIANT_ALLOWED items (gates node selection)
+    articles  : null,                        // { dmsId: ARTIKELNUMMER } of the whole workspace (fingerprint identity)
     swaps     : {}                           // edgeId -> { mode, fromLink, fromTitle, toLink/material, row }
 };
 
@@ -99,10 +100,13 @@ function vbOpenSearch() {
 // live on a different revision than the one in the BOM, match by NUMBER instead.
 function ensureVariantFlags(callback) {
 
+    // ponytail: one page of 1000 (the route default is 100, the tenant returned at most 1000).
+    // Ceiling: more eligible items than that stay unflagged - page through the search if that happens.
     $.post('/plm/search', {
-        wsId   : vb.ws.id,
-        fields : [ vb.fieldIds.number ],
-        filter : [
+        wsId     : vb.ws.id,
+        pageSize : 1000,
+        fields   : [ vb.fieldIds.number ],
+        filter   : [
             { field : vb.fieldIds.genTitle1, type : 0, comparator : 21, value : '' },   // 21 = not-blank
             { field : vb.fieldIds.genTitle2, type : 0, comparator : 21, value : '' }
         ]
@@ -121,6 +125,35 @@ function ensureVariantFlags(callback) {
 
         if(callback) callback();
     }).fail(function() { if(callback) callback(); });
+
+}
+
+
+// Load dmsId -> ARTIKELNUMMER once: the BOM view only carries NUMBER, and the fingerprint needs the
+// article of every row. One workspace search instead of one /plm/details per row. Paged, because a
+// missing article would silently fall back to NUMBER and change the fingerprint. Throws on failure.
+async function ensureArticles() {
+
+    if(vb.articles !== null) return;
+
+    let articles = {};
+    let pageSize = 500;
+
+    for(let pageNo = 1; ; pageNo++) {
+        let r = await $.post('/plm/search', {
+            wsId     : vb.ws.id,
+            pageNo   : pageNo,
+            pageSize : pageSize,
+            fields   : [ vb.fieldIds.artikelNummer ],
+            filter   : [{ field : vb.fieldIds.artikelNummer, type : 0, comparator : 21, value : '' }]
+        });
+        if(r.error) throw r;
+        let rows = (r.data && r.data.row) ? r.data.row : [];
+        for(let row of rows) articles[row.dmsId] = getSearchResultFieldValue(row, vb.fieldIds.artikelNummer, '');
+        if(rows.length < pageSize) break;
+    }
+
+    vb.articles = articles;
 
 }
 
@@ -282,6 +315,7 @@ function selectNodeForSwap(elemClicked) {
         link        : link,
         edgeId      : elemClicked.attr('data-edgeid'),
         partNumber  : elemClicked.attr('data-part-number'),
+        article     : '',  // filled from the part's details below: ARTIKELNUMMER, else NUMBER
         title       : elemClicked.attr('data-title'),
         materialart : ''   // filled from the part's details below (part of the leaf identity)
     };
@@ -327,11 +361,14 @@ function selectNodeForSwap(elemClicked) {
     $('<div></div>').appendTo(elem).attr('id', 'vb-replace').css({ marginTop : '8px', minHeight : '116px' });
 
     // Prefill the current material and grab MATERIALART (identity component). Best-effort.
+    let selected = vb.selected;
     $.get('/plm/details', { link : link, useCache : true }).done(function(r) {
+        if(vb.selected !== selected) return;   // another node was clicked meanwhile
         vb.selected.materialart = getSectionFieldValue(r.data.sections, vb.fieldIds.materialart) || '';
         let current = getSectionFieldValue(r.data.sections, vb.fieldIds.material) || '';
         if(current) $('#vb-material').val(current);
         let value = id => getSectionFieldValue(r.data.sections, vb.fieldIds[id], '');
+        vb.selected.article = value('artikelNummer') || vb.selected.partNumber;
         vbShowExecutions(vbExecutions([1, 2, 3, 4].map(n => ({
             title    : value('genTitle' + n),
             material : value('genWerk' + n),
@@ -440,9 +477,9 @@ function vbShowExecutions(executions, elem) {
         $('<div></div>').appendTo(box).css({ marginTop : '8px', opacity : 0.75 })
             .html(['Ausführung ' + e.slot, e.label, e.material, e.surface, e.sap ? 'SAP ' + e.sap : ''].filter(Boolean).join(' · '));
         for(let article of e.articles) {
-            let mark = (article === chosen) ? '✓ ' : (article === sel.partNumber) ? '● ' : '→ ';
+            let mark = (article === chosen) ? '✓ ' : (article === sel.article) ? '● ' : '→ ';
             $('<div></div>').appendTo(box).addClass('button').css({ marginTop : '4px', width : '100%' })
-                .html(mark + article + (article === sel.partNumber ? '  (current)' : ''))
+                .html(mark + article + (article === sel.article ? '  (current)' : ''))
                 .click(function() { recordExecutionSwap(e.slot, article, e.material); });
         }
     }
@@ -520,24 +557,37 @@ function recordSwap(picked) {
 }
 
 
+// The item standing for an article when several carry it: the one whose NUMBER is the article, else the
+// only assembly (the profiles of a weldment inherit its article). Otherwise the first hit, and ambiguous
+// holds the number of candidates so the user gets a hint. ambiguous = 0 means the choice is clear.
+function vbPickArticleItem(rows, article) {
+    if(rows.length < 2) return { row : rows[0] || null, ambiguous : 0 };
+    let field = (row, id) => getSearchResultFieldValue(row, id, '');
+    let sure  = rows.filter(row => field(row, vb.fieldIds.number) === article);
+    if(sure.length !== 1) sure = rows.filter(row => field(row, vb.fieldIds.category) === 'Assembly');
+    return (sure.length === 1) ? { row : sure[0], ambiguous : 0 } : { row : rows[0], ambiguous : rows.length };
+}
+
+
 // Choose Ausführung <slot> / <article> for the selected position (mode 'execution').
-// Article already in Fusion (NUMBER = article) -> reused as-is, like a replace swap. Otherwise toLink
-// stays null: creating the missing article is #23476, until then the plan blocks the save.
+// Article already in Fusion (ARTIKELNUMMER = article) -> reused as-is, like a replace swap. Otherwise
+// toLink stays null and vbExecutePlan creates a variant item of the position.
 function recordExecutionSwap(slot, article, material) {
 
     let sel = vb.selected;
     if(sel === null) return;
 
-    if(article === sel.partNumber) { clearSwap(sel.edgeId); return; }   // back to the current one
+    if(article === sel.article) { clearSwap(sel.edgeId); return; }   // back to the current one
 
     $.post('/plm/search', {
         wsId   : vb.ws.id,
-        fields : [ vb.fieldIds.number, 'DESCRIPTOR' ],
-        filter : [{ field : vb.fieldIds.number, type : 0, comparator : 15, value : article }]
+        fields : [ vb.fieldIds.number, 'DESCRIPTOR', vb.fieldIds.category ],
+        filter : [{ field : vb.fieldIds.artikelNummer, type : 0, comparator : 15, value : article }]
     }).done(function(r) {
 
         let rows  = (r.data && r.data.row) ? r.data.row : [];
-        let found = rows.length > 0 ? rows[0] : null;
+        let pick  = vbPickArticleItem(rows, article);
+        let found = pick.row;
 
         vb.swaps[sel.edgeId] = {
             mode       : 'execution',
@@ -547,6 +597,7 @@ function recordExecutionSwap(slot, article, material) {
             fromNumber : sel.partNumber,
             fromTitle  : sel.title,
             toNumber   : article,   // identity in the parent fingerprint (= the APplus article number)
+            ambiguous  : pick.ambiguous,
             toLink     : found ? '/api/v3/workspaces/' + vb.ws.id + '/items/' + found.dmsId : null,
             toTitle    : found ? getSearchResultFieldValue(found, 'DESCRIPTOR', article) : article,
             row        : sel.row
@@ -555,7 +606,8 @@ function recordExecutionSwap(slot, article, material) {
         let row = sel.row;
         row.addClass('swapped');
         row.find('.swap-badge').remove();
-        $('<span></span>').addClass('swap-badge').html('→ Ausführung ' + slot + ': ' + article + (found ? '' : ' (new)'))
+        let hint = !found ? ' (new)' : pick.ambiguous ? ' (' + pick.ambiguous + ' items)' : '';
+        $('<span></span>').addClass('swap-badge').html('→ Ausführung ' + slot + ': ' + article + hint)
             .appendTo(row.find('.tree-descriptor').closest('td'));
 
         vbMarkPartVaried(sel.partNumber);
@@ -598,15 +650,20 @@ function normalizeQty(q) {
     return isNaN(n) ? String(q) : String(n);   // "1.0" and "1" collapse to "1"
 }
 
+// Identity of a BOM position: its APplus article, NUMBER only for items without one.
+function vbIdentity(node) {
+    return node.article || node.number;
+}
+
 // Recursive structural fingerprint.
-//   leaf     -> its NUMBER (identity)
+//   leaf     -> its identity (vbIdentity)
 //   assembly -> hash of sorted (childFingerprint "x" quantity)
 // Order-independent, quantity-sensitive, fully recursive: one differing screw deep down
 // changes its leaf fingerprint and therefore every ancestor's fingerprint. The assembly's
 // OWN number is intentionally ignored - that is what lets two structurally identical
 // assemblies dedup regardless of their own item numbers.
 function computeFingerprint(node) {
-    if(!node.children || node.children.length === 0) return node.number;
+    if(!node.children || node.children.length === 0) return vbIdentity(node);
     let parts = node.children.map(c => computeFingerprint(c) + '×' + normalizeQty(c.quantity));
     parts.sort();
     return fpHash(parts.join('|'));
@@ -633,7 +690,8 @@ function affectedChain(tree, edgeId) {
 }
 
 // Build the fingerprint tree from the rendered BOM rows. Structure/qty/number come from the
-// DOM (data-*), VARIANT_ALLOWED from the .variant-allowed class (run ensureVariantFlags first).
+// DOM (data-*), VARIANT_ALLOWED from the .variant-allowed class (run ensureVariantFlags first),
+// the article from vb.articles (run ensureArticles first).
 // Root node is synthesised from the launched assembly (vb.root); its children are the top-level rows.
 // ponytail: hierarchy keyed by data-number-path (part-number chain). Ceiling: breaks only if the
 // exact same part appears twice under the SAME parent - switch to edgeId-based nesting if that happens.
@@ -645,6 +703,7 @@ function buildTreeFromDOM() {
         let path = row.attr('data-number-path');
         byPath[path] = {
             number         : row.attr('data-part-number'),
+            article        : vb.articles[row.attr('data-dmsid')] || '',
             title          : row.attr('data-title'),
             quantity       : row.attr('data-quantity'),
             edgeId         : parseInt(row.attr('data-edgeid'), 10),
@@ -725,6 +784,25 @@ function variantsBomSelfTest() {
     for(let placeholder of ['0', '000', '--', '_']) console.assert(vbExecutions([{ title : placeholder }]).length === 0, 'FAIL: placeholder must not become an article: ' + placeholder);
     console.assert(vbSwapIdentity({ mode : 'execution', toNumber : '2046973' }) === '2046973', 'FAIL: execution identity is the article number');
 
+    // Identity: the article wins over NUMBER, both in the base and in the planned fingerprint.
+    let art = (number, article) => ({ number : number, article : article, quantity : '1', children : [] });
+    console.assert(computeFingerprint(asm([ art('FEOD-1', '2000001') ])) === computeFingerprint(asm([ art('FEOD-2', '2000001') ])), 'FAIL: same article must be the same identity');
+    console.assert(computeFingerprint(asm([ art('FEOD-1', '2000001') ])) !== computeFingerprint(asm([ art('FEOD-1', '2000002') ])), 'FAIL: different article must change the fingerprint');
+    console.assert(computeFingerprint(asm([ art('FEOD-1', '') ])) === computeFingerprint(asm([ art('FEOD-1', undefined) ])), 'FAIL: without article NUMBER is the identity');
+    let planned = asm([ Object.assign(asm([ art('FEOD-1', '2000001') ]), { quantity : '1' }), art('FEOD-2', '2000002') ]);
+    console.assert(vbPlanFingerprints(planned).fp === computeFingerprint(planned), 'FAIL: unchanged plan must equal the base fingerprint');
+
+    // Several items carry one article: NUMBER = article first, then the only assembly, else a hint.
+    let hit = (dmsId, number, category) => ({ dmsId : dmsId, fields : { entry : [
+        { key : vb.fieldIds.number,   fieldData : { value : number,   dataType : 'String' } },
+        { key : vb.fieldIds.category, fieldData : { value : category, dataType : 'String' } }
+    ]}});
+    console.assert(vbPickArticleItem([], '2000001').row === null, 'FAIL: no hit means a new item');
+    console.assert(vbPickArticleItem([ hit(1, 'A', 'Part') ], '2000001').row.dmsId === 1, 'FAIL: single hit');
+    console.assert(vbPickArticleItem([ hit(1, 'A', 'Assembly'), hit(2, '2000001', 'Part') ], '2000001').row.dmsId === 2, 'FAIL: NUMBER = article wins');
+    console.assert(vbPickArticleItem([ hit(1, 'A', 'Part'), hit(2, 'B', 'Part'), hit(3, 'C', 'Assembly') ], '2000001').row.dmsId === 3, 'FAIL: the only assembly wins');
+    console.assert(vbPickArticleItem([ hit(1, 'A', 'Part'), hit(2, 'B', 'Part') ], '2000001').ambiguous === 2, 'FAIL: no clear item must give a hint');
+
     console.log('variantsBomSelfTest: all assertions passed');
     return true;
 }
@@ -736,9 +814,9 @@ function variantsBomSelfTest() {
 
 // PLM helpers -------------------------------------------------------------------------
 
-function vbGetItemNumber(link) {
+function vbGetItemIdentity(link) {
     return $.get('/plm/details', { link : link, useCache : true }).then(function(r) {
-        return getSectionFieldValue(r.data.sections, vb.fieldIds.number);
+        return getSectionFieldValue(r.data.sections, vb.fieldIds.artikelNummer) || getSectionFieldValue(r.data.sections, vb.fieldIds.number);
     });
 }
 
@@ -759,6 +837,7 @@ function vbFindByFingerprint(fp) {
 }
 
 // Shallow clone (item + direct BOM edges, NUMBER reset for auto-numbering). Returns new item link.
+// ARTIKELNUMMER is reset too: a changed assembly is not the article of its base anymore.
 // Posts JSON, not urlencoded: the shared cloneItems() sends form-encoded, and qs turns any section
 // with >20 fields into an object, which the /plm/clone handler's `for...of` then throws on (HTML 500).
 // ponytail: self-contained JSON clone avoids that; leave the shared helper untouched.
@@ -777,6 +856,7 @@ function vbCloneAssembly(link) {
             for(let field of section.fields) {
                 let fieldId = field.__self__.split('/')[10];
                 if(fieldId === vb.fieldIds.number) field.value = '';   // blank -> new auto-number
+                if(fieldId === vb.fieldIds.artikelNummer) field.value = '';
                 sect.fields.push({
                     fieldId       : fieldId,
                     fieldMetadata : null,
@@ -817,7 +897,8 @@ function vbStampFingerprint(link, fp, extra) {
 }
 
 // Identity a swapped child contributes to its parent's fingerprint.
-//   replace  -> the replacement part's NUMBER
+//   replace  -> the replacement part's identity (ARTIKELNUMMER, else NUMBER)
+//   execution-> the chosen article
 //   material -> a synthetic leaf id over (baseNumber | material | materialart), so a material
 //               change alters every ancestor fingerprint just like a structural swap does.
 function vbSwapIdentity(swap) {
@@ -878,14 +959,14 @@ function vbPlanFingerprints(node) {
     for(let c of node.children) {
         let cfp;
         if(vb.swaps[c.edgeId]) {
-            cfp = vbSwapIdentity(vb.swaps[c.edgeId]);   // replace -> NUMBER; material -> synthetic leaf id
+            cfp = vbSwapIdentity(vb.swaps[c.edgeId]);   // replace, execution -> article; material -> synthetic leaf id
             changed = true;
         } else if(c.children && c.children.length) {
             let r = vbPlanFingerprints(c);
             cfp = r.fp;
             if(r.changed) changed = true;
         } else {
-            cfp = c.number;
+            cfp = vbIdentity(c);
         }
         entries.push(cfp + '×' + normalizeQty(c.quantity));
     }
@@ -915,10 +996,12 @@ async function saveVariant() {
 
         vb.wsSections = (await $.get('/plm/sections', { wsId : vb.ws.id, useCache : true })).data;
 
+        await ensureArticles();
+
         let tree = buildTreeFromDOM();
 
         // Resolve each swap so its parent fingerprint can be computed.
-        //   replace  -> read the replacement's NUMBER
+        //   replace  -> read the replacement's identity
         //   material -> compute the leaf fingerprint and look for an existing identical leaf (dedup)
         for(let edgeId in vb.swaps) {
             let s = vb.swaps[edgeId];
@@ -926,7 +1009,7 @@ async function saveVariant() {
                 s._leafFp       = vbLeafFingerprint(s);
                 s._leafExisting = await vbFindByFingerprint(s._leafFp);
             } else if(s.mode === 'replace') {
-                s.toNumber = await vbGetItemNumber(s.toLink);   // 'execution' already carries its article number
+                s.toNumber = await vbGetItemIdentity(s.toLink);   // 'execution' already carries its article number
             }
         }
 
@@ -971,14 +1054,15 @@ function vbShowPlan(tree, changed) {
         else                line.html('＋ Create ' + s.material + ' variant of <b>' + s.fromNumber + '</b>');
     }
 
-    // Ausführung choices: existing articles are reused, missing ones block the save for now (#23476).
-    let missing = 0;
+    // Ausführung choices: existing articles are reused, missing ones become one new variant item each.
+    let newArticles = {};
     for(let edgeId in vb.swaps) {
         let s = vb.swaps[edgeId];
         if(s.mode !== 'execution') continue;
         let line = $('<div></div>').appendTo(body).css({ margin : '6px 0' });
-        if(s.toLink) line.html('↻ Use <b>' + s.toNumber + '</b> (Ausführung ' + s.slot + ') for "' + s.fromNumber + '"');
-        else { missing++; line.html('✕ <b>' + s.toNumber + '</b> (Ausführung ' + s.slot + ') does not exist in Fusion yet'); }
+        if(s.toLink) line.html('↻ Use <b>' + s.toNumber + '</b> (Ausführung ' + s.slot + ') for "' + s.fromNumber + '"' +
+                               (s.ambiguous ? ' - ' + s.ambiguous + ' items carry this article, using ' + s.toTitle + '. Check the choice.' : ''));
+        else { newArticles[s.toNumber] = true; line.html('＋ Create <b>' + s.toNumber + '</b> (Ausführung ' + s.slot + ') as variant of "' + s.fromNumber + '"'); }
     }
 
     for(let n of changed) {
@@ -991,20 +1075,15 @@ function vbShowPlan(tree, changed) {
     }
 
     let reuseCount  = changed.filter(n => n._existing).length;
-    let createCount = changed.length - reuseCount;
+    let createCount = changed.length - reuseCount + Object.keys(newArticles).length;
 
     $('<div></div>').appendTo(body).css({ margin : '12px 0', opacity : 0.7 })
         .html(createCount + ' to create, ' + reuseCount + ' to reuse.');
 
-    if(missing > 0) {
-        $('<div></div>').appendTo(body).css({ margin : '12px 0' })
-            .html(missing + ' chosen article(s) are not in Fusion yet - creating them is not supported in this version.');
-    } else {
-        $('<div></div>').appendTo(body)
-            .addClass('button').addClass('default').addClass('with-icon').addClass('icon-create')
-            .html('Confirm & Create')
-            .click(function() { vbExecutePlan(tree, changed); });
-    }
+    $('<div></div>').appendTo(body)
+        .addClass('button').addClass('default').addClass('with-icon').addClass('icon-create')
+        .html('Confirm & Create')
+        .click(function() { vbExecutePlan(tree, changed); });
 
     // Escape route: close the plan preview without committing. Swaps are kept (rows stay marked,
     // Save stays enabled) so the user can review the BOM and re-open the plan.
@@ -1020,6 +1099,7 @@ async function vbExecutePlan(tree, changed) {
     appendOverlay(false);
 
     let resolved = {};   // original item link -> resolved variant/existing link
+    let created  = {};   // article -> link of its new variant item
 
     try {
 
@@ -1042,6 +1122,25 @@ async function vbExecutePlan(tree, changed) {
             if(config.materialVariantNumbering === 'keep') extra.push({ id : vb.fieldIds.number, value : s.fromNumber });
             await vbStampFingerprint(leaf, s._leafFp, extra);   // fp + IS_VARIANT + material + title + base refs
             s.toLink = leaf;
+        }
+
+        // Ausführungen without an item: one variant item per article, however many positions chose it.
+        // Reuse needs no fingerprint here, the article search in recordExecutionSwap finds the item next time.
+        for(let edgeId in vb.swaps) {
+            let s = vb.swaps[edgeId];
+            if(s.mode !== 'execution' || s.toLink) continue;
+
+            if(!created[s.toNumber]) {
+                let item = await vbCloneAssembly(s.fromLink);
+                await vbEditFields(item, [
+                    { id : vb.fieldIds.artikelNummer, value : s.toNumber },
+                    { id : vb.fieldIds.isVariant,     value : true       },
+                    { id : vb.fieldIds.material,      value : s.material },
+                    { id : 'TITLE',                   value : vbVariantTitle(s.fromTitle, s.fromNumber, [s.toNumber, s.material]) }
+                ].concat(vbBaseRefFields(s.fromNumber, s.fromLink)));
+                created[s.toNumber] = item;
+            }
+            s.toLink = created[s.toNumber];
         }
 
         for(let n of changed) {
@@ -1069,10 +1168,12 @@ async function vbExecutePlan(tree, changed) {
 
         let topLink = resolved[tree.link];
 
+        vb.articles = null;   // the new variant items carry articles too
+
         $('#overlay').hide();
 
         showSuccessMessage('Variant created',
-            'Done. Created ' + changed.filter(n => !n._existing).length + ' new item(s), reused ' +
+            'Done. Created ' + (changed.filter(n => !n._existing).length + Object.keys(created).length) + ' new item(s), reused ' +
             changed.filter(n => n._existing).length + '. New top assembly: ' + (topLink || '(unchanged)'));
 
         vb.swaps = {};
@@ -1104,6 +1205,9 @@ function onBOMLoaded(id, data) {
 async function lazyStampOriginal() {
     if(!vb.root || isBlank(vb.root.link)) return;
     if(!isBlank(vb.root.fingerprint)) return;                   // already fingerprinted (or a tool variant)
+
+    try { await ensureArticles(); }                             // no stamp without articles: it would be NUMBER-based
+    catch(e) { console.log('variants-bom lazy-stamp skipped', e); return; }
 
     let tree = buildTreeFromDOM();
     if(!tree.children || tree.children.length === 0) return;    // a leaf has no assembly fingerprint
