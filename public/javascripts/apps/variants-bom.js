@@ -11,6 +11,7 @@ let vb = {
     materials : null,                        // cached material picklist labels (Phase 8)
     flagged   : null,                        // { dmsId: true } of VARIANT_ALLOWED items (gates node selection)
     articles  : null,                        // { dmsId: ARTIKELNUMMER } of the whole workspace (fingerprint identity)
+    variants  : null,                        // { dmsId: { base, material } } of all generated items (order BOM)
     swaps     : {}                           // edgeId -> { mode, fromLink, fromTitle, toLink/material, row }
 };
 
@@ -62,6 +63,8 @@ function setUIEvents() {
     });
 
     $('#button-open').click(function() { vbOpenSearch(); });
+
+    $('#button-order-bom').click(function() { vbOrderBom(); });
 
 }
 
@@ -137,6 +140,18 @@ async function ensureArticles() {
     if(vb.articles !== null) return;
 
     let articles = {};
+    let rows     = await vbSearchNotBlank(vb.fieldIds.artikelNummer, [ vb.fieldIds.artikelNummer ]);
+
+    for(let row of rows) articles[row.dmsId] = getSearchResultFieldValue(row, vb.fieldIds.artikelNummer, '');
+
+    vb.articles = articles;
+
+}
+
+// All items of the workspace with a value in field. Throws on failure.
+async function vbSearchNotBlank(field, fields) {
+
+    let result   = [];
     let pageSize = 500;
 
     for(let pageNo = 1; ; pageNo++) {
@@ -144,16 +159,32 @@ async function ensureArticles() {
             wsId     : vb.ws.id,
             pageNo   : pageNo,
             pageSize : pageSize,
-            fields   : [ vb.fieldIds.artikelNummer ],
-            filter   : [{ field : vb.fieldIds.artikelNummer, type : 0, comparator : 21, value : '' }]
+            fields   : fields,
+            filter   : [{ field : field, type : 0, comparator : 21, value : '' }]
         });
         if(r.error) throw r;
         let rows = (r.data && r.data.row) ? r.data.row : [];
-        for(let row of rows) articles[row.dmsId] = getSearchResultFieldValue(row, vb.fieldIds.artikelNummer, '');
-        if(rows.length < pageSize) break;
+        result   = result.concat(rows);
+        if(rows.length < pageSize) return result;
     }
 
-    vb.articles = articles;
+}
+
+// Generated items carry the back-reference to their base (see vbBaseRefFields).
+async function ensureVariantItems() {
+
+    if(vb.variants !== null) return;
+
+    let baseField = config.fieldIds.baseItemNumber || 'BASE_ITEM_NUMBER';
+    let variants  = {};
+    let rows      = await vbSearchNotBlank(baseField, [ baseField, vb.fieldIds.material ]);
+
+    for(let row of rows) variants[row.dmsId] = {
+        base     : getSearchResultFieldValue(row, baseField, ''),
+        material : getSearchResultFieldValue(row, vb.fieldIds.material, '')
+    };
+
+    vb.variants = variants;
 
 }
 
@@ -704,6 +735,8 @@ function buildTreeFromDOM() {
         byPath[path] = {
             number         : row.attr('data-part-number'),
             article        : vb.articles[row.attr('data-dmsid')] || '',
+            path           : path,
+            pos            : row.attr('data-level-path'),
             title          : row.attr('data-title'),
             quantity       : row.attr('data-quantity'),
             edgeId         : parseInt(row.attr('data-edgeid'), 10),
@@ -715,6 +748,7 @@ function buildTreeFromDOM() {
 
     let root = {
         number         : vb.root ? vb.root.number : null,
+        article        : vb.root ? (vb.articles[vb.root.link.split('/').pop()] || '') : '',
         title          : vb.root ? vb.root.title : null,
         quantity       : '1',
         edgeId         : null,
@@ -802,6 +836,19 @@ function variantsBomSelfTest() {
     console.assert(vbPickArticleItem([ hit(1, 'A', 'Assembly'), hit(2, '2000001', 'Part') ], '2000001').row.dmsId === 2, 'FAIL: NUMBER = article wins');
     console.assert(vbPickArticleItem([ hit(1, 'A', 'Part'), hit(2, 'B', 'Part'), hit(3, 'C', 'Assembly') ], '2000001').row.dmsId === 3, 'FAIL: the only assembly wins');
     console.assert(vbPickArticleItem([ hit(1, 'A', 'Part'), hit(2, 'B', 'Part') ], '2000001').ambiguous === 2, 'FAIL: no clear item must give a hint');
+
+    // Order BOM lines: root first, parent links, total quantity multiplies down the tree.
+    let orderTree = { number : 'ROOT', article : '', link : '/items/1', edgeId : null, title : 'R', children : [
+        { number : 'SUB', article : '2000001', link : '/items/2', edgeId : 10, path : 'ROOT|SUB', pos : '1', quantity : '2.0', title : 'S', children : [
+            { number : 'P', article : '2000002', link : '/items/3', edgeId : 11, path : 'ROOT|SUB|P', pos : '1.1', quantity : '3.0', title : 'P - Bolt [REV:w]', children : [] }
+        ]}
+    ]};
+    let order = vbOrderLines(orderTree, { 3 : { base : 'BASE', material : 'VA' } });
+    console.assert(order.length === 3 && order[0].parent === null && order[0].qty === 1, 'FAIL: root line first');
+    console.assert(order[1].assembly === true && order[2].parent === order[1].id, 'FAIL: parent link');
+    console.assert(order[2].totalQty === 6, 'FAIL: total quantity must multiply');
+    console.assert(order[2].title === 'Bolt', 'FAIL: title without number and revision');
+    console.assert(order[2].variant === true && order[2].material === 'VA' && order[2].base === 'BASE' && order[1].variant === false, 'FAIL: variant data');
 
     console.log('variantsBomSelfTest: all assertions passed');
     return true;
@@ -1169,6 +1216,7 @@ async function vbExecutePlan(tree, changed) {
         let topLink = resolved[tree.link];
 
         vb.articles = null;   // the new variant items carry articles too
+        vb.variants = null;
 
         $('#overlay').hide();
 
@@ -1186,6 +1234,135 @@ async function vbExecutePlan(tree, changed) {
         console.log('variants-bom execute error', e);
         showErrorMessage('Creation failed', 'Some items may have been created. Details are in the browser console.');
     }
+}
+
+
+// =====================================================================================
+// Order BOM (#23358): the opened assembly as saved, resolved to articles and checked
+// against the APplus exports. Unsaved choices are no order BOM yet, so they block.
+// =====================================================================================
+
+// One line per BOM position, root first. id = path: a sub-assembly used twice repeats its edge ids.
+function vbOrderLines(tree, variants) {
+
+    let lines = [];
+
+    let add = function(node, parent, totalQty) {
+        let id      = node.path || 'root';
+        let variant = variants[node.link.split('/').pop()];
+        let qty     = (node.edgeId === null) ? 1 : parseFloat(node.quantity);
+        lines.push({
+            id       : id,
+            parent   : parent,
+            pos      : node.pos || '',
+            number   : node.number,
+            article  : node.article,
+            title    : vbBaseName(node.title, node.number),
+            qty      : qty,
+            totalQty : totalQty * qty,
+            assembly : node.children.length > 0,
+            variant  : !!variant,
+            material : variant ? variant.material : '',
+            base     : variant ? variant.base : ''
+        });
+        for(let c of node.children) add(c, id, totalQty * qty);
+    };
+
+    add(tree, null, 1);
+
+    return lines;
+
+}
+
+async function vbOrderBom() {
+
+    if(!vb.root) return;
+
+    if(Object.keys(vb.swaps).length > 0) {
+        showErrorMessage('Not saved yet', 'Save the variant and open it first: the order BOM shows the saved assembly.');
+        return;
+    }
+
+    appendOverlay(false);
+
+    try {
+
+        await ensureArticles();
+        await ensureVariantItems();
+
+        let lines = vbOrderLines(buildTreeFromDOM(), vb.variants);
+        let r     = await $.ajax({ url : '/applus/order-bom', method : 'POST', contentType : 'application/json', data : JSON.stringify({ lines : lines }) });
+
+        $('#overlay').hide();
+        vbShowOrderBom(r.data, lines);
+
+    } catch(e) {
+        $('#overlay').hide();
+        console.log('variants-bom order BOM error', e);
+        showErrorMessage('Order BOM failed', 'Could not resolve the order BOM. Details are in the browser console.');
+    }
+
+}
+
+function vbShowOrderBom(data, lines) {
+
+    let elem = $('#item').removeClass().addClass('surface-level-3').html('');
+
+    $('<div></div>').appendTo(elem).addClass('panel-header').html('Auftragsstückliste');
+
+    let body = $('<div></div>').appendTo(elem).addClass('panel-content').css({ padding : '16px', overflow : 'auto' });
+    let rows = [
+        [ 'IN_APPLUS'     , 'In APplus-Export vorhanden'    ],
+        [ 'BOM_MATCH'     , 'Stückliste in APplus vorhanden' ],
+        [ 'TO_CREATE'     , 'In APplus anlegen'             ],
+        [ 'CHECK_MASTER'  , 'Gegen Artikelstamm prüfen'     ],
+        [ 'NOT_IN_EXPORTS', 'Nicht in den Exporten'         ],
+        [ 'NO_ARTICLE'    , 'Ohne Artikel'                  ],
+        [ 'MERGED'        , 'In Baugruppe enthalten'        ]
+    ];
+
+    for(let row of rows) {
+        if(data.summary[row[0]]) $('<div></div>').appendTo(body).css({ margin : '4px 0' }).html(data.summary[row[0]] + ' × ' + row[1]);
+    }
+
+    $('<div></div>').appendTo(body).css({ margin : '12px 0', opacity : 0.7 })
+        .html('Geprüft gegen ' + data.exports + ' APplus-Stücklisten-Exporte, nicht gegen den Artikelstamm.');
+
+    if(data.toCreate.length > 0) {
+        $('<div></div>').appendTo(body).css({ margin : '12px 0 6px', fontWeight : 'bold' }).html('Anzulegen oder zu prüfen');
+        for(let l of data.toCreate) {
+            $('<div></div>').appendTo(body).css({ margin : '4px 0' }).html([l.article ? '<b>' + l.article + '</b>' : '', l.title, l.material].filter(Boolean).join(' · '));
+        }
+    }
+
+    $('<div></div>').appendTo(body)
+        .addClass('button').addClass('default').addClass('with-icon').addClass('icon-download').css({ marginTop : '12px' })
+        .html('Download Excel')
+        .click(function() { vbDownloadOrderBom(lines); });
+
+    $('<div></div>').appendTo(body)
+        .addClass('button').css({ marginTop : '8px' })
+        .html('Close')
+        .click(function() { vbShowItemPlaceholder(); });
+
+}
+
+async function vbDownloadOrderBom(lines) {
+
+    let response = await fetch('/applus/order-bom/excel', {
+        method  : 'POST',
+        headers : { 'Content-Type' : 'application/json' },
+        body    : JSON.stringify({ title : vb.root.title, lines : lines })
+    });
+
+    if(!response.ok) { showErrorMessage('Download failed', 'The Excel file could not be created.'); return; }
+
+    let link = document.createElement('a');
+    link.href     = URL.createObjectURL(await response.blob());
+    link.download = 'Auftragsstueckliste ' + vb.root.number + '.xlsx';
+    link.click();
+    URL.revokeObjectURL(link.href);
+
 }
 
 

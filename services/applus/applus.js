@@ -165,4 +165,51 @@ function diffLevel1(boms, head, fmLines) {
     return result;
 }
 
-module.exports = { parseExport, level1, fingerprint, buildIndex, lookup, matchBom, diffLevel1, normalizeUnit };
+// Order BOM (one line per BOM position, root first) against the imported exports.
+// lines: [{ id, parent, article, qty, assembly, variant, ... }]  parent = id of the parent line, null for the root.
+//   MERGED         same article as its parent: no line of its own (weldment profiles inherit it, assumption #23488)
+//   IN_APPLUS      article occurs in an export
+//   BOM_MATCH      assembly without article, an APplus BOM has exactly this level-1 composition (heads)
+//   TO_CREATE      generated assembly without article and without a matching APplus BOM
+//   CHECK_MASTER   chosen article of a generated item, not in the exports: only the article master can tell
+//   NOT_IN_EXPORTS CAD article not in the exports. Exports do not cover the article master, so this is no "missing"
+//   NO_ARTICLE     nothing to compare: CAD item without article
+// toCreate is deduplicated, a generated item used at several positions is listed once.
+function checkOrderBom(index, lines) {
+    const byId = {}, children = {}, checked = {};
+    for (const l of lines) {
+        byId[l.id] = l;
+        if (l.parent !== null) (children[l.parent] = children[l.parent] || []).push(l);
+    }
+    const check = l => {
+        if (checked[l.id]) return checked[l.id];
+        const parent = byId[l.parent];
+        const out = (status, extra) => (checked[l.id] = Object.assign({}, l, { status }, extra));
+        if (l.article && parent && parent.article === l.article) return out('MERGED');
+        if (l.article) {
+            const hit = index.articles[l.article];
+            if (hit) return out('IN_APPLUS', { applusName: hit.name });
+            return out(l.variant ? 'CHECK_MASTER' : 'NOT_IN_EXPORTS');
+        }
+        if (!l.assembly) return out('NO_ARTICLE');
+        // a sub-assembly found by its BOM counts with that article; an open position rules out an exact match
+        const kids = (children[l.id] || []).map(k => {
+            const c = check(k);
+            return { article: c.article || (c.heads && c.heads.length === 1 ? c.heads[0] : ''), qty: k.qty, unit: k.unit };
+        });
+        const heads = kids.length && kids.every(k => k.article) ? matchBom(index, kids) : [];
+        if (heads.length) return out('BOM_MATCH', { heads });
+        return out(l.variant ? 'TO_CREATE' : 'NO_ARTICLE');
+    };
+    const result = lines.map(check), seen = new Set(), summary = {};
+    for (const l of result) summary[l.status] = (summary[l.status] || 0) + 1;
+    const toCreate = result.filter(l => {
+        const key = l.article || l.number;
+        if ((l.status !== 'TO_CREATE' && l.status !== 'CHECK_MASTER') || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+    return { lines: result, toCreate, summary };
+}
+
+module.exports = { parseExport, level1, fingerprint, buildIndex, lookup, matchBom, diffLevel1, checkOrderBom, normalizeUnit };

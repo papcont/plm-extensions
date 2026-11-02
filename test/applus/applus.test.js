@@ -45,6 +45,50 @@ test('parseExport: head, levels, units, entities', () => {
     assert.strictEqual(b.rows[1].hasBom, true);
 });
 
+test('checkOrderBom: statuses, BOM match, dedup of the create list', () => {
+    const index = applus.buildIndex(boms());
+    const line = (id, parent, article, extra) => Object.assign({ id, parent, article, qty: 1, assembly: false, variant: false, number: 'N' + id }, extra);
+    const { lines, toCreate, summary } = applus.checkOrderBom(index, [
+        line('root', null, '', { assembly: true, variant: true }),
+        line('a', 'root', '', { assembly: true, variant: true }),         // same level 1 as APplus 9000200
+        line('a1', 'a', '9000021'), line('a2', 'a', '9000001'), line('a3', 'a', '9000002', { qty: 3 }),
+        line('b', 'root', '8000001', { assembly: true }),                 // CAD article, not in the exports
+        line('b1', 'b', '8000001'),                                       // weldment profile: same article as its parent
+        line('c', 'root', '8000002', { variant: true }),                  // chosen article
+        line('d', 'root', '8000002', { variant: true }),                  // the same item at a second position
+        line('e', 'root', ''),                                            // CAD item without article
+        line('f', 'root', '', { assembly: true, variant: true }),         // generated, an open position rules out a match
+        line('f1', 'f', '')
+    ]);
+    const status = Object.fromEntries(lines.map(l => [l.id, l.status]));
+    assert.strictEqual(status.a, 'BOM_MATCH');
+    assert.deepStrictEqual(lines.find(l => l.id === 'a').heads, ['9000200']);
+    assert.strictEqual(status.a1, 'IN_APPLUS');
+    assert.strictEqual(status.b, 'NOT_IN_EXPORTS');
+    assert.strictEqual(status.b1, 'MERGED');
+    assert.strictEqual(status.c, 'CHECK_MASTER');
+    assert.strictEqual(status.e, 'NO_ARTICLE');
+    assert.strictEqual(status.f, 'TO_CREATE');
+    assert.strictEqual(status.root, 'TO_CREATE');
+    assert.deepStrictEqual(toCreate.map(l => l.id), ['root', 'c', 'f']);
+    assert.strictEqual(summary.CHECK_MASTER, 2);
+});
+
+test('checkOrderBom: a sub-assembly found by its BOM counts with that article in the parent', () => {
+    const index = applus.buildIndex({ X: { file: 'x', rows: [
+        { level: 1, parent: '9000300', pos: '1', qty: 1, unit: 'Stk', article: '9000200', name: '' },
+        { level: 1, parent: '9000300', pos: '2', qty: 2, unit: 'Stk', article: '9000001', name: '' }
+    ]}, Y: boms()['9000200'] });
+    const line = (id, parent, article, extra) => Object.assign({ id, parent, article, qty: 1, assembly: false, variant: false }, extra);
+    const { lines } = applus.checkOrderBom(index, [
+        line('root', null, '', { assembly: true, variant: true }),
+        line('sub', 'root', '', { assembly: true, variant: true }),
+        line('s1', 'sub', '9000021'), line('s2', 'sub', '9000001'), line('s3', 'sub', '9000002', { qty: 3 }),
+        line('p', 'root', '9000001', { qty: 2 })
+    ]);
+    assert.deepStrictEqual(lines[0].heads, ['9000300']);
+});
+
 test('parseExport rejects a non-BOM sheet', () => {
     assert.throws(() => applus.parseExport('<Row><Cell><Data>foo</Data></Cell></Row>', 'x.xls'), /not an APplus BOM export/);
 });
