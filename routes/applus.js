@@ -1,5 +1,6 @@
 // APplus export data for the Variant BOM Editor (Feige). Feige provides APplus BOM exports as files; there is
-// no APplus interface. Imported exports are kept as JSON in storage/applus/ (same pattern as storage/erp/).
+// no APplus interface. The exports live in Fusion (items flagged IS_APPLUS_BOM, file in Files, see loadFromPLM);
+// exports imported locally are kept as JSON in storage/applus/ (same pattern as storage/erp/) as the fallback.
 //
 //   POST /applus/import  { files: [{ name, content }] }   content = the export's XML text
 //   GET  /applus/summary
@@ -14,6 +15,7 @@ const express = require('express');
 const router  = express.Router();
 const fs      = require('fs');
 const ExcelJS = require('exceljs');
+const axios   = require('axios');
 const applus  = require('../services/applus/applus');
 
 const folder = 'storage/applus';
@@ -34,6 +36,42 @@ function save(boms) {
     cache = { boms, index: applus.buildIndex(boms) };
 }
 
+// The exports kept in Fusion: items flagged IS_APPLUS_BOM, listed by the picklist below, each with its export
+// in Files. Read with the user's session, kept for TTL; the local import stays the fallback (no picklist, no items).
+// ponytail: one server-wide cache, reloads at most every TTL. Add a refresh button if exports change more often.
+const PICKLIST = 'CUSTOM_LOOKUP_APPLUS_BOMS';
+const TTL      = 10 * 60 * 1000;
+let plmCache   = null;   // { at, data: { boms, index } }
+
+async function loadFromPLM(req) {
+    if (plmCache && Date.now() - plmCache.at < TTL) return plmCache.data;
+    const base    = 'https://' + req.app.locals.tenant + '.autodeskplm360.net';
+    const headers = req.session.headers;
+    const list    = await axios.get(base + '/api/v3/lookups/' + PICKLIST + '?offset=0&limit=500', { headers });
+    const boms    = {};
+    await Promise.all(((list.data && list.data.items) || []).map(async item => {
+        const att = await axios.get(base + item.link + '/attachments?asc=name',
+                                    { headers: Object.assign({}, headers, { Accept: 'application/vnd.autodesk.plm.attachments.bulk+json' }) });
+        for (const a of ((att.data && att.data.attachments) || []).filter(a => /\.xls$/i.test(a.name))) {
+            const xml = (await axios.get(a.url, { responseType: 'text' })).data;   // signed storage URL, no auth header
+            const bom = applus.parseExport(xml, a.name);
+            boms[bom.head] = { file: a.name, item: item.link, rows: bom.rows };
+        }
+    }));
+    plmCache = { at: Date.now(), data: { boms, index: applus.buildIndex(boms) } };
+    return plmCache.data;
+}
+
+async function source(req) {
+    try {
+        const data = await loadFromPLM(req);
+        if (Object.keys(data.boms).length) return data;
+    } catch (e) {
+        console.log('  applus: exports from Fusion not available, using the local import', e.message);
+    }
+    return load();
+}
+
 router.post('/import', function(req, res) {
     const files = (req.body && req.body.files) || [];
     if (!files.length) return res.status(400).json({ success: false, message: 'files[] required' });
@@ -51,10 +89,10 @@ router.post('/import', function(req, res) {
     res.json({ success: errors.length === 0, data: { imported, errors } });
 });
 
-router.get('/summary', function(req, res) {
-    const { boms, index } = load();
+router.get('/summary', async function(req, res) {
+    const { boms, index } = await source(req);
     res.json({ success: true, data: {
-        boms     : Object.entries(boms).map(([head, b]) => ({ head, file: b.file, importedAt: b.importedAt, rows: b.rows.length })),
+        boms     : Object.entries(boms).map(([head, b]) => ({ head, file: b.file, item: b.item, importedAt: b.importedAt, rows: b.rows.length })),
         articles : Object.keys(index.articles).length
     }});
 });
@@ -75,8 +113,9 @@ router.post('/diff', function(req, res) {
     }
 });
 
-function orderBom(body) {
-    const { boms, index } = load();
+async function orderBom(req) {
+    const body = req.body;
+    const { boms, index } = await source(req);
     const result = applus.checkOrderBom(index, (body && body.lines) || []);
     const fm     = applus.orderLevel1(result.lines);
     const root   = result.lines.find(l => l.parent === null) || {};
@@ -86,9 +125,9 @@ function orderBom(body) {
     return result;
 }
 
-router.post('/order-bom', function(req, res) {
+router.post('/order-bom', async function(req, res) {
     try {
-        res.json({ success: true, data: orderBom(req.body) });
+        res.json({ success: true, data: await orderBom(req) });
     } catch (e) {
         res.status(404).json({ success: false, message: e.message });
     }
@@ -107,7 +146,7 @@ const TONE = { green: 'FFD2E9B0', yellow: 'FFF7CC93', blue: 'FFCDEAF7', red: 'FF
 
 router.post('/order-bom/excel', async function(req, res) {
     let result;
-    try { result = orderBom(req.body); } catch (e) { return res.status(404).json({ success: false, message: e.message }); }
+    try { result = await orderBom(req); } catch (e) { return res.status(404).json({ success: false, message: e.message }); }
     const { lines, toCreate, summary, diff } = result;
     const workbook = new ExcelJS.Workbook();
     const sheet = (name, columns, rows) => {
