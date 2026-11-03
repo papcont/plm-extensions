@@ -1349,11 +1349,12 @@ async function vbOrderBom() {
         await ensureVariantItems();
         await ensureExecutions();
 
-        let lines = vbOrderLines(buildTreeFromDOM(), vb.variants, vb.executions);
-        let r     = await $.ajax({ url : '/applus/order-bom', method : 'POST', contentType : 'application/json', data : JSON.stringify({ lines : lines }) });
+        let lines  = vbOrderLines(buildTreeFromDOM(), vb.variants, vb.executions);
+        let r      = await $.ajax({ url : '/applus/order-bom', method : 'POST', contentType : 'application/json', data : JSON.stringify({ lines : lines }) });
+        let linked = await vbLinkedApplusBoms();
 
         $('#overlay').hide();
-        vbShowOrderBom(r.data, lines);
+        vbShowOrderBom(r.data, lines, linked);
 
     } catch(e) {
         $('#overlay').hide();
@@ -1363,7 +1364,42 @@ async function vbOrderBom() {
 
 }
 
-function vbShowOrderBom(data, lines) {
+// APplus BOMs assigned to the opened assembly (field applusBoms, items flagged isApplusBom): [{ head, link }],
+// head = the item's ARTIKELNUMMER. Read fresh, the assignment may have changed in Fusion meanwhile.
+async function vbLinkedApplusBoms() {
+    let d     = await $.get('/plm/details', { link : vb.root.link, useCache : false });
+    let value = getSectionFieldValue(d.data.sections, vb.fieldIds.applusBoms, []);
+    let links = (Array.isArray(value) ? value : []).map(v => v.link).filter(Boolean);
+    return Promise.all(links.map(async link => {
+        let r = await $.get('/plm/details', { link : link, useCache : true });
+        return { head : getSectionFieldValue(r.data.sections, vb.fieldIds.artikelNummer, ''), link : link };
+    }));
+}
+
+// Assign APplus BOM head to the opened assembly: its item is added to field applusBoms, after a confirmation.
+// Returns the new entry, or null when cancelled or the BOM has no item in Fusion.
+async function vbLinkApplusBom(head, linked) {
+
+    if(!confirm('APplus-Stückliste ' + head + ' der Baugruppe "' + vb.root.title + '" zuordnen?')) return null;
+
+    let r    = await $.post('/plm/search', {
+        wsId   : vb.ws.id,
+        fields : [ vb.fieldIds.number, 'DESCRIPTOR', vb.fieldIds.isApplusBom ],
+        filter : [{ field : vb.fieldIds.artikelNummer, type : 0, comparator : 15, value : head }]
+    });
+    let item = ((r.data && r.data.row) || []).find(row => /^t/i.test(getSearchResultFieldValue(row, vb.fieldIds.isApplusBom, '')));
+    if(!item) { showErrorMessage('Not in Fusion', 'APplus BOM ' + head + ' has no item in Fusion yet.'); return null; }
+
+    let link = '/api/v3/workspaces/' + vb.ws.id + '/items/' + item.dmsId;
+    if(!vb.wsSections) vb.wsSections = (await $.get('/plm/sections', { wsId : vb.ws.id, useCache : true })).data;
+    let sections = [];
+    addFieldToPayload(sections, vb.wsSections, null, vb.fieldIds.applusBoms, linked.map(l => l.link).concat(link), false, 'multi-select');
+    await $.post('/plm/edit', { link : vb.root.link, sections : sections });
+
+    return { head : head, link : link };
+}
+
+function vbShowOrderBom(data, lines, linked) {
 
     let elem = $('#item').removeClass().addClass('surface-level-3').html('');
 
@@ -1394,15 +1430,38 @@ function vbShowOrderBom(data, lines) {
         }
     }
 
-    if(data.heads.length > 0) {
+    if(data.heads.length > 0 || linked.length > 0) {
+
+        // Assigned BOMs first and preselected, then the ranked proposals.
         $('<div></div>').appendTo(body).css({ margin : '12px 0 6px', fontWeight : 'bold' }).html('Differenz zu APplus-Stückliste (Ebene 1)');
-        let select = $('<select></select>').appendTo(body).attr('id', 'vb-head').css({ width : '100%' });
-        for(let h of data.heads) {
-            $('<option></option>').appendTo(select).val(h.head).html(h.head + ' · ' + h.hits + ' von ' + h.size + (h.name ? ' · ' + h.name : ''));
-        }
+        let select  = $('<select></select>').appendTo(body).attr('id', 'vb-head').css({ width : '100%' });
+        let ranked  = {};
+        for(let h of data.heads) ranked[h.head] = h;
+        let label   = head => {
+            let h = ranked[head];
+            return [head, h ? h.hits + ' von ' + h.size : '', h && h.name ? h.name : '', linked.some(l => l.head === head) ? 'zugeordnet' : ''].filter(Boolean).join(' · ');
+        };
+        let heads   = linked.map(l => l.head).concat(data.heads.map(h => h.head).filter(head => !linked.some(l => l.head === head)));
+        for(let head of heads) $('<option></option>').appendTo(select).val(head).html(label(head));
+
+        let assign  = $('<div></div>').appendTo(body).addClass('button').css({ marginTop : '6px' })
+            .html('Zuordnen')
+            .attr('title', 'Assign the selected APplus BOM to this assembly (field APplus Stueckliste)')
+            .click(async function() {
+                let entry = await vbLinkApplusBom(select.val(), linked);
+                if(entry === null) return;
+                linked.push(entry);
+                select.find('option:selected').html(label(entry.head));
+                assign.toggle(false);
+            });
         let diffBox = $('<div></div>').appendTo(body).attr('id', 'vb-diff');
-        select.change(function() { vbShowDiff(lines, diffBox); });
-        vbShowDiff(lines, diffBox);
+
+        let update  = function() {
+            assign.toggle(!linked.some(l => l.head === select.val()));
+            vbShowDiff(lines, diffBox);
+        };
+        select.change(update);
+        update();
     }
 
     $('<div></div>').appendTo(body)
