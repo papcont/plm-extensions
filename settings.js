@@ -2092,6 +2092,7 @@ exports.applications = {
             material       : 'MATERIAL',          // freetext: material value written on a material variant
             materialart    : 'MATERIALART',       // freetext: material category, part of the leaf identity
             isVariant      : 'IS_VARIANT',        // checkbox: stamped true on every generated variant
+            isApplusBom    : 'IS_APPLUS_BOM',     // checkbox: item holds an APplus BOM export (Excel in Files), never a BOM position
             title          : 'TITLE',             // derived speaking title "<base> - <labels>" (FM system field)
             baseItemNumber : 'BASE_ITEM_NUMBER',  // WS-241 convention: NUMBER of the original this variant came from
             dmsIdBaseItem  : 'DMS_ID_BASE_ITEM'   // WS-241 convention: dmsId of the original (text back-reference)

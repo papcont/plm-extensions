@@ -105,12 +105,12 @@ function vbItemSearch(elem, headerLabel, onClickItem) {
         results.html('Searching ...');
         $.post('/plm/search', {
             wsId     : vb.ws.id,
-            fields   : [ vb.fieldIds.number, 'DESCRIPTOR' ],
+            fields   : [ vb.fieldIds.number, 'DESCRIPTOR', vb.fieldIds.isApplusBom ],
             filter   : [{ field : 'DESCRIPTOR', type : 15, comparator : 'contains', value : query }],   // 15 = system field
             pageSize : 50
         }).done(function(r) {
             if(input.val().trim() !== query) return;   // the query changed meanwhile
-            let rows = (r.data && r.data.row) ? r.data.row : [];
+            let rows = vbNoApplusBoms((r.data && r.data.row) ? r.data.row : []);
             results.html(rows.length ? '' : 'No items found');
             for(let row of rows) {
                 let desc = getSearchResultFieldValue(row, 'DESCRIPTOR', String(row.dmsId));
@@ -633,6 +633,13 @@ function recordSwap(picked) {
 }
 
 
+// Search rows without the items holding an APplus BOM export: they carry the head article in ARTIKELNUMMER
+// but are no part, so they must never be opened, swapped in or reused for an Ausführung.
+function vbNoApplusBoms(rows) {
+    return rows.filter(row => !/^t/i.test(getSearchResultFieldValue(row, vb.fieldIds.isApplusBom, '')));   // search returns 't'
+}
+
+
 // The item standing for an article when several carry it: the one whose NUMBER is the article, else the
 // only assembly (the profiles of a weldment inherit its article). Otherwise the first hit, and ambiguous
 // holds the number of candidates so the user gets a hint. ambiguous = 0 means the choice is clear.
@@ -657,11 +664,11 @@ function recordExecutionSwap(slot, article, material) {
 
     $.post('/plm/search', {
         wsId   : vb.ws.id,
-        fields : [ vb.fieldIds.number, 'DESCRIPTOR', vb.fieldIds.category ],
+        fields : [ vb.fieldIds.number, 'DESCRIPTOR', vb.fieldIds.category, vb.fieldIds.isApplusBom ],
         filter : [{ field : vb.fieldIds.artikelNummer, type : 0, comparator : 15, value : article }]
     }).done(function(r) {
 
-        let rows  = (r.data && r.data.row) ? r.data.row : [];
+        let rows  = vbNoApplusBoms((r.data && r.data.row) ? r.data.row : []);
         let pick  = vbPickArticleItem(rows, article);
         let found = pick.row;
 
