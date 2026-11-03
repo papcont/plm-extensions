@@ -344,7 +344,7 @@ function loadMaterials(callback) {
     if(vb.materials !== null) { if(callback) callback(); return; }   // cached (incl. empty picklist)
     $.get('/plm/picklist-setup', { id : config.materialPicklistId, useCache : true }).done(function(r) {
         let values    = (r.data && r.data.picklist && r.data.picklist.values) ? r.data.picklist.values : [];
-        vb.materials  = values.map(v => v.label);
+        vb.materials  = values.map(v => v.label).sort((a, b) => a.localeCompare(b, 'de'));   // FM returns them unordered
         if(callback) callback();
     }).fail(function() { vb.materials = null; if(callback) callback(); });   // leave null -> retry on next select
 }
