@@ -82,11 +82,6 @@ body.variant-filter #bom tr[data-link]:not(.variant-allowed) { display : none; }
     opacity         : 1;
 }
 
-/* Replacement picker mounts in #vb-replace, below the material box. Make it a positioning
-   context so insertWorkspaceSearch's absolute .panel-actions toolbar stays INSIDE it instead
-   of escaping to #item and overlapping the "Apply material" button. */
-#vb-replace { position : relative; }
-
 /* Empty state / hint for the #item panel when no node is selected. */
 .vb-placeholder {
     display         : flex;

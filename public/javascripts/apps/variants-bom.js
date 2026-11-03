@@ -72,27 +72,58 @@ function setUIEvents() {
 
 
 // Entry search: pick any item in the item workspace to open for editing. Mounted when the app
-// is launched without a dmsId, and re-openable via the header "Open Item" button. Reuses the same
-// insertWorkspaceSearch panel the replace picker uses - click a result -> openAssembly(link).
+// is launched without a dmsId, and re-openable via the header "Open Item" button. Same search
+// panel as the replace picker - click a result -> openAssembly(link).
 function vbOpenSearch() {
 
     $('#bom').removeClass().addClass('surface-level-1').html('');
     let elem = $('#item').removeClass().addClass('surface-level-3').html('');
-    $('<div></div>').appendTo(elem).attr('id', 'vb-open');
 
-    insertWorkspaceSearch(vb.ws.id, {
-        id             : 'vb-open',
-        headerLabel    : 'Open an item to edit',
-        searchInFields : ['DESCRIPTOR'],
-        tileTitle      : 'DESCRIPTOR',
-        tileSubtitle   : vb.fieldIds.number,
-        onClickItem    : function(picked) {
-            let link = picked.attr('data-link');
-            if(isBlank(link)) return;
-            appendOverlay(false);
-            openAssembly(link);
-        }
+    vbItemSearch($('<div></div>').appendTo(elem).attr('id', 'vb-open'), 'Open an item to edit', function(picked) {
+        let link = picked.attr('data-link');
+        if(isBlank(link)) return;
+        appendOverlay(false);
+        openAssembly(link);
     });
+}
+
+
+// Item search of the item workspace: DESCRIPTOR contains the query, one button per hit, a click hands
+// the button (data-link, data-descriptor) to onClickItem. Own panel instead of the framework's
+// insertWorkspaceSearch, so the editor also runs on framework releases without it (Feige customer repo).
+function vbItemSearch(elem, headerLabel, onClickItem) {
+
+    $('<div></div>').appendTo(elem).css({ margin : '12px 12px 6px', fontWeight : 'bold' }).html(headerLabel);
+
+    let bar     = $('<div></div>').appendTo(elem).css({ display : 'flex', gap : '6px', margin : '0 12px' });
+    let input   = $('<input></input>').appendTo(bar).attr('placeholder', 'Enter search criteria').css({ flex : 1 });
+    let results = $('<div></div>').appendTo(elem).css({ padding : '0 12px 12px' });
+
+    let search = function() {
+        let query = input.val().trim();
+        if(query === '') return;
+        results.html('Searching ...');
+        $.post('/plm/search', {
+            wsId     : vb.ws.id,
+            fields   : [ vb.fieldIds.number, 'DESCRIPTOR' ],
+            filter   : [{ field : 'DESCRIPTOR', type : 15, comparator : 'contains', value : query }],   // 15 = system field
+            pageSize : 50
+        }).done(function(r) {
+            if(input.val().trim() !== query) return;   // the query changed meanwhile
+            let rows = (r.data && r.data.row) ? r.data.row : [];
+            results.html(rows.length ? '' : 'No items found');
+            for(let row of rows) {
+                let desc = getSearchResultFieldValue(row, 'DESCRIPTOR', String(row.dmsId));
+                $('<div></div>').appendTo(results).addClass('button').css({ marginTop : '4px', width : '100%' })
+                    .attr('data-link', '/api/v3/workspaces/' + vb.ws.id + '/items/' + row.dmsId)
+                    .attr('data-descriptor', desc).html(desc)
+                    .click(function() { onClickItem($(this)); });
+            }
+        });
+    };
+
+    $('<div></div>').appendTo(bar).addClass('button').addClass('default').html('Search').click(search);
+    input.keypress(function(e) { if(e.which === 13) search(); });
 }
 
 
@@ -406,14 +437,13 @@ function selectNodeForSwap(elemClicked) {
     }
 
     // Existing variants already derived from this part (BASE_ITEM_NUMBER back-reference).
-    // Own container placed BEFORE the replace picker, synchronously, so the async search result
-    // can't land under the picker's overlapping panel-actions bar (which would swallow the clicks).
+    // Own container placed BEFORE the replace picker, synchronously, so the async result keeps its place.
     let variantsBox = $('<div></div>').appendTo(elem).attr('id', 'vb-variants');
     vbListExistingVariants(vb.selected.partNumber, variantsBox);
 
-    // min-height reserves flow space for the picker's absolutely-positioned search bar (it overflows
-    // its own 46px box by ~66px), so the item details panel appended below it doesn't get overlapped.
-    $('<div></div>').appendTo(elem).attr('id', 'vb-replace').css({ marginTop : '8px', minHeight : '116px' });
+    // Component picker of the item workspace; click a result to record a replace swap.
+    vbItemSearch($('<div></div>').appendTo(elem).attr('id', 'vb-replace').css({ marginTop : '8px' }),
+                 'or replace "' + vb.selected.partNumber + '" with', recordSwap);
 
     // Prefill the current material and grab MATERIALART (identity component). Best-effort.
     let selected = vb.selected;
@@ -431,16 +461,6 @@ function selectNodeForSwap(elemClicked) {
             label    : value('ausfuehrung' + n),
             sap      : value('sapNr' + n)
         }))), executionsBox);
-    });
-
-    // Component picker scoped to the item workspace; click a result to record a replace swap.
-    insertWorkspaceSearch(vb.ws.id, {
-        id             : 'vb-replace',
-        headerLabel    : 'or replace "' + vb.selected.partNumber + '" with',
-        searchInFields : ['DESCRIPTOR'],
-        tileTitle      : 'DESCRIPTOR',
-        tileSubtitle   : vb.fieldIds.number,
-        onClickItem    : function(picked) { recordSwap(picked); }
     });
 
     // Item details of the selected node with an "open in Fusion Manage" toolbar link, so it can be
