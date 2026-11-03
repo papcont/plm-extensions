@@ -1364,16 +1364,46 @@ async function vbOrderBom() {
 
 }
 
-// APplus BOMs assigned to the opened assembly (field applusBoms, items flagged isApplusBom): [{ head, link }],
+// APplus BOMs assigned to the opened assembly (field applusBoms, items flagged isApplusBom): [{ head, link, auto }],
 // head = the item's ARTIKELNUMMER. Read fresh, the assignment may have changed in Fusion meanwhile.
+// BOMs that belong to it beyond doubt are assigned here without asking: the head is the assembly's own article or
+// one of its Ausführungen (GEN-TITLE1..4), Feige's own key. Not for generated variants, they copy the base's
+// Ausführungen. Matches by content only stay proposals.
 async function vbLinkedApplusBoms() {
-    let d     = await $.get('/plm/details', { link : vb.root.link, useCache : false });
-    let value = getSectionFieldValue(d.data.sections, vb.fieldIds.applusBoms, []);
-    let links = (Array.isArray(value) ? value : []).map(v => v.link).filter(Boolean);
-    return Promise.all(links.map(async link => {
+
+    let d      = await $.get('/plm/details', { link : vb.root.link, useCache : false });
+    let value  = getSectionFieldValue(d.data.sections, vb.fieldIds.applusBoms, []);
+    let links  = (Array.isArray(value) ? value : []).map(v => v.link).filter(Boolean);
+    let linked = await Promise.all(links.map(async link => {
         let r = await $.get('/plm/details', { link : link, useCache : true });
         return { head : getSectionFieldValue(r.data.sections, vb.fieldIds.artikelNummer, ''), link : link };
     }));
+
+    if(/^t/i.test(String(getSectionFieldValue(d.data.sections, vb.fieldIds.isVariant, '')))) return linked;
+
+    let own  = new Set([ 'artikelNummer', 'genTitle1', 'genTitle2', 'genTitle3', 'genTitle4' ]
+                   .flatMap(id => String(getSectionFieldValue(d.data.sections, vb.fieldIds[id], '')).split(/\s+/)));
+    let boms = (await $.get('/applus/summary')).data.boms;   // item = the export's item in Fusion
+    let auto = boms.filter(b => b.item && own.has(b.head) && !linked.some(l => l.head === b.head))
+                   .map(b => ({ head : b.head, link : b.item, auto : true }));
+
+    if(auto.length === 0) return linked;
+
+    try {
+        await vbWriteApplusBoms(linked.concat(auto));
+        return linked.concat(auto);
+    } catch(e) {
+        console.log('variants-bom: automatic APplus assignment not written', e);   // e.g. no edit permission
+        return linked;
+    }
+}
+
+// Field applusBoms of the opened assembly := the given entries.
+async function vbWriteApplusBoms(entries) {
+    if(!vb.wsSections) vb.wsSections = (await $.get('/plm/sections', { wsId : vb.ws.id, useCache : true })).data;
+    let sections = [];
+    addFieldToPayload(sections, vb.wsSections, null, vb.fieldIds.applusBoms, entries.map(e => e.link), false, 'multi-select');
+    await $.post('/plm/edit', { link : vb.root.link, sections : sections });
 }
 
 // Assign APplus BOM head to the opened assembly: its item is added to field applusBoms, after a confirmation.
@@ -1390,13 +1420,10 @@ async function vbLinkApplusBom(head, linked) {
     let item = ((r.data && r.data.row) || []).find(row => /^t/i.test(getSearchResultFieldValue(row, vb.fieldIds.isApplusBom, '')));
     if(!item) { showErrorMessage('Not in Fusion', 'APplus BOM ' + head + ' has no item in Fusion yet.'); return null; }
 
-    let link = '/api/v3/workspaces/' + vb.ws.id + '/items/' + item.dmsId;
-    if(!vb.wsSections) vb.wsSections = (await $.get('/plm/sections', { wsId : vb.ws.id, useCache : true })).data;
-    let sections = [];
-    addFieldToPayload(sections, vb.wsSections, null, vb.fieldIds.applusBoms, linked.map(l => l.link).concat(link), false, 'multi-select');
-    await $.post('/plm/edit', { link : vb.root.link, sections : sections });
+    let entry = { head : head, link : '/api/v3/workspaces/' + vb.ws.id + '/items/' + item.dmsId };
+    await vbWriteApplusBoms(linked.concat(entry));
 
-    return { head : head, link : link };
+    return entry;
 }
 
 function vbShowOrderBom(data, lines, linked) {
@@ -1439,7 +1466,8 @@ function vbShowOrderBom(data, lines, linked) {
         for(let h of data.heads) ranked[h.head] = h;
         let label   = head => {
             let h = ranked[head];
-            return [head, h ? h.hits + ' von ' + h.size : '', h && h.name ? h.name : '', linked.some(l => l.head === head) ? 'zugeordnet' : ''].filter(Boolean).join(' · ');
+            let l = linked.find(l => l.head === head);
+            return [head, h ? h.hits + ' von ' + h.size : '', h && h.name ? h.name : '', l ? (l.auto ? 'automatisch zugeordnet' : 'zugeordnet') : ''].filter(Boolean).join(' · ');
         };
         let heads   = linked.map(l => l.head).concat(data.heads.map(h => h.head).filter(head => !linked.some(l => l.head === head)));
         for(let head of heads) $('<option></option>').appendTo(select).val(head).html(label(head));
