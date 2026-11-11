@@ -1432,9 +1432,11 @@ async function vbLinkApplusBom(head, linked) {
 
 function vbShowOrderBom(data, lines, linked) {
 
-    let elem = $('#item').removeClass().addClass('surface-level-3').html('');
+    // vb-compare widens the panel over the viewer: Fusion and APplus side by side need the room.
+    // Every other view resets #item's classes, so leaving the comparison needs no extra step.
+    let elem = $('#item').removeClass().addClass('surface-level-3').addClass('vb-compare').html('');
 
-    $('<div></div>').appendTo(elem).addClass('panel-header').html('Auftragsstückliste');
+    $('<div></div>').appendTo(elem).addClass('panel-header').html('Abgleich mit APplus · ' + vb.root.title);
 
     let body = $('<div></div>').appendTo(elem).addClass('panel-content').css({ padding : '16px', overflow : 'auto' });
     let rows = [
@@ -1447,15 +1449,14 @@ function vbShowOrderBom(data, lines, linked) {
         [ 'MERGED'        , 'In Baugruppe enthalten'        ]
     ];
 
-    for(let row of rows) {
-        if(data.summary[row[0]]) $('<div></div>').appendTo(body).css({ margin : '4px 0' }).html(data.summary[row[0]] + ' × ' + row[1]);
-    }
-
-    $('<div></div>').appendTo(body).css({ margin : '12px 0', opacity : 0.7 })
-        .html('Geprüft gegen ' + data.exports + ' APplus-Stücklisten-Exporte, nicht gegen den Artikelstamm.');
+    // Whole order BOM in one line; where the data comes from below it (the source becomes switchable, see PLAN_APPLUS_ABGLEICH).
+    $('<div></div>').appendTo(body).addClass('vb-cmp-summary')
+        .text(rows.filter(row => data.summary[row[0]]).map(row => data.summary[row[0]] + ' × ' + row[1]).join(' · '));
+    $('<div></div>').appendTo(body).addClass('vb-cmp-source')
+        .text('Quelle: ' + data.exports + ' APplus-Stücklisten-Exporte in Fusion, nicht der Artikelstamm.');
 
     if(data.toCreate.length > 0) {
-        $('<div></div>').appendTo(body).css({ margin : '12px 0 6px', fontWeight : 'bold' }).html('Anzulegen oder zu prüfen');
+        $('<div></div>').appendTo(body).addClass('vb-cmp-heading').text('Anzulegen oder zu prüfen');
         for(let l of data.toCreate) {
             $('<div></div>').appendTo(body).css({ margin : '4px 0' }).html([l.article ? '<b>' + l.article + '</b>' : '', l.title, l.material].filter(Boolean).join(' · '));
         }
@@ -1464,8 +1465,9 @@ function vbShowOrderBom(data, lines, linked) {
     if(data.heads.length > 0 || linked.length > 0) {
 
         // Assigned BOMs first and preselected, then the ranked proposals.
-        $('<div></div>').appendTo(body).css({ margin : '12px 0 6px', fontWeight : 'bold' }).html('Differenz zu APplus-Stückliste (Ebene 1)');
-        let select  = $('<select></select>').appendTo(body).attr('id', 'vb-head').css({ width : '100%' });
+        $('<div></div>').appendTo(body).addClass('vb-cmp-heading').text('Gegenüberstellung mit APplus-Stückliste (Ebene 1)');
+        let bar     = $('<div></div>').appendTo(body).addClass('vb-cmp-bar');
+        let select  = $('<select></select>').appendTo(bar).attr('id', 'vb-head');
         let ranked  = {};
         for(let h of data.heads) ranked[h.head] = h;
         let label   = head => {
@@ -1476,7 +1478,7 @@ function vbShowOrderBom(data, lines, linked) {
         let heads   = linked.map(l => l.head).concat(data.heads.map(h => h.head).filter(head => !linked.some(l => l.head === head)));
         for(let head of heads) $('<option></option>').appendTo(select).val(head).html(label(head));
 
-        let assign  = $('<div></div>').appendTo(body).addClass('button').css({ marginTop : '6px' })
+        let assign  = $('<div></div>').appendTo(bar).addClass('button')
             .html('Zuordnen')
             .attr('title', 'Assign the selected APplus BOM to this assembly (field APplus Stueckliste)')
             .click(async function() {
@@ -1496,14 +1498,17 @@ function vbShowOrderBom(data, lines, linked) {
         update();
     }
 
-    $('<div></div>').appendTo(body)
-        .addClass('button').addClass('default').addClass('with-icon').addClass('icon-download').css({ marginTop : '12px' })
-        .html('Download Excel')
+    // Excel is an export now, not the result: secondary, next to Close.
+    let footer = $('<div></div>').appendTo(body).addClass('vb-cmp-footer');
+
+    $('<div></div>').appendTo(footer)
+        .addClass('button').addClass('with-icon').addClass('icon-download')
+        .html('Excel exportieren')
         .click(function() { vbDownloadOrderBom(lines); });
 
-    $('<div></div>').appendTo(body)
-        .addClass('button').css({ marginTop : '8px' })
-        .html('Close')
+    $('<div></div>').appendTo(footer)
+        .addClass('button')
+        .html('Schließen')
         .click(function() { vbClearDiffMarks(); vbShowItemPlaceholder(); });
 
 }
@@ -1587,21 +1592,54 @@ async function vbShowDiff(lines, elem) {
 
     vbMarkDiff(r.data.diff);
 
+    // Legend chips double as filter: click one to show only its rows, "Alle" to show all again.
     let legend = $('<div></div>').appendTo(elem).addClass('vb-diff-legend');
-
+    let filter = tone => {
+        legend.children().removeClass('vb-chip-on').filter('[data-tone="' + tone + '"]').addClass('vb-chip-on');
+        table.children('.vb-cmp-row').each(function() { $(this).toggle(tone === 'all' || this.dataset.tone === tone); });
+    };
+    $('<span></span>').appendTo(legend).addClass('vb-diff-chip vb-chip-all').attr('data-tone', 'all')
+        .text('Alle ' + r.data.diff.length).click(() => filter('all'));
     for(let tone in vbDiffTones) {
         let count = r.data.diff.filter(d => d.tone === tone).length;
-        $('<span></span>').appendTo(legend).addClass('vb-diff-chip').addClass('vb-diff-chip-' + tone).html(count + ' ' + vbDiffTones[tone].label);
+        $('<span></span>').appendTo(legend).addClass('vb-diff-chip').addClass('vb-diff-chip-' + tone).attr('data-tone', tone)
+            .text(count + ' ' + vbDiffTones[tone].label).click(() => filter(tone));
     }
 
-    let order = [ 'red', 'blue', 'yellow' ];
+    // Side by side: Fusion | status | APplus | note. Problems first, matches last.
+    let table = $('<div></div>').appendTo(elem).addClass('vb-cmp');
+    let thead = $('<div></div>').appendTo(table).addClass('vb-cmp-head');
+    for(let label of [ '', 'Fusion (CAD)', '', 'APplus ' + head, 'Hinweis' ]) $('<div></div>').appendTo(thead).text(label);
 
-    for(let d of r.data.diff.filter(d => d.tone !== 'green').sort((a, b) => order.indexOf(a.tone) - order.indexOf(b.tone))) {
-        let qty = (d.applusQty !== undefined || d.fmQty !== undefined) ? [d.applusQty, d.fmQty].filter(q => q !== undefined).join(' / ') + ' ' + (d.unit || 'Stk') : '';
-        $('<div></div>').appendTo(elem).addClass('vb-diff-line').addClass('vb-diff-line-' + d.tone)
-            .html(['<b>' + d.text + '</b>', d.article, d.slot ? 'Ausführung ' + d.slot : '', d.name, d.fmLabel ? 'Fusion: ' + d.fmLabel : '', qty].filter(Boolean).join(' · '));
+    let order = [ 'red', 'blue', 'yellow', 'green' ];
+    let icons = { green : 'icon-check', yellow : 'icon-warning', blue : 'icon-arrow-left', red : 'icon-arrow-right' };
+    let cell  = (row, main, sub) => {
+        let c = $('<div></div>').appendTo(row);
+        $('<div></div>').appendTo(c).addClass('vb-cmp-main').text(main || '–');
+        if(sub) $('<div></div>').appendTo(c).addClass('vb-cmp-sub').text(sub);
+    };
+
+    for(let d of r.data.diff.slice().sort((a, b) => order.indexOf(a.tone) - order.indexOf(b.tone))) {
+        let row = $('<div></div>').appendTo(table).addClass('vb-cmp-row vb-cmp-' + d.tone).attr('data-tone', d.tone);
+        $('<div></div>').appendTo(row).addClass('vb-cmp-stripe');
+        let fm = d.fmLabel || d.fmArticle;
+        cell(row, fm, fm ? [d.slot ? 'Ausführung ' + d.slot : '', d.fmQty !== undefined ? d.fmQty + ' ' + (d.unit || 'Stk') : ''].filter(Boolean).join(' · ') : '');
+        $('<div></div>').appendTo(row).addClass('icon').addClass(icons[d.tone]).addClass('vb-cmp-icon');
+        cell(row, [d.article, d.name].filter(Boolean).join(' '),
+             [d.pos ? 'Pos. ' + d.pos : '', d.applusQty !== undefined ? d.applusQty + ' ' + (d.unit || 'Stk') : ''].filter(Boolean).join(' · '));
+        $('<div></div>').appendTo(row).addClass('vb-cmp-note').text(d.tone === 'green' ? '' : d.text);
+        if(d.fmIds && d.fmIds.length) row.addClass('vb-cmp-link').click(() => vbFocusBomRow(d.fmIds[0]));
     }
 
+}
+
+// Bring the BOM row of a compared position into view and flash it briefly.
+function vbFocusBomRow(path) {
+    let row = $('#bom tr[data-link]').filter(function() { return this.getAttribute('data-number-path') === path; }).first();
+    if(row.length === 0) return;
+    row[0].scrollIntoView({ block : 'center', behavior : 'smooth' });
+    row.addClass('vb-cmp-focus');
+    setTimeout(() => row.removeClass('vb-cmp-focus'), 1200);
 }
 
 async function vbDownloadOrderBom(lines) {

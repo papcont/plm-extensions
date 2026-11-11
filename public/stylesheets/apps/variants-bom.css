@@ -116,7 +116,40 @@ body.variant-filter #bom tr[data-link]:not(.variant-allowed) { display : none; }
 .vb-diff-chip-blue   { background : var(--color-blue-100);               color : #0b2f40; }
 .vb-diff-chip-red    { background : var(--color-status-red-brighter);    color : #5a0d0d; }
 
-.vb-diff-line { margin : 4px 0; padding-left : 8px; border-left : 4px solid transparent; }
-.vb-diff-line-yellow { border-color : var(--color-status-yellow); }
-.vb-diff-line-blue   { border-color : var(--color-blue-500); }
-.vb-diff-line-red    { border-color : var(--color-status-red); }
+/* Comparison with APplus: the item panel widens over the viewer (BOM column stays, it is coloured too). */
+#item.vb-compare { left : var(--vb-bom-total); width : auto; z-index : 2; }
+body.no-details #item.vb-compare { right : 0px; }
+
+.vb-cmp-summary { margin : 0 0 4px; }
+.vb-cmp-source  { margin : 0 0 12px; opacity : 0.7; font-size : 12px; }
+.vb-cmp-heading { margin : 16px 0 6px; font-weight : 600; }
+.vb-cmp-bar     { display : flex; gap : 8px; align-items : center; }
+.vb-cmp-bar select { flex : 1; min-width : 0; }
+.vb-cmp-footer  { display : flex; gap : 8px; justify-content : flex-end; margin-top : 16px; }
+
+.vb-diff-chip { cursor : pointer; border : 2px solid transparent; }
+.vb-diff-chip.vb-chip-on { border-color : currentColor; }
+.vb-chip-all  { background : var(--color-surface-level-1); }
+
+.vb-cmp { border : 1px solid var(--color-surface-level-5); background : var(--color-surface-level-1); }
+.vb-cmp-head, .vb-cmp-row {
+    display               : grid;
+    grid-template-columns : 5px minmax(0, 1fr) 24px minmax(0, 1fr) minmax(0, 0.9fr);
+    gap                   : 10px;
+    align-items           : center;
+    padding               : 6px 10px 6px 0;
+    border-bottom         : 1px solid var(--color-surface-level-4);
+}
+.vb-cmp-head { font-size : 12px; font-weight : 600; opacity : 0.8; }
+.vb-cmp-row:last-child { border-bottom : none; }
+.vb-cmp-stripe { align-self : stretch; }
+.vb-cmp-green  .vb-cmp-stripe { background : var(--color-status-green); }
+.vb-cmp-yellow .vb-cmp-stripe { background : var(--color-status-yellow); }
+.vb-cmp-blue   .vb-cmp-stripe { background : var(--color-blue-500); }
+.vb-cmp-red    .vb-cmp-stripe { background : var(--color-status-red); }
+.vb-cmp-main   { overflow : hidden; text-overflow : ellipsis; white-space : nowrap; }
+.vb-cmp-sub, .vb-cmp-note { font-size : 12px; opacity : 0.75; }
+.vb-cmp-icon   { font-size : 18px; text-align : center; }
+.vb-cmp-link   { cursor : pointer; }
+.vb-cmp-link:hover { background : var(--color-surface-level-2); }
+#bom tr.vb-cmp-focus > td { outline : 2px solid var(--color-blue-500); outline-offset : -2px; }
