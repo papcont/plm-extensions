@@ -121,7 +121,10 @@ async function orderBom(req) {
     const root   = result.lines.find(l => l.parent === null) || {};
     result.exports = Object.keys(boms).length;
     result.heads   = applus.rankHeads(boms, index, fm, [root.article].concat(Object.keys(root.executions || {})));
-    if (body && body.head) result.diff = applus.diffLevel1(boms, body.head, fm);
+    if (body && body.head) {
+        result.levels = applus.diffTree(boms, body.head, result.lines);   // all levels, root first
+        result.diff   = result.levels[0].diff;                             // level 1, as before
+    }
     return result;
 }
 
@@ -142,12 +145,13 @@ const STATUS = {
     NO_ARTICLE     : 'Ohne Artikel'
 };
 
-const TONE = { green: 'FFD2E9B0', yellow: 'FFF7CC93', blue: 'FFCDEAF7', red: 'FFFBD4D4' };
+const TONE = { green: 'FFD2E9B0', yellow: 'FFF7CC93', blue: 'FFCDEAF7', red: 'FFFBD4D4', gray: 'FFE6E6E6' };
 
 router.post('/order-bom/excel', async function(req, res) {
     let result;
     try { result = await orderBom(req); } catch (e) { return res.status(404).json({ success: false, message: e.message }); }
-    const { lines, toCreate, summary, diff } = result;
+    const { lines, toCreate, summary, levels } = result;
+    const diff = levels && levels.flatMap(level => level.diff.map(d => Object.assign({ level }, d)));
     const workbook = new ExcelJS.Workbook();
     const sheet = (name, columns, rows) => {
         const ws = workbook.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 1 }] });
@@ -164,16 +168,16 @@ router.post('/order-bom/excel', async function(req, res) {
         toCreate.map(l => [l.article, l.number, l.title, l.material, l.base,
                            l.status === 'TO_CREATE' ? 'Neue Baugruppe, keine passende APplus-Stückliste' : 'Gewählter Artikel, gegen Artikelstamm prüfen']));
     if (diff) {
-        const ws = sheet('Differenz', [['Ergebnis', 46], ['Artikel APplus', 14], ['Benennung APplus', 40], ['Pos. APplus', 12], ['Menge APplus', 13], ['Einheit', 8],
+        const ws = sheet('Differenz', [['Ebene', 7], ['Baugruppe APplus', 16], ['Ergebnis', 46], ['Artikel APplus', 14], ['Benennung APplus', 40], ['Pos. APplus', 12], ['Menge APplus', 13], ['Einheit', 8],
                                        ['Ausführung', 11], ['Artikel Fusion', 14], ['Position Fusion', 50], ['Menge Fusion', 13]],
-            diff.map(d => [d.text, d.article, d.name, d.pos, d.applusQty, d.unit, d.slot, d.fmArticle, d.fmLabel, d.fmQty]));
+            diff.map(d => [d.level.depth + 1, d.level.head, d.text, d.article, d.name, d.pos, d.applusQty, d.unit, d.slot, d.fmArticle, d.fmLabel, d.fmQty]));
         diff.forEach((d, i) => {
             for (let c = 1; c <= ws.columnCount; c++) ws.getRow(i + 2).getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TONE[d.tone] } };
         });
     }
     sheet('Hinweise', [['Hinweis', 110]], [
         [req.body.title || ''],
-        [diff ? 'Differenz auf Ebene 1 gegen APplus-Stückliste ' + req.body.head + '.' : 'Keine Differenz gewählt.'],
+        [diff ? 'Differenz über alle Ebenen gegen APplus-Stückliste ' + req.body.head + ' (' + levels.length + ' Stücklisten).' : 'Keine Differenz gewählt.'],
         ['Geprüft gegen ' + result.exports + ' APplus-Stücklisten-Exporte, nicht gegen den Artikelstamm.'],
         ['"Nicht in den Exporten" heißt nicht, dass der Artikel in APplus fehlt.'],
         [(summary.MERGED || 0) + ' Positionen mit demselben Artikel wie ihre Baugruppe sind nicht als eigene Zeile aufgeführt (Annahme, Klärung in #23488).']

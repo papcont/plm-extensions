@@ -153,3 +153,22 @@ body.no-details #item.vb-compare { right : 0px; }
 .vb-cmp-link   { cursor : pointer; }
 .vb-cmp-link:hover { background : var(--color-surface-level-2); }
 #bom tr.vb-cmp-focus > td { outline : 2px solid var(--color-blue-500); outline-offset : -2px; }
+
+/* All levels: one collapsible section per compared BOM, indented by depth. */
+.vb-diff-chip-gray { background : var(--color-surface-level-4); }
+.vb-cmp-level {
+    display       : flex;
+    align-items   : center;
+    gap           : 6px;
+    padding       : 7px 10px 7px 8px;
+    border-bottom : 1px solid var(--color-surface-level-4);
+    background    : var(--color-surface-level-2);
+    font-weight   : 600;
+    cursor        : pointer;
+}
+.vb-cmp-caret { font-size : 18px; transition : transform 0.15s; }
+.vb-cmp-open .vb-cmp-caret { transform : rotate(90deg); }
+.vb-cmp-level-title { flex : 1; min-width : 0; overflow : hidden; text-overflow : ellipsis; white-space : nowrap; }
+.vb-cmp-counts { display : flex; gap : 4px; flex : none; }
+.vb-cmp-count  { padding : 1px 6px; border-radius : 3px; font-size : 12px; font-weight : 600; }
+.vb-cmp-gray .vb-cmp-stripe { background : var(--color-surface-level-5); }

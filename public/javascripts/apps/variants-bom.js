@@ -1517,7 +1517,8 @@ const vbDiffTones = {
     green  : { label : 'In beiden vorhanden', vector : [0.42, 0.59, 0.16, 0.9] },
     yellow : { label : 'Abweichung'         , vector : [0.98, 0.64, 0.11, 0.9] },
     blue   : { label : 'Fehlt in APplus'    , vector : [0.02, 0.59, 0.84, 0.9] },
-    red    : { label : 'Fehlt in Fusion'    }    // has no BOM row and no geometry, shown as an extra row
+    red    : { label : 'Fehlt in Fusion'    },   // has no BOM row and no geometry, shown as an extra row
+    gray   : { label : 'Unter Einzelteil'   }    // APplus positions below a Fusion part (raw material): expected, not painted
 };
 
 // Short note on a coloured BOM row.
@@ -1561,7 +1562,7 @@ function vbMarkDiff(diff) {
         for(let id of (d.fmIds || [])) {
             let row = rows.filter(function() { return this.getAttribute('data-number-path') === id; });
             row.addClass('vb-diff-' + d.tone);
-            numbers[d.tone].push(row.attr('data-part-number'));
+            if(numbers[d.tone]) numbers[d.tone].push(row.attr('data-part-number'));
             let badge = vbDiffBadge(d);
             if(badge) $('<span></span>').addClass('vb-diff-badge').html(badge).appendTo(row.find('.tree-column-revision'));
         }
@@ -1590,46 +1591,106 @@ async function vbShowDiff(lines, elem) {
 
     elem.html('');
 
-    vbMarkDiff(r.data.diff);
+    // All levels, root first (depth first): every sub-assembly with a BOM on both sides is its own section.
+    let levels = r.data.levels;
+    let all    = levels.flatMap(level => level.diff);
 
-    // Legend chips double as filter: click one to show only its rows, "Alle" to show all again.
-    let legend = $('<div></div>').appendTo(elem).addClass('vb-diff-legend');
-    let filter = tone => {
-        legend.children().removeClass('vb-chip-on').filter('[data-tone="' + tone + '"]').addClass('vb-chip-on');
-        table.children('.vb-cmp-row').each(function() { $(this).toggle(tone === 'all' || this.dataset.tone === tone); });
-    };
-    $('<span></span>').appendTo(legend).addClass('vb-diff-chip vb-chip-all').attr('data-tone', 'all')
-        .text('Alle ' + r.data.diff.length).click(() => filter('all'));
-    for(let tone in vbDiffTones) {
-        let count = r.data.diff.filter(d => d.tone === tone).length;
-        $('<span></span>').appendTo(legend).addClass('vb-diff-chip').addClass('vb-diff-chip-' + tone).attr('data-tone', tone)
-            .text(count + ' ' + vbDiffTones[tone].label).click(() => filter(tone));
+    vbMarkDiff(all);
+
+    // Counts per level, own and with everything below (levels come depth first, so children follow their parent).
+    let byId = {};
+    for(let level of levels) {
+        byId[level.id] = level;
+        level.own = {}; level.sub = {};
+        for(let d of level.diff) level.own[d.tone] = (level.own[d.tone] || 0) + 1;
+        Object.assign(level.sub, level.own);
     }
+    for(let level of levels.slice().reverse()) {
+        let up = byId[level.parent];
+        if(up) for(let tone in level.sub) up.sub[tone] = (up.sub[tone] || 0) + level.sub[tone];
+    }
+
+    // Legend chips double as filter over all levels: a tone opens every section that holds it.
+    let expanded = new Set([ levels[0].id ]);
+    let tone     = 'all';
+    let legend   = $('<div></div>').appendTo(elem).addClass('vb-diff-legend');
+    $('<span></span>').appendTo(legend).addClass('vb-diff-chip vb-chip-all vb-chip-on').attr('data-tone', 'all')
+        .text('Alle ' + all.length).click(() => filter('all'));
+    for(let t in vbDiffTones) {
+        $('<span></span>').appendTo(legend).addClass('vb-diff-chip').addClass('vb-diff-chip-' + t).attr('data-tone', t)
+            .text(all.filter(d => d.tone === t).length + ' ' + vbDiffTones[t].label).click(() => filter(t));
+    }
+    $('<div></div>').appendTo(elem).addClass('vb-cmp-source').text(levels.length + ' Stücklisten verglichen · Abschnitt anklicken zum Auf- und Zuklappen');
 
     // Side by side: Fusion | status | APplus | note. Problems first, matches last.
     let table = $('<div></div>').appendTo(elem).addClass('vb-cmp');
     let thead = $('<div></div>').appendTo(table).addClass('vb-cmp-head');
-    for(let label of [ '', 'Fusion (CAD)', '', 'APplus ' + head, 'Hinweis' ]) $('<div></div>').appendTo(thead).text(label);
+    for(let label of [ '', 'Fusion (CAD)', '', 'APplus', 'Hinweis' ]) $('<div></div>').appendTo(thead).text(label);
 
-    let order = [ 'red', 'blue', 'yellow', 'green' ];
-    let icons = { green : 'icon-check', yellow : 'icon-warning', blue : 'icon-arrow-left', red : 'icon-arrow-right' };
+    let order = [ 'red', 'blue', 'yellow', 'gray', 'green' ];
+    let icons = { green : 'icon-check', yellow : 'icon-warning', blue : 'icon-arrow-left', red : 'icon-arrow-right', gray : 'icon-arrow-right' };
     let cell  = (row, main, sub) => {
         let c = $('<div></div>').appendTo(row);
         $('<div></div>').appendTo(c).addClass('vb-cmp-main').text(main || '–');
         if(sub) $('<div></div>').appendTo(c).addClass('vb-cmp-sub').text(sub);
     };
 
-    for(let d of r.data.diff.slice().sort((a, b) => order.indexOf(a.tone) - order.indexOf(b.tone))) {
-        let row = $('<div></div>').appendTo(table).addClass('vb-cmp-row vb-cmp-' + d.tone).attr('data-tone', d.tone);
-        $('<div></div>').appendTo(row).addClass('vb-cmp-stripe');
-        let fm = d.fmLabel || d.fmArticle;
-        cell(row, fm, fm ? [d.slot ? 'Ausführung ' + d.slot : '', d.fmQty !== undefined ? d.fmQty + ' ' + (d.unit || 'Stk') : ''].filter(Boolean).join(' · ') : '');
-        $('<div></div>').appendTo(row).addClass('icon').addClass(icons[d.tone]).addClass('vb-cmp-icon');
-        cell(row, [d.article, d.name].filter(Boolean).join(' '),
-             [d.pos ? 'Pos. ' + d.pos : '', d.applusQty !== undefined ? d.applusQty + ' ' + (d.unit || 'Stk') : ''].filter(Boolean).join(' · '));
-        $('<div></div>').appendTo(row).addClass('vb-cmp-note').text(d.tone === 'green' ? '' : d.text);
-        if(d.fmIds && d.fmIds.length) row.addClass('vb-cmp-link').click(() => vbFocusBomRow(d.fmIds[0]));
+    for(let level of levels) {
+
+        let header = $('<div></div>').appendTo(table).addClass('vb-cmp-level').attr('data-level', level.id)
+            .css('padding-left', (8 + level.depth * 18) + 'px');
+        $('<span></span>').appendTo(header).addClass('vb-cmp-caret icon icon-chevron-right');
+        $('<span></span>').appendTo(header).addClass('vb-cmp-level-title')
+            .text(level.fmLabel + '  ↔  APplus ' + level.head + (level.name ? ' ' + level.name : ''));
+        let counts = $('<span></span>').appendTo(header).addClass('vb-cmp-counts');
+        let size   = level.diff.filter(d => d.article).length;
+        if(!level.underPart) $('<span></span>').appendTo(counts).addClass('vb-cmp-count vb-diff-chip-green').text((level.own.green || 0) + ' / ' + size);
+        for(let t of [ 'yellow', 'blue', 'red', 'gray' ]) {
+            if(level.sub[t]) $('<span></span>').appendTo(counts).addClass('vb-cmp-count vb-diff-chip-' + t).text(level.sub[t]);
+        }
+        header.click(() => {
+            expanded.has(level.id) ? expanded.delete(level.id) : expanded.add(level.id);
+            apply();
+            if(expanded.has(level.id)) vbFocusBomRow(level.id);
+        });
+
+        for(let d of level.diff.slice().sort((a, b) => order.indexOf(a.tone) - order.indexOf(b.tone))) {
+            let row = $('<div></div>').appendTo(table).addClass('vb-cmp-row vb-cmp-' + d.tone)
+                .attr('data-tone', d.tone).attr('data-level', level.id).css('padding-left', (level.depth * 18) + 'px');
+            $('<div></div>').appendTo(row).addClass('vb-cmp-stripe');
+            let fm = d.fmLabel || d.fmArticle;
+            cell(row, fm, fm ? [d.slot ? 'Ausführung ' + d.slot : '', d.fmQty !== undefined ? d.fmQty + ' ' + (d.unit || 'Stk') : ''].filter(Boolean).join(' · ') : '');
+            $('<div></div>').appendTo(row).addClass('icon').addClass(icons[d.tone]).addClass('vb-cmp-icon');
+            cell(row, [d.article, d.name].filter(Boolean).join(' '),
+                 [d.pos ? 'Pos. ' + d.pos : '', d.applusQty !== undefined ? d.applusQty + ' ' + (d.unit || 'Stk') : ''].filter(Boolean).join(' · '));
+            $('<div></div>').appendTo(row).addClass('vb-cmp-note').text(d.tone === 'green' ? '' : d.text);
+            if(d.fmIds && d.fmIds.length) row.addClass('vb-cmp-link').click(() => vbFocusBomRow(d.fmIds[0]));
+        }
     }
+
+    // A section shows when all its ancestors are open and (filtered) something of the tone is in or below it;
+    // its rows show when it is open itself and (filtered) they carry the tone.
+    let shown = level => {
+        for(let up = byId[level.parent]; up; up = byId[up.parent]) if(!expanded.has(up.id)) return false;
+        return tone === 'all' || !!level.sub[tone];
+    };
+    function apply() {
+        table.children('.vb-cmp-level').each(function() {
+            let level = byId[this.dataset.level];
+            $(this).toggle(shown(level)).toggleClass('vb-cmp-open', expanded.has(level.id));
+        });
+        table.children('.vb-cmp-row').each(function() {
+            let level = byId[this.dataset.level];
+            $(this).toggle(shown(level) && expanded.has(level.id) && (tone === 'all' || this.dataset.tone === tone));
+        });
+    }
+    function filter(t) {
+        tone = t;
+        legend.children().removeClass('vb-chip-on').filter('[data-tone="' + t + '"]').addClass('vb-chip-on');
+        if(t !== 'all') for(let level of levels) if(level.sub[t]) expanded.add(level.id);
+        apply();
+    }
+    apply();
 
 }
 
@@ -1637,6 +1698,7 @@ async function vbShowDiff(lines, elem) {
 function vbFocusBomRow(path) {
     let row = $('#bom tr[data-link]').filter(function() { return this.getAttribute('data-number-path') === path; }).first();
     if(row.length === 0) return;
+    if(!row.is(':visible')) $('#bom-action-expand-all').click();   // sub-level rows sit in collapsed branches
     row[0].scrollIntoView({ block : 'center', behavior : 'smooth' });
     row.addClass('vb-cmp-focus');
     setTimeout(() => row.removeClass('vb-cmp-focus'), 1200);

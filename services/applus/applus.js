@@ -155,13 +155,15 @@ const DIFF_TEXT = {
     ONLY_FM         : 'Nur in Fusion',
     CANDIDATE       : 'Nur in APplus: möglicher Kandidat im CAD ohne Artikelnummer (gleiche Menge)',
     ARTICLE_DIFF    : 'Nur in APplus: abweichender Artikel',
-    NO_MODEL        : 'Nur in APplus: ohne 3D-Modell, zu bestätigen'
+    NO_MODEL        : 'Nur in APplus: ohne 3D-Modell, zu bestätigen',
+    UNDER_PART      : 'Nur in APplus: unter einem Einzelteil (z. B. Rohmaterial)'
 };
 
 // Colour code: green = in both, yellow = deviation or hint on an existing position, blue = missing in APplus,
-// red = missing in Fusion. Same meaning in the BOM, the 3D model, the panel and Excel.
+// red = missing in Fusion, gray = APplus positions below a Fusion part (raw material, expected, not "missing").
+// Same meaning in the BOM, the 3D model, the panel and Excel.
 const DIFF_TONE = { MATCH: 'green', OTHER_EXECUTION: 'yellow', QTY_DIFF: 'yellow', UNIT_DIFF: 'yellow', CANDIDATE: 'yellow',
-                    ARTICLE_DIFF: 'yellow', ONLY_FM: 'blue', NO_MODEL: 'red' };
+                    ARTICLE_DIFF: 'yellow', ONLY_FM: 'blue', NO_MODEL: 'red', UNDER_PART: 'gray' };
 
 // Level-1 difference between an APplus BOM and a Fusion BOM level.
 // fmLines: [{ id, article, executions, qty, unit, label }] - article may be '' (CAD item without article number),
@@ -231,11 +233,50 @@ function rankHeads(boms, index, fmLines, own) {
         .slice(0, 10);
 }
 
-// The level-1 positions of a checked order BOM in the shape diffLevel1 and rankHeads take.
+// The direct positions of one order BOM line in the shape diffLevel1 and rankHeads take.
+function orderLevel(lines, parentId) {
+    return lines.filter(l => l.parent === parentId && l.status !== 'MERGED')
+                .map(l => ({ id: l.id, article: l.article, executions: l.executions, qty: l.qty, unit: l.unit, name: l.title, label: l.number + ' - ' + l.title }));
+}
+
 function orderLevel1(lines) {
     const root = lines.find(l => l.parent === null);
-    return lines.filter(l => root && l.parent === root.id && l.status !== 'MERGED')
-                .map(l => ({ id: l.id, article: l.article, executions: l.executions, qty: l.qty, name: l.title, label: l.number + ' - ' + l.title }));
+    return root ? orderLevel(lines, root.id) : [];
+}
+
+// All levels: the difference of the root to head, then of every position that has a BOM on both sides, depth first.
+// The APplus side decides the sub-BOM (the matched article, also when found via another Ausführung). A Fusion part
+// (no children) whose APplus article has a BOM gets its APplus positions as UNDER_PART: raw material, not "missing".
+// Returns [{ id, parent, depth, head, name, fmLabel, underPart, diff }], parent = id of the level above.
+const PAIRED = new Set(['MATCH', 'OTHER_EXECUTION', 'QTY_DIFF', 'UNIT_DIFF']);   // Fusion position stands for this APplus article
+
+function diffTree(boms, head, lines) {
+    const root = lines.find(l => l.parent === null);
+    if (!root) return [];
+    const byId = {}, hasKids = new Set();
+    for (const l of lines) { byId[l.id] = l; if (l.parent !== null) hasKids.add(l.parent); }
+    const levels = [];
+    const walk = (line, head, parent, depth) => {
+        const level = { id: line.id, parent, depth, head, name: '', fmLabel: line.number + ' - ' + line.title, underPart: !hasKids.has(line.id) };
+        levels.push(level);
+        if (level.underPart) {
+            level.diff = bomLevel1(boms, head).map(r => ({ status: 'UNDER_PART', article: r.article, name: r.name, pos: r.pos.join(', '),
+                                                          applusQty: r.qty, unit: r.unit, text: DIFF_TEXT.UNDER_PART, tone: DIFF_TONE.UNDER_PART }));
+            return;
+        }
+        level.diff = diffLevel1(boms, head, orderLevel(lines, line.id));
+        for (const d of level.diff) {
+            if (!PAIRED.has(d.status) || !byId[d.fmIds[0]]) continue;   // candidates are guesses, not the same article
+            if (bomLevel1(boms, d.article).length) walk(byId[d.fmIds[0]], d.article, line.id, depth + 1);
+        }
+    };
+    walk(root, head, null, 0);
+    for (const level of levels) {   // APplus name of each sub-BOM head, read off the row it hangs on
+        const up = levels.find(p => p.id === level.parent);
+        const row = up && up.diff.find(d => d.article === level.head);
+        level.name = row ? row.name : '';
+    }
+    return levels;
 }
 
 // Order BOM (one line per BOM position, root first) against the imported exports.
@@ -285,4 +326,4 @@ function checkOrderBom(index, lines) {
     return { lines: result, toCreate, summary };
 }
 
-module.exports = { parseExport, level1, fingerprint, buildIndex, lookup, matchBom, diffLevel1, rankHeads, orderLevel1, checkOrderBom, normalizeUnit };
+module.exports = { parseExport, level1, fingerprint, buildIndex, lookup, matchBom, diffLevel1, diffTree, rankHeads, orderLevel1, checkOrderBom, normalizeUnit };

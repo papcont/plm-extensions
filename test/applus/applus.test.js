@@ -97,6 +97,24 @@ test('rankHeads: own article first, then the share of known articles', () => {
     assert.strictEqual(applus.rankHeads(b, index, [{ article: '1' }], []).length, 0);
 });
 
+test('diffTree: descends where both sides have a BOM, APplus rows below a Fusion part are UNDER_PART', () => {
+    const line = (id, parent, article, qty = 1) => ({ id, parent, article, qty, number: id, title: 't' + id });
+    const base = [line('r', null, ''), line('a', 'r', '9000001'), line('c', 'r', '9000002', 3)];
+    // holder modelled as a part: its round bar exists only in APplus
+    const asPart = applus.diffTree(boms(), '9000100', base.concat(line('h', 'r', '9000011')));
+    assert.deepStrictEqual(asPart.map(l => [l.id, l.head, l.depth, l.underPart]), [['r', '9000100', 0, false], ['h', '9000011', 1, true]]);
+    assert.deepStrictEqual(asPart[1].diff.map(d => [d.article, d.status, d.tone]), [['9000050', 'UNDER_PART', 'gray']]);
+    assert.strictEqual(asPart[1].name, 'Holder ø40');
+    // holder modelled as an assembly with the bar: compared on level 2
+    const asAssembly = applus.diffTree(boms(), '9000100', base.concat(line('h', 'r', '9000011'), Object.assign(line('b', 'h', '9000050', 30), { unit: 'mm' })));
+    assert.deepStrictEqual(asAssembly[1].diff.map(d => [d.article, d.status, d.fmIds]), [['9000050', 'MATCH', ['b']]]);
+    assert.strictEqual(asAssembly[1].parent, 'r');
+    // a position without article is only a candidate for the holder: no descent into the holder's BOM
+    const candidate = applus.diffTree(boms(), '9000100', base.concat(line('h', 'r', '')));
+    assert.strictEqual(candidate[0].diff.find(d => d.article === '9000011').status, 'CANDIDATE');
+    assert.strictEqual(candidate.length, 1);
+});
+
 test('rankHeads: a variant ranks the BOM of its chosen Ausführung first, not the base BOM', () => {
     const b = boms(), index = applus.buildIndex(b);
     // holder 9000021 chosen, 9000011 only reachable as Ausführung 1; both heads are "own" (inherited GEN-TITLE)
