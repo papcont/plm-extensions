@@ -394,6 +394,14 @@ function selectNodeForSwap(elemClicked) {
     // (a plain replace, which propagates upward anyway). Fail-open while the flag search is still
     // in flight (vb.flagged === null). So the gate now hides the material box, it no longer blocks.
     let dmsId    = elemClicked.attr('data-dmsid');
+
+    // Common parts locked (offer: only variant-bearing positions are editable). Needs the flags, so wait for them.
+    // A failed flag search leaves vb.flagged null: then everything counts as locked instead of asking again.
+    if(config.lockCommonParts && vb.flagged === null) {
+        ensureVariantFlags(() => { if(vb.flagged === null) vb.flagged = {}; selectNodeForSwap(elemClicked); });
+        return;
+    }
+
     let eligible = (vb.flagged === null) || !!vb.flagged[dmsId];
 
     vb.selected = {
@@ -416,6 +424,16 @@ function selectNodeForSwap(elemClicked) {
     // Rebuild #item: material selector (flagged parts only), catalogue + replace picker (any node),
     // then the item details panel with an open-in-FM link. Scrollable so the details fit below.
     let elem = $('#item').removeClass().addClass('surface-level-3').html('').css({ overflowY : 'auto' });
+
+    // Locked common part: details only, no Ausführung, material or replace.
+    if(config.lockCommonParts && !eligible) {
+        let box = $('<div></div>').appendTo(elem).addClass('vb-locked');
+        $('<div></div>').appendTo(box).addClass('vb-locked-title').text('Gleichteil – nicht änderbar');
+        $('<div></div>').appendTo(box).text('"' + vb.selected.partNumber + '" hat keine zweite Ausführung (GEN-TITLE2 leer) und bleibt in jeder Variante gleich.');
+        $('<div></div>').appendTo(elem).attr('id', 'vb-details').css({ position : 'relative', height : '420px', marginTop : '8px' });
+        insertDetails(link, { id : 'vb-details', headerLabel : 'Item Details', openInPLM : true, toggles : true, useCache : true });
+        return;
+    }
 
     // Ausführungen 1-4 (GEN-TITLEn / GEN-WERKn), filled once the details below are loaded.
     let executionsBox = $('<div></div>').appendTo(elem).attr('id', 'vb-executions');
@@ -752,24 +770,12 @@ function computeFingerprint(node) {
     return fpHash(parts.join('|'));
 }
 
-// Path root..node whose incoming edge == edgeId (root.edgeId is null).
-function findPathByEdge(node, edgeId, acc) {
-    acc = acc.concat([node]);
-    if(node.edgeId === edgeId) return acc;
-    for(let c of (node.children || [])) {
-        let r = findPathByEdge(c, edgeId, acc);
-        if(r) return r;
-    }
-    return null;
-}
-
-// Bottom-up list of assemblies that become new variants after a swap at edgeId: the swapped
-// node's parent up to the opened root. Every ancestor is taken along automatically - the flag
-// lives on the varied PART, not on the assemblies, so there is no per-assembly gate here.
-function affectedChain(tree, edgeId) {
-    let path = findPathByEdge(tree, edgeId, []);
-    if(!path) return { chain : [], warning : 'Swapped node not found in the BOM tree.' };
-    return { chain : path.slice(0, -1).reverse(), warning : null };   // nearest parent first, up to root
+// Propagation stop (offer: bottom-up, stops at the first parent that is not variant-bearing). With
+// config.propagation = 'flagged' an assembly without a second Ausführung is not turned into a variant:
+// it stays as it is, and so does everything above it. 'root' takes every ancestor along.
+function vbStopsAt(node) {
+    if(config.propagation !== 'flagged' || !node.link || vb.flagged === null) return false;
+    return !vb.flagged[node.link.split('/').pop()];
 }
 
 // Build the fingerprint tree from the rendered BOM rows. Structure/qty/number come from the
@@ -904,6 +910,28 @@ function variantsBomSelfTest() {
     console.assert(vbDiffBadge({ status : 'QTY_DIFF', applusQty : 2, fmQty : 3 }) === 'Menge APplus 2, Fusion 3', 'FAIL: quantity badge');
     console.assert(vbDiffBadge({ status : 'MATCH', slot : 2 }) === 'Ausführung 2' && vbDiffBadge({ status : 'MATCH' }) === '', 'FAIL: match badge');
     console.assert(order[2].variant === true && order[2].material === 'VA' && order[2].base === 'BASE' && order[1].variant === false, 'FAIL: variant data');
+
+    // Propagation stop: root (1) > assembly A (2) > leaf L (edge 5) with a chosen Ausführung.
+    let keep = { flagged : vb.flagged, swaps : vb.swaps, propagation : config.propagation };
+    let stopTree = () => ({ number : 'ROOT', link : '/items/1', edgeId : null, quantity : '1', children : [
+        { number : 'A', link : '/items/2', edgeId : 4, quantity : '1', children : [ { number : 'L', link : '/items/3', edgeId : 5, quantity : '2', children : [] } ] },
+        { number : 'B', link : '/items/4', edgeId : 6, quantity : '1', children : [] }
+    ]});
+    vb.swaps = { 5 : { mode : 'execution', toNumber : '2000005' } };
+    config.propagation = 'flagged';
+    vb.flagged = { 1 : true, 2 : true };
+    console.assert(vbPlan(stopTree()).map(n => n.number).join() === 'A,ROOT', 'FAIL: flagged chain must be taken along');
+    vb.flagged = { 1 : true };
+    let t1 = stopTree();
+    console.assert(vbPlan(t1).length === 0 && vbCollectStopped(t1, []).map(n => n.number).join() === 'A', 'FAIL: must stop at the first unflagged parent');
+    vb.flagged = { 2 : true };
+    let t2 = stopTree();
+    console.assert(vbPlan(t2).map(n => n.number).join() === 'A' && t2._stopped === true, 'FAIL: unflagged root must stay unchanged');
+    config.propagation = 'root';
+    vb.flagged = {};
+    console.assert(vbPlan(stopTree()).map(n => n.number).join() === 'A,ROOT', 'FAIL: root mode takes every ancestor');
+    Object.assign(vb, { flagged : keep.flagged, swaps : keep.swaps });
+    config.propagation = keep.propagation;
 
     console.log('variantsBomSelfTest: all assertions passed');
     return true;
@@ -1069,8 +1097,14 @@ function vbPlanFingerprints(node) {
             changed = true;
         } else if(c.children && c.children.length) {
             let r = vbPlanFingerprints(c);
-            cfp = r.fp;
-            if(r.changed) changed = true;
+            if(r.changed && vbStopsAt(c)) {   // not variant-bearing: stays unchanged, the change ends below it
+                c._changed = false;
+                c._stopped = true;
+                cfp = computeFingerprint(c);
+            } else {
+                cfp = r.fp;
+                if(r.changed) changed = true;
+            }
         } else {
             cfp = vbIdentity(c);
         }
@@ -1083,6 +1117,19 @@ function vbPlanFingerprints(node) {
 }
 
 // Bottom-up list of changed assemblies (post-order).
+// Fingerprints, stop rule (the opened assembly included) and the changed assemblies, bottom-up.
+function vbPlan(tree) {
+    vbPlanFingerprints(tree);
+    if(tree._changed && vbStopsAt(tree)) { tree._changed = false; tree._stopped = true; }
+    return vbCollectChanged(tree, []);
+}
+
+function vbCollectStopped(node, acc) {
+    if(node._stopped) acc.push(node);
+    for(let c of (node.children || [])) vbCollectStopped(c, acc);
+    return acc;
+}
+
 function vbCollectChanged(node, acc) {
     for(let c of node.children) vbCollectChanged(c, acc);
     if(node._changed) acc.push(node);
@@ -1119,11 +1166,10 @@ async function saveVariant() {
             }
         }
 
-        vbPlanFingerprints(tree);
+        let changed = vbPlan(tree);
 
-        let changed = vbCollectChanged(tree, []);
-
-        if(changed.length === 0) { $('#overlay').hide(); return; }
+        // Nothing at all to do. A stop right above a chosen Ausführung still creates that position's item.
+        if(changed.length === 0 && Object.keys(vb.swaps).length === 0) { $('#overlay').hide(); return; }
 
         // Model: VARIANT_ALLOWED marks the variation-point PARTS (what may be varied). Every assembly
         // from a varied part up to the opened root is taken along automatically (new variant + marker) -
@@ -1178,6 +1224,11 @@ function vbShowPlan(tree, changed) {
         } else {
             line.html('＋ Create new variant of <b>' + n.number + '</b>');
         }
+    }
+
+    for(let n of vbCollectStopped(tree, [])) {
+        $('<div></div>').appendTo(body).css({ margin : '6px 0', opacity : 0.75 })
+            .text('⛔ Stopp bei ' + n.number + ': nicht variantentragend (keine zweite Ausführung), bleibt unverändert – darüber entsteht keine Variante.');
     }
 
     let reuseCount  = changed.filter(n => n._existing).length;
@@ -1272,7 +1323,8 @@ async function vbExecutePlan(tree, changed) {
             resolved[n.link] = cloneLink;
         }
 
-        let topLink = resolved[tree.link];
+        // With a stop the opened assembly stays as it is: open the highest new assembly (changed is bottom-up), else the new position.
+        let topLink = resolved[tree.link] || (changed.length ? resolved[changed[changed.length - 1].link] : null) || Object.values(created)[0] || null;
 
         vb.articles = null;   // the new variant items carry articles too
         vb.variants = null;

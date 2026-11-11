@@ -2102,6 +2102,8 @@ exports.applications = {
         materialVariantNumbering : 'new',   // 'new' = clone gets an auto-number (primary); 'keep' = reuse fromNumber (deferred, see code)
         maxBOMLevels : 10,
         variantAllowedOnly : false,   // toggle default: show only VARIANT_ALLOWED nodes in BOM + viewer
+        lockCommonParts    : true,       // true = only variant-eligible positions (GEN-TITLE1 + 2) can be changed, common parts are locked
+        propagation        : 'flagged',  // 'flagged' = variants stop at the first parent that is not variant-eligible; 'root' = up to the opened assembly
         panels : {
             insertBOM     : { collapsed : false, hideDetails : false },
             insertDetails : { editable : true, collapsed : true }

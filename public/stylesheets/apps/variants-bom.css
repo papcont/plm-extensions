@@ -116,6 +116,10 @@ body.variant-filter #bom tr[data-link]:not(.variant-allowed) { display : none; }
 .vb-diff-chip-blue   { background : var(--color-blue-100);               color : #0b2f40; }
 .vb-diff-chip-red    { background : var(--color-status-red-brighter);    color : #5a0d0d; }
 
+/* Locked common part (lockCommonParts). */
+.vb-locked       { padding : 12px; border-left : 4px solid var(--color-surface-level-5); margin-bottom : 8px; }
+.vb-locked-title { font-weight : 600; margin-bottom : 4px; }
+
 /* Comparison with APplus: the item panel widens over the viewer (BOM column stays, it is coloured too). */
 #item.vb-compare { left : var(--vb-bom-total); width : auto; z-index : 2; }
 body.no-details #item.vb-compare { right : 0px; }
