@@ -5711,12 +5711,12 @@ router.post('/search', function(req, res) {
             }
             sendResponse(req, res, { data : result, status : response.status }, false);
         }).catch(function (error) {
-            error.response.data = { row : [] };
+            if(error.response) error.response.data = { row : [] };   // a network error (reset, timeout) has no response: must not crash the server
             sendResponse(req, res, error.response, true);
         });
 
     }
-   
+
 });
 function setBodyFields(body, fields, grid) {
    
