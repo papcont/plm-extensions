@@ -15,6 +15,8 @@ let vb = {
     executions: null,                        // { dmsId: { article: slot } } from GEN-TITLE1..4 (difference to APplus)
     slots     : null,                        // { dmsId: [Ausführung] } with GEN-WERK etc., loaded with executions (assembly-level selection)
     diffParts : null,                        // { tone: [partNumber] } of the difference shown, repainted once the model is there
+    lastDiff  : null,                        // { head, levels } of the comparison shown (standard variant)
+    importHead: null,                        // APplus head the pending swaps adopt as a standard variant
     swaps     : {}                           // edgeId -> { mode, fromLink, fromTitle, toLink/material, row }
 };
 
@@ -743,9 +745,66 @@ function vbShowAssemblyChoice(elem) {
     });
     $('<div></div>').appendTo(bar).addClass('button').text('Zurücksetzen').click(function() {
         for(let edgeId in vb.swaps) if(vb.swaps[edgeId].mode === 'execution') clearSwap(edgeId);
+        vb.importHead = null;
         result.html('');
     });
     result.appendTo(box);
+}
+
+// A BOM row as the position object recordExecutionSwap takes.
+function vbRowSel(row) {
+    return {
+        row        : row,
+        link       : row.attr('data-link'),
+        edgeId     : row.attr('data-edgeid'),
+        partNumber : row.attr('data-part-number'),
+        title      : row.attr('data-title'),
+        article    : vb.articles[row.attr('data-dmsid')] || row.attr('data-part-number')
+    };
+}
+
+// Standard variants (offer, stage 2): an APplus BOM that already exists as an Ausführung of this assembly becomes a
+// Fusion variant. Every position where APplus uses another Ausführung (all compared levels) gets exactly that one;
+// Save Variant then creates it - or reuses an identical variant - and the head gets the APplus article and BOM.
+function vbAdoptApplusBom(head) {
+
+    let diff = (vb.lastDiff && vb.lastDiff.head === head) ? vb.lastDiff.levels.flatMap(level => level.diff) : [];
+    let rows = $('#bom tr[data-link]');
+    let set  = 0;
+
+    // Positions APplus pairs via an Ausführung (d.slot) with an article that is not the position's own. A position without
+    // article (number list) reports that as MATCH with slot, one with an article as OTHER_EXECUTION - both count.
+    let paired = [ 'MATCH', 'OTHER_EXECUTION', 'QTY_DIFF', 'UNIT_DIFF' ];
+    for(let d of diff.filter(d => paired.includes(d.status) && d.slot && d.article && d.fmIds && d.fmIds.length)) {
+        let row = rows.filter(function() { return this.getAttribute('data-number-path') === d.fmIds[0]; }).first();
+        if(row.length === 0) continue;
+        let sel = vbRowSel(row);
+        if(sel.article === d.article) continue;
+        let slot = ((vb.slots && vb.slots[row.attr('data-dmsid')]) || []).find(s => s.slot === d.slot);
+        recordExecutionSwap(d.slot, d.article, slot ? slot.material : '', sel);
+        set++;
+    }
+
+    vbClearDiffMarks();
+    vbShowItemPlaceholder();
+
+    if(set === 0) {
+        vb.importHead = null;
+        showErrorMessage('Nichts zu übernehmen', 'APplus ' + head + ' nutzt keinen anderen Artikel aus den Ausführungen dieser Baugruppe. ' +
+                         'Unterschiede bestehen nur aus anderen Artikeln, die im CAD keine Ausführung sind.');
+        return;
+    }
+    vb.importHead = head;
+    showSuccessMessage('Standardvariante vorbereitet', set + ' Positionen stehen auf der Ausführung von APplus ' + head + '. Mit Save Variant anlegen.');
+}
+
+// The created (or reused) head of a standard variant carries its APplus article and BOM.
+async function vbStampStandardVariant(link, head) {
+    let bom      = ((await $.get('/applus/summary')).data.boms || []).find(b => b.head === head);
+    let sections = [];
+    addFieldToPayload(sections, vb.wsSections, null, vb.fieldIds.artikelNummer, head);
+    if(bom && bom.item) addFieldToPayload(sections, vb.wsSections, null, vb.fieldIds.applusBoms, [ bom.item ], false, 'multi-select');
+    await $.post('/plm/edit', { link : link, sections : sections });
 }
 
 function vbApplyAssemblyChoice(choice, features, result) {
@@ -758,15 +817,8 @@ function vbApplyAssemblyChoice(choice, features, result) {
         let dmsId = row.attr('data-dmsid');
         let slots = (vb.slots && vb.slots[dmsId]) || [];
         if(slots.length < 2) return;
-        let sel = {
-            row        : row,
-            link       : row.attr('data-link'),
-            edgeId     : row.attr('data-edgeid'),
-            partNumber : row.attr('data-part-number'),
-            title      : row.attr('data-title'),
-            article    : vb.articles[dmsId] || row.attr('data-part-number')
-        };
-        let r = vbPresetChoice(slots, sel.article, choice, features);
+        let sel = vbRowSel(row);
+        let r   = vbPresetChoice(slots, sel.article, choice, features);
         counts[r.status]++;
         if(r.status === 'SET') recordExecutionSwap(r.slot.slot, r.slot.articles[0], r.slot.material, sel);
         if(r.status === 'KEEP' && vb.swaps[sel.edgeId] && vb.swaps[sel.edgeId].mode === 'execution') clearSwap(sel.edgeId);
@@ -1187,7 +1239,8 @@ function vbBaseName(title, number) {
 // for the common single-swap case; refine to per-node subtree labels if that becomes confusing.
 function vbSwapLabels() {
     let labels = [];
-    for(let e in vb.swaps) { let s = vb.swaps[e]; labels.push(s.mode === 'material' ? s.material : s.toTitle); }
+    // An Ausführung is named by its article, also when an existing item is reused (its title would be the whole descriptor).
+    for(let e in vb.swaps) { let s = vb.swaps[e]; labels.push(s.mode === 'material' ? s.material : s.mode === 'execution' ? s.toNumber : s.toTitle); }
     return labels.filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
 }
 
@@ -1354,6 +1407,12 @@ function vbShowPlan(tree, changed) {
         }
     }
 
+    if(vb.importHead) {
+        $('<div></div>').appendTo(body).css({ margin : '6px 0', fontWeight : 'bold' })
+            .text(tree._changed ? 'Standardvariante APplus ' + vb.importHead + ': der Kopf erhält Artikel ' + vb.importHead + ' und die APplus-Stückliste.'
+                                : 'Standardvariante APplus ' + vb.importHead + ': der Kopf entsteht nicht (Stopp), der Artikel wird nicht zugeordnet.');
+    }
+
     for(let n of vbCollectStopped(tree, [])) {
         $('<div></div>').appendTo(body).css({ margin : '6px 0', opacity : 0.75 })
             .text('⛔ Stopp bei ' + n.number + ': nicht variantentragend (keine zweite Ausführung), bleibt unverändert – darüber entsteht keine Variante.');
@@ -1454,6 +1513,14 @@ async function vbExecutePlan(tree, changed) {
         // With a stop the opened assembly stays as it is: open the highest new assembly (changed is bottom-up), else the new position.
         let topLink = resolved[tree.link] || (changed.length ? resolved[changed[changed.length - 1].link] : null) || Object.values(created)[0] || null;
 
+        // Standard variant: the head (new or reused) is that APplus article.
+        let stamped = '';
+        if(vb.importHead && resolved[tree.link]) {
+            await vbStampStandardVariant(resolved[tree.link], vb.importHead);
+            stamped = ' Standardvariante: Artikel ' + vb.importHead + ' zugeordnet.';
+        }
+        vb.importHead = null;
+
         vb.articles = null;   // the new variant items carry articles too
         vb.variants = null;
         vb.executions = null;
@@ -1462,7 +1529,7 @@ async function vbExecutePlan(tree, changed) {
 
         showSuccessMessage('Variant created',
             'Done. Created ' + (changed.filter(n => !n._existing).length + Object.keys(created).length) + ' new item(s), reused ' +
-            changed.filter(n => n._existing).length + '. New top assembly: ' + (topLink || '(unchanged)'));
+            changed.filter(n => n._existing).length + '. New top assembly: ' + (topLink || '(unchanged)') + '.' + stamped);
 
         vb.swaps = {};
         $('#button-save').addClass('disabled');
@@ -1668,6 +1735,10 @@ function vbShowOrderBom(data, lines, linked) {
                 select.find('option:selected').html(label(entry.head));
                 assign.toggle(false);
             });
+        $('<div></div>').appendTo(bar).addClass('button')
+            .text('Als Standardvariante übernehmen')
+            .attr('title', 'Set every position to the Ausführung this APplus BOM uses, then create it with Save Variant')
+            .click(() => vbAdoptApplusBom(select.val()));
         let diffBox = $('<div></div>').appendTo(body).attr('id', 'vb-diff');
 
         let update  = function() {
@@ -1773,6 +1844,7 @@ async function vbShowDiff(lines, elem) {
 
     // All levels, root first (depth first): every sub-assembly with a BOM on both sides is its own section.
     let levels = r.data.levels;
+    vb.lastDiff = { head : head, levels : levels };   // for "Als Standardvariante übernehmen"
     let all    = levels.flatMap(level => level.diff);
 
     vbMarkDiff(all);
