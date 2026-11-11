@@ -97,6 +97,13 @@ test('rankHeads: own article first, then the share of known articles', () => {
     assert.strictEqual(applus.rankHeads(b, index, [{ article: '1' }], []).length, 0);
 });
 
+test('rankHeads: a variant ranks the BOM of its chosen Ausführung first, not the base BOM', () => {
+    const b = boms(), index = applus.buildIndex(b);
+    // holder 9000021 chosen, 9000011 only reachable as Ausführung 1; both heads are "own" (inherited GEN-TITLE)
+    const fm = [{ article: '9000021', executions: { 9000011: 1, 9000021: 2 } }, { article: '9000001' }, { article: '9000002' }];
+    assert.deepStrictEqual(applus.rankHeads(b, index, fm, ['9000100', '9000200']).map(h => h.head), ['9000200', '9000100']);
+});
+
 test('checkOrderBom: statuses, BOM match, dedup of the create list', () => {
     const index = applus.buildIndex(boms());
     const line = (id, parent, article, extra) => Object.assign({ id, parent, article, qty: 1, assembly: false, variant: false, number: 'N' + id }, extra);

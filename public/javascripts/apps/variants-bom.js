@@ -939,7 +939,10 @@ function vbFindByFingerprint(fp) {
 }
 
 // Shallow clone (item + direct BOM edges, NUMBER reset for auto-numbering). Returns new item link.
-// ARTIKELNUMMER is reset too: a changed assembly is not the article of its base anymore.
+// ARTIKELNUMMER is reset too: a changed assembly is not the article of its base anymore. So are the base's
+// APplus BOM assignment and its Vault identity (PDM ids): the variant is no Vault item, and the Vault
+// Connector must not take it for the original.
+const vbCloneBlank = ['APPLUS_STUECKLISTE', 'PDM_ITEM_ID', 'PDM_MASTER_ID', 'PDM_OBJECT_ID', 'PDM_SOURCE_ID', 'PDM_ITEM_VERSION'];
 // Posts JSON, not urlencoded: the shared cloneItems() sends form-encoded, and qs turns any section
 // with >20 fields into an object, which the /plm/clone handler's `for...of` then throws on (HTML 500).
 // ponytail: self-contained JSON clone avoids that; leave the shared helper untouched.
@@ -959,6 +962,7 @@ function vbCloneAssembly(link) {
                 let fieldId = field.__self__.split('/')[10];
                 if(fieldId === vb.fieldIds.number) field.value = '';   // blank -> new auto-number
                 if(fieldId === vb.fieldIds.artikelNummer) field.value = '';
+                if(vbCloneBlank.includes(fieldId)) field.value = '';   // /plm/clone sends '' as null
                 sect.fields.push({
                     fieldId       : fieldId,
                     fieldMetadata : null,

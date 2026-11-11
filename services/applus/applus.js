@@ -214,18 +214,20 @@ function diffLevel1(boms, head, fmLines) {
 
 // APplus BOMs worth comparing with this Fusion level, best first: share of their level-1 articles that occur on it.
 // own = articles of the assembly itself (its ARTIKELNUMMER and GEN-TITLE fields), those come first.
+// Then the chosen articles (exact) before those only reachable via another Ausführung: a variant inherits
+// all Ausführungen of its base, so they alone cannot tell its BOM from the base's.
 function rankHeads(boms, index, fmLines, own) {
-    const known = new Set(), parents = {};
+    const known = new Set(), chosen = new Set(), parents = {};
     for (const l of fmLines) {
-        if (l.article) known.add(l.article);
+        if (l.article) { known.add(l.article); chosen.add(l.article); }
         Object.keys(l.executions || {}).forEach(a => known.add(a));
     }
     for (const bom of Object.values(boms)) for (const r of bom.rows) (parents[r.parent] = parents[r.parent] || new Set()).add(r.article);
     return Object.entries(parents)
         .map(([head, set]) => ({ head, name: (index.articles[head] || {}).name || '', own: own.includes(head), size: set.size,
-                                 hits: [...set].filter(a => known.has(a)).length }))
+                                 hits: [...set].filter(a => known.has(a)).length, exact: [...set].filter(a => chosen.has(a)).length }))
         .filter(h => h.hits > 0)
-        .sort((a, b) => (b.own - a.own) || (b.hits / b.size - a.hits / a.size) || (b.hits - a.hits))
+        .sort((a, b) => (b.own - a.own) || (b.exact / b.size - a.exact / a.size) || (b.hits / b.size - a.hits / a.size) || (b.hits - a.hits))
         .slice(0, 10);
 }
 
