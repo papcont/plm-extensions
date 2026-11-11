@@ -2104,6 +2104,21 @@ exports.applications = {
         variantAllowedOnly : false,   // toggle default: show only VARIANT_ALLOWED nodes in BOM + viewer
         lockCommonParts    : true,       // true = only variant-eligible positions (GEN-TITLE1 + 2) can be changed, common parts are locked
         propagation        : 'flagged',  // 'flagged' = variants stop at the first parent that is not variant-eligible; 'root' = up to the opened assembly
+        // Selection on assembly level (Feige #23474): a characteristic picks the Ausführung of every variant-bearing position below.
+        // Read off each slot's GEN-WERK / Ausführung / Oberfläche text; match = case-insensitive regex as text (settings go to the page as JSON),
+        // the first matching option wins, a slot without any match counts as `default`. A characteristic no slot of a position mentions is
+        // ignored for that position. Patterns from the Feige data (GEN-WERK1..4 of 252 variant-bearing files, 11.11.2026).
+        features : [
+            { id : 'werkstoff', label : 'Werkstoff', options : [
+                { label : 'Säureschutz', match : 'säureschutz|aggressive|2\\.4\\d{3}|alloy' },   // 2.4xxx = nickel alloys (Hastelloy)
+                { label : 'Edelstahl',   match : '1\\.4\\d{3}|\\bva\\b|\\ba[24]\\b|niro|nichtrostend' },
+                { label : 'Stahl',       match : '^st\\b|^st[-\\s]|\\bstahl\\b|s\\s?235|1\\.0038' }
+            ]},
+            { id : 'ex', label : 'Ex-Schutz', default : 'Nicht-ATEX', options : [
+                { label : 'ATEX',       match : 'atex|\\bex\\b|eex' },
+                { label : 'Nicht-ATEX', match : '\\beln\\b|el\\.\\s?n\\b' }
+            ]}
+        ],
         panels : {
             insertBOM     : { collapsed : false, hideDetails : false },
             insertDetails : { editable : true, collapsed : true }

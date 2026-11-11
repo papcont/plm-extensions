@@ -13,6 +13,7 @@ let vb = {
     articles  : null,                        // { dmsId: ARTIKELNUMMER } of the whole workspace (fingerprint identity)
     variants  : null,                        // { dmsId: { base, material } } of all generated items (order BOM)
     executions: null,                        // { dmsId: { article: slot } } from GEN-TITLE1..4 (difference to APplus)
+    slots     : null,                        // { dmsId: [Ausführung] } with GEN-WERK etc., loaded with executions (assembly-level selection)
     diffParts : null,                        // { tone: [partNumber] } of the difference shown, repainted once the model is there
     swaps     : {}                           // edgeId -> { mode, fromLink, fromTitle, toLink/material, row }
 };
@@ -209,19 +210,25 @@ async function ensureExecutions() {
 
     if(vb.executions !== null) return;
 
-    let ids        = [1, 2, 3, 4].map(n => vb.fieldIds['genTitle' + n]);
-    let executions = {};
-    let rows       = await vbSearchNotBlank(vb.fieldIds.genTitle1, ids);
+    let n4         = [1, 2, 3, 4];
+    let key        = (name, n) => vb.fieldIds[name + n];
+    let ids        = n4.map(n => key('genTitle', n));
+    let fields     = ids.concat(n4.map(n => key('genWerk', n)), n4.map(n => key('ausfuehrung', n)), n4.map(n => key('oberflBeh', n)));
+    let executions = {}, slots = {};
+    let rows       = await vbSearchNotBlank(vb.fieldIds.genTitle1, fields);
 
     for(let row of rows) {
-        let map = {};
-        for(let e of vbExecutions(ids.map(id => ({ title : getSearchResultFieldValue(row, id, '') })))) {
+        let value = (name, n) => getSearchResultFieldValue(row, key(name, n), '');
+        let map   = {};
+        slots[row.dmsId] = vbExecutions(n4.map(n => ({ title : value('genTitle', n), material : value('genWerk', n), label : value('ausfuehrung', n), surface : value('oberflBeh', n) })));
+        for(let e of slots[row.dmsId]) {
             for(let article of e.articles) if(!map[article]) map[article] = e.slot;
         }
         executions[row.dmsId] = map;
     }
 
     vb.executions = executions;
+    vb.slots      = slots;   // { dmsId: [Ausführung] } for the selection on assembly level
 
 }
 
@@ -318,7 +325,8 @@ function openAssembly(link) {
 // Empty state for the #item panel: shown at start and after a successful create, so the panel
 // is never a blank grey block. Replaced by the material/replace picker once a node is selected.
 function vbShowItemPlaceholder() {
-    let elem = $('#item').removeClass().addClass('surface-level-3').html('');
+    let elem = $('#item').removeClass().addClass('surface-level-3').html('').css({ overflowY : 'auto' });
+    vbShowAssemblyChoice($('<div></div>').appendTo(elem).css({ padding : '0 0 12px' }));
     let box  = $('<div></div>').appendTo(elem).addClass('vb-placeholder');
     $('<div></div>').appendTo(box).addClass('vb-placeholder-title').html('No part selected');
     $('<div></div>').appendTo(box).addClass('vb-placeholder-text')
@@ -673,9 +681,112 @@ function vbPickArticleItem(rows, article) {
 // Choose Ausführung <slot> / <article> for the selected position (mode 'execution').
 // Article already in Fusion (ARTIKELNUMMER = article) -> reused as-is, like a replace swap. Otherwise
 // toLink stays null and vbExecutePlan creates a variant item of the position.
-function recordExecutionSwap(slot, article, material) {
+// Selection on assembly level (#23474): which Ausführung of one position fits the chosen characteristics?
+// slots = vbExecutions(...), current = the position's article now, choice = { featureId: optionLabel },
+// features = config.features. Returns { status, slot }:
+//   SKIP     no chosen characteristic concerns the position (none of its slots mentions it): left as it is
+//   KEEP     the current Ausführung fits already
+//   SET      exactly one other Ausführung with exactly one article fits -> slot
+//   LIST     the fitting Ausführung holds a number list: the article has to be picked by hand
+//   AMBIG    several Ausführungen fit
+//   NONE     none fits
+function vbPresetChoice(slots, current, choice, features) {
+    let text   = s => [s.material, s.label, s.surface].join(' ');
+    let option = (f, s) => {
+        for(let o of f.options) if(new RegExp(o.match, 'i').test(text(s))) return o.label;
+        return f.default || '';
+    };
+    let mentions = f => slots.some(s => f.options.some(o => new RegExp(o.match, 'i').test(text(s))));
+    let used     = features.filter(f => choice[f.id] && mentions(f));
+    if(used.length === 0) return { status : 'SKIP' };
+    let fit  = slots.filter(s => used.every(f => option(f, s) === choice[f.id]));
+    let now  = slots.find(s => s.articles.includes(current) || s.articles.join(' ') === current) || slots[0];
+    if(fit.includes(now)) return { status : 'KEEP' };
+    if(fit.length === 0)  return { status : 'NONE' };
+    if(fit.length > 1)    return { status : 'AMBIG' };
+    return { status : fit[0].articles.length === 1 ? 'SET' : 'LIST', slot : fit[0] };
+}
 
-    let sel = vb.selected;
+// Assembly-level selection in the empty side panel: pick the characteristics, every variant-bearing position of the
+// opened assembly gets the fitting Ausführung as a normal execution swap. Positions can be changed by hand afterwards.
+function vbShowAssemblyChoice(elem) {
+
+    let features = config.features || [];
+    if(!vb.root || features.length === 0) return;
+
+    let box = $('<div></div>').appendTo(elem).addClass('vb-assembly-choice');
+    $('<div></div>').appendTo(box).addClass('vb-cmp-heading').text('Ausführung der Baugruppe vorbelegen');
+    $('<div></div>').appendTo(box).addClass('vb-cmp-source').text('Wählt je variantentragender Position die passende Ausführung (GEN-WERK). Einzelne Positionen lassen sich danach abweichend wählen.');
+
+    let selects = {};
+    for(let f of features) {
+        let row = $('<div></div>').appendTo(box).addClass('vb-cmp-bar').css({ marginTop : '6px' });
+        $('<span></span>').appendTo(row).css({ width : '90px', flex : 'none' }).text(f.label);
+        selects[f.id] = $('<select></select>').appendTo(row);
+        $('<option></option>').appendTo(selects[f.id]).val('').text('– unverändert –');
+        for(let o of f.options) $('<option></option>').appendTo(selects[f.id]).val(o.label).text(o.label);
+    }
+
+    let result = $('<div></div>').addClass('vb-assembly-result');
+    let bar    = $('<div></div>').appendTo(box).addClass('vb-cmp-footer').css({ justifyContent : 'flex-start' });
+    $('<div></div>').appendTo(bar).addClass('button default').text('Vorbelegen').click(async function() {
+        let choice = {};
+        for(let id in selects) if(selects[id].val()) choice[id] = selects[id].val();
+        if(Object.keys(choice).length === 0) return;
+        appendOverlay(false);
+        try {
+            await ensureArticles();
+            await ensureExecutions();
+            await new Promise(res => ensureVariantFlags(res));
+            vbApplyAssemblyChoice(choice, features, result);
+        } finally { $('#overlay').hide(); }
+    });
+    $('<div></div>').appendTo(bar).addClass('button').text('Zurücksetzen').click(function() {
+        for(let edgeId in vb.swaps) if(vb.swaps[edgeId].mode === 'execution') clearSwap(edgeId);
+        result.html('');
+    });
+    result.appendTo(box);
+}
+
+function vbApplyAssemblyChoice(choice, features, result) {
+
+    let counts = { SET : 0, KEEP : 0, SKIP : 0, LIST : 0, AMBIG : 0, NONE : 0 };
+    let open   = [];
+
+    $('#bom tr.variant-allowed[data-link]').each(function() {
+        let row   = $(this);
+        let dmsId = row.attr('data-dmsid');
+        let slots = (vb.slots && vb.slots[dmsId]) || [];
+        if(slots.length < 2) return;
+        let sel = {
+            row        : row,
+            link       : row.attr('data-link'),
+            edgeId     : row.attr('data-edgeid'),
+            partNumber : row.attr('data-part-number'),
+            title      : row.attr('data-title'),
+            article    : vb.articles[dmsId] || row.attr('data-part-number')
+        };
+        let r = vbPresetChoice(slots, sel.article, choice, features);
+        counts[r.status]++;
+        if(r.status === 'SET') recordExecutionSwap(r.slot.slot, r.slot.articles[0], r.slot.material, sel);
+        if(r.status === 'KEEP' && vb.swaps[sel.edgeId] && vb.swaps[sel.edgeId].mode === 'execution') clearSwap(sel.edgeId);
+        if(r.status === 'LIST' || r.status === 'AMBIG' || r.status === 'NONE') open.push({ path : row.attr('data-number-path'), number : sel.partNumber, status : r.status });
+    });
+
+    let label = { LIST : 'Nummernliste – Artikel von Hand wählen', AMBIG : 'mehrere Ausführungen passen', NONE : 'keine passende Ausführung' };
+    result.html('');
+    $('<div></div>').appendTo(result).addClass('vb-cmp-summary')
+        .text(counts.SET + ' vorbelegt · ' + counts.KEEP + ' passen schon · ' + counts.SKIP + ' nicht betroffen · ' + (counts.LIST + counts.AMBIG + counts.NONE) + ' offen');
+    for(let o of open) {
+        $('<div></div>').appendTo(result).addClass('vb-cmp-link vb-assembly-open').text(o.number + ' – ' + label[o.status])
+            .click(() => vbFocusBomRow(o.path));
+    }
+}
+
+// sel = the position (default: the selected one); the assembly-level selection passes each row's own.
+function recordExecutionSwap(slot, article, material, sel) {
+
+    sel = sel || vb.selected;
     if(sel === null) return;
 
     if(article === sel.article) { clearSwap(sel.edgeId); return; }   // back to the current one
@@ -910,6 +1021,23 @@ function variantsBomSelfTest() {
     console.assert(vbDiffBadge({ status : 'QTY_DIFF', applusQty : 2, fmQty : 3 }) === 'Menge APplus 2, Fusion 3', 'FAIL: quantity badge');
     console.assert(vbDiffBadge({ status : 'MATCH', slot : 2 }) === 'Ausführung 2' && vbDiffBadge({ status : 'MATCH' }) === '', 'FAIL: match badge');
     console.assert(order[2].variant === true && order[2].material === 'VA' && order[2].base === 'BASE' && order[1].variant === false, 'FAIL: variant data');
+
+    // Selection on assembly level: characteristic -> Ausführung per position (patterns as in settings.js).
+    let feats = [
+        { id : 'werkstoff', options : [ { label : 'Säureschutz', match : 'säureschutz' }, { label : 'Edelstahl', match : '1\\.4\\d{3}|\\bva\\b' }, { label : 'Stahl', match : '^st\\b|s\\s?235' } ] },
+        { id : 'ex', default : 'Nicht-ATEX', options : [ { label : 'ATEX', match : 'atex|eex' }, { label : 'Nicht-ATEX', match : '\\beln\\b' } ] }
+    ];
+    let stVa = vbExecutions([ { title : '2000001', material : 'S235JR FOS21' }, { title : '2000002', material : '1.4301 FOS01' } ]);
+    console.assert(vbPresetChoice(stVa, '2000001', { werkstoff : 'Edelstahl' }, feats).slot.slot === 2, 'FAIL: Edelstahl must pick slot 2');
+    console.assert(vbPresetChoice(stVa, '2000001', { werkstoff : 'Stahl' }, feats).status === 'KEEP', 'FAIL: current slot fits');
+    console.assert(vbPresetChoice(stVa, '2000001', { werkstoff : 'Säureschutz' }, feats).status === 'NONE', 'FAIL: no slot fits');
+    console.assert(vbPresetChoice(stVa, '2000001', { ex : 'ATEX' }, feats).status === 'SKIP', 'FAIL: unmentioned characteristic must leave the position alone');
+    let elnEx = vbExecutions([ { title : '3000001', material : 'Eln' }, { title : '3000002', material : 'EExde' } ]);
+    console.assert(vbPresetChoice(elnEx, '3000001', { werkstoff : 'Edelstahl', ex : 'ATEX' }, feats).slot.slot === 2, 'FAIL: only the mentioned characteristic counts');
+    let list = vbExecutions([ { title : '2006106 2012095', material : 'St' }, { title : '2046972 2046973', material : 'VA' } ]);
+    console.assert(vbPresetChoice(list, '2006106 2012095', { werkstoff : 'Edelstahl' }, feats).status === 'LIST', 'FAIL: number list needs a manual pick');
+    let twoVa = vbExecutions([ { title : '1', material : 'St' }, { title : '2', material : '1.4301' }, { title : '3', material : '1.4571' } ]);
+    console.assert(vbPresetChoice(twoVa, '1', { werkstoff : 'Edelstahl' }, feats).status === 'AMBIG', 'FAIL: two fitting slots are ambiguous');
 
     // Propagation stop: root (1) > assembly A (2) > leaf L (edge 5) with a chosen Ausführung.
     let keep = { flagged : vb.flagged, swaps : vb.swaps, propagation : config.propagation };
