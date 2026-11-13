@@ -146,11 +146,20 @@ function vbSaveStepDone(id) {
     row.removeClass('in-work').next().addClass('in-work');
 }
 
-function vbSaveDialogDone(text) {
+// Result line and, for the created (or reused) variant, a way to open it in Fusion Manage or in the editor.
+function vbSaveDialogDone(text, link) {
     let dialog = $('#vb-save-dialog');
+    let result = dialog.find('.vb-save-result').text(text);
     dialog.find('.step').removeClass('in-work');
-    dialog.find('.vb-save-result').text(text);
     dialog.find('#vb-save-close').removeClass('disabled').addClass('default');
+    if(!link) return;
+    let bar = $('<div></div>').appendTo(result).css({ display : 'flex', gap : '8px', marginTop : '10px' });
+    $('<div></div>').appendTo(bar).addClass('button').text('In Fusion Manage öffnen').click(() => openItemByLink(link));
+    $('<div></div>').appendTo(bar).addClass('button').text('Im Editor öffnen').click(function() {
+        dialog.find('#vb-save-close').click();
+        appendOverlay(false);
+        openAssembly(link);
+    });
 }
 
 // The right panel shows one of three views: highlight its header button like a tab.
@@ -1635,7 +1644,7 @@ async function vbExecutePlan(tree, changed, kunde) {
         { id : 'leaf',  label : 'Werkstoff-Varianten anlegen', count : swaps.filter(s => s.mode === 'material' && !s._leafExisting).length },
         { id : 'exec',  label : 'Ausführungen anlegen',        count : new Set(swaps.filter(s => s.mode === 'execution' && !s.toLink).map(s => s.toNumber)).size },
         { id : 'asm',   label : 'Baugruppen anlegen',          count : changed.filter(n => !n._existing).length },
-        { id : 'final', label : 'Abweichungen und Kunde',      count : 1 }
+        { id : 'final', label : 'Reiter Varianten und Kunde',  count : 1 }
     ]);
 
     try {
@@ -1735,17 +1744,19 @@ async function vbExecutePlan(tree, changed, kunde) {
         vbSaveStepDone('final');
 
         // With a stop the opened assembly stays as it is: say so, otherwise "nothing happened" is all one sees.
-        let stopped = !resolved[tree.link] && changed.length === 0;
+        // The result is opened on request (buttons), not by itself: a popup blocker may swallow that silently.
+        let stopped  = !resolved[tree.link] && changed.length === 0;
+        let topTitle = topLink ? ((await $.get('/plm/details', { link : topLink })).data || {}).title || '' : '';
         vbSaveDialogDone(
             (changed.filter(n => !n._existing).length + Object.keys(created).length + leaves.length) + ' neu angelegt, ' +
             (changed.filter(n => n._existing).length + reusedLeaves.length) + ' wiederverwendet.' +
-            (stopped ? ' Die geöffnete Baugruppe bleibt unverändert (Stopp: nicht variantentragend), das Variantenteil öffnet sich in Fusion Manage.'
-                     : (topLink ? ' Die oberste Variante öffnet sich in Fusion Manage.' : '')) + stamped);
+            (topLink ? (stopped ? ' Die geöffnete Baugruppe bleibt unverändert (Stopp: nicht variantentragend). Variantenteil: '
+                                : (topIsNew ? ' Neue Variante: ' : ' Vorhandene Variante: ')) + topTitle : '') + stamped,
+            topLink);
 
         vb.swaps = {};
         $('#button-save').addClass('disabled');
         vbShowItemPlaceholder();
-        if(topLink) openItemByLink(topLink);
 
     } catch(e) {
         $('#vb-save-dialog').hide();
