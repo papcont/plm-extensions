@@ -146,20 +146,29 @@ function vbSaveStepDone(id) {
     row.removeClass('in-work').next().addClass('in-work');
 }
 
-// Result line and, for the created (or reused) variant, a way to open it in Fusion Manage or in the editor.
-function vbSaveDialogDone(text, link) {
+// Result line and, per resulting item ({ link, title }), a way to open it in Fusion Manage or in the editor.
+function vbSaveDialogDone(text, entries) {
     let dialog = $('#vb-save-dialog');
     let result = dialog.find('.vb-save-result').text(text);
     dialog.find('.step').removeClass('in-work');
     dialog.find('#vb-save-close').removeClass('disabled').addClass('default');
-    if(!link) return;
-    let bar = $('<div></div>').appendTo(result).css({ display : 'flex', gap : '8px', marginTop : '10px' });
-    $('<div></div>').appendTo(bar).addClass('button').text('In Fusion Manage öffnen').click(() => openItemByLink(link));
-    $('<div></div>').appendTo(bar).addClass('button').text('Im Editor öffnen').click(function() {
-        dialog.find('#vb-save-close').click();
-        appendOverlay(false);
-        openAssembly(link);
-    });
+    for(let e of entries || []) {
+        let row = $('<div></div>').appendTo(result).css({ display : 'flex', gap : '8px', alignItems : 'center', marginTop : '8px' });
+        $('<div></div>').appendTo(row).css({ flex : 1, minWidth : 0, overflow : 'hidden', textOverflow : 'ellipsis', whiteSpace : 'nowrap' }).text(e.title);
+        $('<div></div>').appendTo(row).addClass('button').text('In Fusion Manage öffnen').click(() => openItemByLink(e.link));
+        $('<div></div>').appendTo(row).addClass('button').text('Im Editor öffnen').click(function() {
+            dialog.find('#vb-save-close').click();
+            appendOverlay(false);
+            openAssembly(e.link);
+        });
+    }
+}
+
+// Highest changed assembly of every branch below a stopped node: where the variants of a save end.
+function vbBranchTops(node) {
+    let tops = [];
+    for(let c of node.children || []) tops = tops.concat(c._changed ? [ c ] : vbBranchTops(c));
+    return tops;
 }
 
 // The right panel shows one of three views: highlight its header button like a tab.
@@ -407,7 +416,9 @@ function openAssembly(link) {
             title          : response.data.title,                                                       // for the derived variant title
             variantAllowed : (rootAllowed === true || rootAllowed === 'true'),
             fingerprint    : getSectionFieldValue(response.data.sections, vb.fieldIds.bomFingerprint),  // '' if none yet
-            baseNumber     : getSectionFieldValue(response.data.sections, config.fieldIds.baseItemNumber || 'BASE_ITEM_NUMBER') || ''   // set if this machine is itself a variant
+            baseNumber     : getSectionFieldValue(response.data.sections, config.fieldIds.baseItemNumber || 'BASE_ITEM_NUMBER') || '',  // set if this machine is itself a variant
+            // the original's dmsId: its own when it is the base. Unique, unlike the number ("Weldment (DIN)" on many items)
+            baseDmsId      : getSectionFieldValue(response.data.sections, config.fieldIds.dmsIdBaseItem || 'DMS_ID_BASE_ITEM') || link.split('/').pop()
         };
 
         insertBOM(link, {
@@ -468,13 +479,20 @@ function vbListRootVariants(elem) {
     let baseNumber = vb.root.baseNumber || vb.root.number;
     if(isBlank(baseNumber)) return;
 
+    let dmsField = config.fieldIds.dmsIdBaseItem || 'DMS_ID_BASE_ITEM';
+
     $.post('/plm/search', {
         wsId   : vb.ws.id,
-        fields : [ vb.fieldIds.number, 'DESCRIPTOR' ].concat(vb.fieldIds.kundeAuftrag ? [ vb.fieldIds.kundeAuftrag ] : []),
+        fields : [ vb.fieldIds.number, 'DESCRIPTOR', dmsField ].concat(vb.fieldIds.kundeAuftrag ? [ vb.fieldIds.kundeAuftrag ] : []),
         filter : [{ field : baseField, type : 0, comparator : 15, value : baseNumber }]
     }).done(function(r) {
 
-        let rows = (r.data && r.data.row) ? r.data.row : [];
+        // The number may be shared by unrelated items: keep the variants of this very original. Variants without
+        // the dmsId back-reference (older ones) cannot be told apart and stay in.
+        let rows = ((r.data && r.data.row) ? r.data.row : []).filter(row => {
+            let base = getSearchResultFieldValue(row, dmsField, '');
+            return isBlank(base) || base === String(vb.root.baseDmsId);
+        });
         if(rows.length === 0) return;
 
         let box = $('<div></div>').appendTo(elem).addClass('vb-root-variants').css({ padding : '12px' });
@@ -1221,6 +1239,23 @@ function variantsBomSelfTest() {
         { status : 'MERGED', article : '3003', number : 'd', totalQty : 1 }
     ]);
     console.assert(cg.create.length === 1 && cg.check.length === 1 && cg.ok.length === 1 && cg.ok[0].qty === 5, 'FAIL: check groups');
+
+    // Stop at the root: the highest changed assembly of every branch, nothing below it, unchanged branches skipped
+    let bt = vbBranchTops({ children : [
+        { link : 'a', _changed : true,  children : [ { link : 'a1', _changed : true, children : [] } ] },
+        { link : 'b', _changed : false, children : [ { link : 'b1', _changed : true, children : [] }, { link : 'b2', _changed : false, children : [] } ] }
+    ]});
+    console.assert(bt.map(n => n.link).join() === 'a,b1', 'FAIL: branch tops');
+
+    // A sub-assembly at two positions is planned once (no duplicate variants of a shared weldment)
+    let savedSwaps = vb.swaps, savedFlagged = vb.flagged, savedArticles = vb.articles;
+    vb.swaps = { 9 : { mode : 'execution', toNumber : '2000009' } }; vb.flagged = null; vb.articles = {};
+    let weld   = () => ({ link : 'W', number : 'Weldment (DIN)', quantity : '1', edgeId : null, children : [ { link : 'P', number : 'P', quantity : '1', edgeId : 9, children : [] } ] });
+    let shared = { link : 'R', number : 'R', quantity : '1', edgeId : null, children : [
+        Object.assign(weld(), { edgeId : 1 }), { link : 'X', number : 'X', quantity : '1', edgeId : 2, children : [ Object.assign(weld(), { edgeId : 3 }) ] } ] };
+    let sharedPlan = vbPlan(shared).map(n => n.link);
+    console.assert(sharedPlan.filter(l => l === 'W').length === 1, 'FAIL: shared sub-assembly planned more than once: ' + sharedPlan.join());
+    vb.swaps = savedSwaps; vb.flagged = savedFlagged; vb.articles = savedArticles;
     console.assert(vbPresetChoice(stVa, '2000001', { ex : 'ATEX' }, feats).status === 'SKIP', 'FAIL: unmentioned characteristic must leave the position alone');
     let elnEx = vbExecutions([ { title : '3000001', material : 'Eln' }, { title : '3000002', material : 'EExde' } ]);
     console.assert(vbPresetChoice(elnEx, '3000001', { werkstoff : 'Edelstahl', ex : 'ATEX' }, feats).slot.slot === 2, 'FAIL: only the mentioned characteristic counts');
@@ -1490,7 +1525,10 @@ function vbPlanFingerprints(node) {
 function vbPlan(tree) {
     vbPlanFingerprints(tree);
     if(tree._changed && vbStopsAt(tree)) { tree._changed = false; tree._stopped = true; }
-    return vbCollectChanged(tree, []);
+    // A sub-assembly used at several positions is one item: build its variant once and use it everywhere
+    // (same item = same BOM = same fingerprint). Without this, a part in a shared weldment created that
+    // weldment's variant once per position, all identical.
+    return vbCollectChanged(tree, []).filter((n, i, all) => all.findIndex(m => m.link === n.link) === i);
 }
 
 function vbCollectStopped(node, acc) {
@@ -1721,8 +1759,13 @@ async function vbExecutePlan(tree, changed, kunde) {
         }
         vbSaveStepDone('asm');
 
-        // With a stop the opened assembly stays as it is: open the highest new assembly (changed is bottom-up), else the new position.
-        let topLink = resolved[tree.link] || (changed.length ? resolved[changed[changed.length - 1].link] : null) || Object.values(created)[0] || leaves[0] || reusedLeaves[0] || null;
+        // The result: the opened assembly's variant, or - with a stop at it - the highest new assembly of every branch
+        // (a shared sub-assembly changes in several branches, none of them is "the" variant). Without assemblies:
+        // the new position itself.
+        let tops = resolved[tree.link] ? [ tree ] : vbBranchTops(tree);
+        let topLinks = tops.map(n => resolved[n.link]).filter((l, i, a) => l && a.indexOf(l) === i);
+        if(topLinks.length === 0) topLinks = [ Object.values(created)[0] || leaves[0] || reusedLeaves[0] ].filter(Boolean);
+        let topLink = topLinks[0] || null;
 
         // Standard variant: the head (new or reused) is that APplus article.
         let stamped = '';
@@ -1733,9 +1776,13 @@ async function vbExecutePlan(tree, changed, kunde) {
         vb.importHead = null;
 
         // Deviations only on a newly created top assembly: a reused one has the same BOM, so it has its rows already.
-        let topIsNew = changed.length > 0 && topLink && !changed.some(n => n._existing && n._existing.link === topLink);
-        if(topIsNew) await vbWriteDeviations(topLink);
-        if(topLink && changed.length > 0) await vbAddKundeAuftrag(topLink, kunde);
+        // Customer / order on every top, so each branch can be found again.
+        let reusedTops = new Set(changed.filter(n => n._existing).map(n => n._existing.link));
+        let topIsNew   = changed.length > 0 && topLink && !reusedTops.has(topLink);
+        if(changed.length > 0) for(let link of topLinks) {
+            if(!reusedTops.has(link)) await vbWriteDeviations(link);
+            await vbAddKundeAuftrag(link, kunde);
+        }
 
         vb.articles = null;   // the new variant items carry articles too
         vb.variants = null;
@@ -1745,14 +1792,18 @@ async function vbExecutePlan(tree, changed, kunde) {
 
         // With a stop the opened assembly stays as it is: say so, otherwise "nothing happened" is all one sees.
         // The result is opened on request (buttons), not by itself: a popup blocker may swallow that silently.
-        let stopped  = !resolved[tree.link] && changed.length === 0;
-        let topTitle = topLink ? ((await $.get('/plm/details', { link : topLink })).data || {}).title || '' : '';
-        vbSaveDialogDone(
-            (changed.filter(n => !n._existing).length + Object.keys(created).length + leaves.length) + ' neu angelegt, ' +
-            (changed.filter(n => n._existing).length + reusedLeaves.length) + ' wiederverwendet.' +
-            (topLink ? (stopped ? ' Die geöffnete Baugruppe bleibt unverändert (Stopp: nicht variantentragend). Variantenteil: '
-                                : (topIsNew ? ' Neue Variante: ' : ' Vorhandene Variante: ')) + topTitle : '') + stamped,
-            topLink);
+        let counts  = (changed.filter(n => !n._existing).length + Object.keys(created).length + leaves.length) + ' neu angelegt, ' +
+                      (changed.filter(n => n._existing).length + reusedLeaves.length) + ' wiederverwendet.';
+        let entries = [];
+        for(let link of topLinks.slice(0, 8)) entries.push({ link : link, title : ((await $.get('/plm/details', { link : link })).data || {}).title || link });
+        let text;
+        if(resolved[tree.link])   text = counts + (topIsNew ? ' Neue Variante:' : ' Vorhandene Variante:');
+        else if(changed.length)   text = counts + ' Keine Variante von ' + tree.number + ' (Stopp: nicht variantentragend). ' +
+                                         (topLinks.length > 1 ? topLinks.length + ' Baugruppen-Varianten in getrennten Zweigen' +
+                                                                (topLinks.length > entries.length ? ', die ersten ' + entries.length : '') + ':'
+                                                              : 'Neue Baugruppen-Variante:');
+        else                      text = counts + (topLink ? ' Die geöffnete Baugruppe bleibt unverändert (Stopp: nicht variantentragend). Variantenteil:' : '');
+        vbSaveDialogDone(text + stamped, entries);
 
         vb.swaps = {};
         $('#button-save').addClass('disabled');
