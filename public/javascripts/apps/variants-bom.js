@@ -59,6 +59,15 @@ function setUIEvents() {
         $(this).toggleClass('filled');
     });
 
+    $('#button-toggle-viewer').click(function() {
+        let off = !$('body').hasClass('viewer-off');
+        $('body').toggleClass('viewer-off', off);
+        $(this).toggleClass('filled', !off);
+    });
+
+    // The viewer canvas keeps its old size when its column changes (comparison panel, toggles): redraw it.
+    new ResizeObserver(() => viewerResize(0)).observe(document.getElementById('viewer'));
+
     $('#button-filter-variants').click(function() {
         let on = !$('body').hasClass('variant-filter');
         $('body').toggleClass('variant-filter', on);
@@ -1986,12 +1995,25 @@ function vbClearDiffMarks() {
     vb.diffParts = null;
 }
 
+// Model parts of the given Fusion numbers. The shared viewerSetColors() matches the Inventor "Bauteilnummer",
+// which at Feige is the file name (FEOD-…) or "Standard (mm)"; the Fusion NUMBER sits in the model's
+// GEN-TITLE1-POSI. So match that first, the Bauteilnummer only as fallback.
+function vbViewerDbIds(numbers) {
+    let vi   = (typeof viewers === 'undefined') ? null : viewers.find(v => v.startupCompleted);
+    let want = new Set(numbers);
+    if(!vi) return [];
+    return (vi.dataInstances || []).filter(d => want.has(d.partNumber) ||
+        (d.properties || []).some(p => p.displayName === 'GEN-TITLE1-POSI' && want.has(String(p.displayValue)))).map(d => d.dbId);
+}
+
 function vbPaintDiff() {
-    let first = true;
+    let vi = (typeof viewers === 'undefined') ? null : viewers.find(v => v.startupCompleted);
+    if(!vi || !vb.diffParts) return;
+    vi.viewer.clearThemingColors();
     for(let tone in vb.diffParts) {
-        if(vb.diffParts[tone].length === 0) continue;
-        viewerSetColors(vb.diffParts[tone], { color : vbDiffTones[tone].vector, resetColors : first, isolate : false, fitToView : false });
-        first = false;
+        let c = vbDiffTones[tone].vector;
+        if(!c) continue;
+        for(let id of vbViewerDbIds(vb.diffParts[tone])) vi.viewer.setThemingColor(id, new THREE.Vector4(c[0], c[1], c[2], c[3]), null, true);
     }
 }
 

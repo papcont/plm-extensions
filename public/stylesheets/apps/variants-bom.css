@@ -125,9 +125,16 @@ body.variant-filter #bom tr[data-link]:not(.variant-allowed) { display : none; }
 .vb-locked       { padding : 12px; border-left : 4px solid var(--color-surface-level-5); margin-bottom : 8px; }
 .vb-locked-title { font-weight : 600; margin-bottom : 4px; }
 
-/* Comparison with APplus: the item panel widens over the viewer (BOM column stays, it is coloured too). */
-#item.vb-compare { left : var(--vb-bom-total); width : auto; z-index : 2; }
+/* Comparison with APplus: a wider item panel, the viewer stays visible between BOM and panel
+   (coloured parts are part of the comparison). */
+:root { --vb-cmp-w : 640px; --vb-cmp-total : calc(var(--vb-cmp-w) + (2 * var(--vb-padding-h))); }
+#item.vb-compare { width : var(--vb-cmp-w); }
 body.no-details #item.vb-compare { right : 0px; }
+body:has(#item.vb-compare) .viewer { right : var(--vb-cmp-total); }
+
+/* Toggle Viewer off: the viewer hides, the item panel takes its space. */
+body.viewer-off .viewer { visibility : hidden; }
+body.viewer-off #item   { left : var(--vb-bom-total); width : auto; z-index : 2; }
 
 .vb-cmp-summary { margin : 0 0 4px; }
 .vb-cmp-source  { margin : 0 0 12px; opacity : 0.7; font-size : 12px; }
