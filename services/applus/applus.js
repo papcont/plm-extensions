@@ -289,7 +289,10 @@ function diffTree(boms, head, lines) {
 //   NOT_IN_EXPORTS CAD article not in the exports. Exports do not cover the article master, so this is no "missing"
 //   NO_ARTICLE     nothing to compare: CAD item without article
 // toCreate is deduplicated, a generated item used at several positions is listed once.
-function checkOrderBom(index, lines) {
+// genTitle (APplus-Check view): a CAD item without ARTIKELNUMMER is checked by its GEN-TITLE numbers instead -
+// one number is its article, of several it is enough that one occurs in the exports. Not for generated variants:
+// they copy the Ausführungen of their base, which would wrongly report a new combination as existing.
+function checkOrderBom(index, lines, genTitle) {
     const byId = {}, children = {}, checked = {};
     for (const l of lines) {
         byId[l.id] = l;
@@ -299,6 +302,12 @@ function checkOrderBom(index, lines) {
         if (checked[l.id]) return checked[l.id];
         const parent = byId[l.parent];
         const out = (status, extra) => (checked[l.id] = Object.assign({}, l, { status }, extra));
+        const options = Object.keys(l.executions || {});
+        if (genTitle && !l.article && !l.variant && options.length) {
+            const hits = options.filter(a => index.articles[a]);
+            if (hits.length) return out('IN_APPLUS', { applusName: index.articles[hits[0]].name, article: hits.length === 1 ? hits[0] : '', viaGenTitle: hits });
+            if (options.length === 1) return out('NOT_IN_EXPORTS', { article: options[0] });
+        }
         if (l.article && parent && parent.article === l.article) return out('MERGED');
         if (l.article) {
             const hit = index.articles[l.article];

@@ -166,6 +166,22 @@ test('checkOrderBom: a sub-assembly found by its BOM counts with that article in
     assert.deepStrictEqual(lines[0].heads, ['9000300']);
 });
 
+test('checkOrderBom genTitle: items without article are checked by their GEN-TITLE numbers, variants are not', () => {
+    const index = applus.buildIndex(boms());
+    const line = (id, executions, extra) => Object.assign({ id, parent: 'root', article: '', executions, qty: 1, assembly: false, variant: false }, extra);
+    const input = [
+        line('root', {}, { parent: null, assembly: true }),
+        line('one', { '9000001': 1 }),                          // single GEN-TITLE, in the exports
+        line('list', { '7000001': 1, '9000002': 2 }),           // number list, one of them in the exports
+        line('none', { '7000002': 1 }),                         // single GEN-TITLE, not in the exports
+        line('var', { '9000001': 1 }, { variant: true })        // generated variant: base's Ausführungen do not count
+    ];
+    const by = r => Object.fromEntries(r.lines.map(l => [l.id, l.status + ':' + (l.article || '')]));
+    assert.deepStrictEqual(by(applus.checkOrderBom(index, input, true)),
+        { root: 'NO_ARTICLE:', one: 'IN_APPLUS:9000001', list: 'IN_APPLUS:9000002', none: 'NOT_IN_EXPORTS:7000002', var: 'NO_ARTICLE:' });
+    assert.strictEqual(by(applus.checkOrderBom(index, input)).one, 'NO_ARTICLE:');   // old view unchanged
+});
+
 test('parseExport rejects a non-BOM sheet', () => {
     assert.throws(() => applus.parseExport('<Row><Cell><Data>foo</Data></Cell></Row>', 'x.xls'), /not an APplus BOM export/);
 });

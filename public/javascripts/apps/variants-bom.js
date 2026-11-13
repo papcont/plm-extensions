@@ -70,6 +70,7 @@ function setUIEvents() {
     $('#button-open').click(function() { vbOpenSearch(); });
 
     $('#button-order-bom').click(function() { vbOrderBom(); });
+    $('#button-applus-check').click(function() { vbOrderBom(vbShowApplusCheck); });
 
 }
 
@@ -1096,6 +1097,16 @@ function variantsBomSelfTest() {
     console.assert(vbChangeText({ mode : 'execution', slot : 2, material : 'VA' }) === 'Ausführung 2 · VA', 'FAIL: execution change text');
     console.assert(vbChangeText({ mode : 'material', material : 'Edelstahl' }) === 'Werkstoff Edelstahl', 'FAIL: material change text');
     console.assert(vbChangeText({ mode : 'replace' }) === 'Tausch', 'FAIL: replace change text');
+
+    // APplus-Check: one row per article, quantities summed, merged lines dropped
+    let cg = vbCheckGroups([
+        { status : 'TO_CREATE', article : '', number : 'V1', totalQty : 1 },
+        { status : 'IN_APPLUS', article : '3001', number : 'a', totalQty : 2 },
+        { status : 'IN_APPLUS', article : '3001', number : 'b', totalQty : 3 },
+        { status : 'NOT_IN_EXPORTS', article : '3002', number : 'c', totalQty : 1 },
+        { status : 'MERGED', article : '3003', number : 'd', totalQty : 1 }
+    ]);
+    console.assert(cg.create.length === 1 && cg.check.length === 1 && cg.ok.length === 1 && cg.ok[0].qty === 5, 'FAIL: check groups');
     console.assert(vbPresetChoice(stVa, '2000001', { ex : 'ATEX' }, feats).status === 'SKIP', 'FAIL: unmentioned characteristic must leave the position alone');
     let elnEx = vbExecutions([ { title : '3000001', material : 'Eln' }, { title : '3000002', material : 'EExde' } ]);
     console.assert(vbPresetChoice(elnEx, '3000001', { werkstoff : 'Edelstahl', ex : 'ATEX' }, feats).slot.slot === 2, 'FAIL: only the mentioned characteristic counts');
@@ -1655,7 +1666,9 @@ function vbOrderLines(tree, variants, executions) {
 
 }
 
-async function vbOrderBom() {
+async function vbOrderBom(show) {
+
+    show = show || vbShowOrderBom;
 
     if(!vb.root) return;
 
@@ -1673,11 +1686,12 @@ async function vbOrderBom() {
         await ensureExecutions();
 
         let lines  = vbOrderLines(buildTreeFromDOM(), vb.variants, vb.executions);
-        let r      = await $.ajax({ url : '/applus/order-bom', method : 'POST', contentType : 'application/json', data : JSON.stringify({ lines : lines }) });
+        let r      = await $.ajax({ url : '/applus/order-bom', method : 'POST', contentType : 'application/json',
+                                    data : JSON.stringify({ lines : lines, genTitle : show === vbShowApplusCheck }) });
         let linked = await vbLinkedApplusBoms();
 
         $('#overlay').hide();
-        vbShowOrderBom(r.data, lines, linked);
+        show(r.data, lines, linked);
 
     } catch(e) {
         $('#overlay').hide();
@@ -1747,6 +1761,113 @@ async function vbLinkApplusBom(head, linked) {
     await vbWriteApplusBoms(linked.concat(entry));
 
     return entry;
+}
+
+// ------------------------------------------------------------------------------------------
+// "APplus-Check": second view of the same check, built around Feige's two questions -
+// what of this order BOM is missing in APplus, and what does APplus have that the CAD lacks.
+// One row per article with its total quantity instead of one row per position.
+// ------------------------------------------------------------------------------------------
+
+// Group per check status, its colour (same code as the comparison: green ok, blue missing in APplus, yellow to check)
+// and the short note on the BOM row.
+const vbCheckWhere = { TO_CREATE : 'create', CHECK_MASTER : 'check', NOT_IN_EXPORTS : 'check', NO_ARTICLE : 'noArticle', IN_APPLUS : 'ok', BOM_MATCH : 'ok' };
+const vbCheckTone  = { create : 'blue', check : 'yellow', noArticle : 'yellow', ok : 'green' };
+const vbCheckBadge = { create : 'anlegen', check : 'prüfen', noArticle : 'ohne Artikel-Nr.', ok : '' };
+
+// Checked order BOM lines (status from /applus/order-bom) grouped per article (or number without article).
+function vbCheckGroups(checked) {
+    let groups = { create : [], check : [], noArticle : [], ok : [] };
+    let where  = vbCheckWhere;
+    let seen   = {};
+    for(let l of checked) {
+        let group = where[l.status];
+        if(!group) continue;   // MERGED: no line of its own
+        let key = group + '|' + (l.article || l.number);
+        if(seen[key]) { seen[key].qty += l.totalQty; continue; }
+        seen[key] = { article : l.article || '', number : l.number, title : l.title, material : l.material || '', qty : l.totalQty, assembly : l.assembly,
+                      options : Object.keys(l.executions || {}) };   // GEN-TITLE numbers, shown where no single article is set
+        groups[group].push(seen[key]);
+    }
+    return groups;
+}
+
+async function vbShowApplusCheck(data, lines, linked) {
+
+    let elem  = $('#item').removeClass().addClass('surface-level-3').html('');
+    let body  = $('<div></div>').appendTo(elem).addClass('panel-content').css({ padding : '16px', overflow : 'auto' });
+    let g     = vbCheckGroups(data.lines);
+    let heads = linked.map(l => l.head).concat(data.heads.map(h => h.head).filter(h => !linked.some(l => l.head === h)));
+
+    $('<div></div>').prependTo(elem).addClass('panel-header').text('APplus-Check · ' + vb.root.title);
+
+    let list = function(title, items, hint, tone) {
+        let head = $('<div></div>').appendTo(body).addClass('vb-cmp-heading');
+        $('<span></span>').appendTo(head).addClass('vb-diff-chip vb-diff-chip-' + tone).text(items.length);
+        $('<span></span>').appendTo(head).text(' ' + title);
+        if(hint) $('<div></div>').appendTo(body).addClass('vb-cmp-source').text(hint);
+        for(let i of items) $('<div></div>').appendTo(body).addClass('vb-check-item vb-check-' + tone)
+            .text([i.article || (i.options.length ? '' : i.number), i.title, i.material, i.qty + ' Stk',
+                   !i.article && i.options.length ? 'GEN-TITLE: ' + i.options.join(', ') : ''].filter(Boolean).join(' · '));
+    };
+
+    // 1 - what to create in APplus
+    $('<div></div>').appendTo(body).css({ fontWeight : 600, fontSize : '15px' }).text('1 · In APplus anzulegen');
+    let okLine = $('<div></div>').appendTo(body).css({ margin : '6px 0' });
+    $('<span></span>').appendTo(okLine).addClass('vb-diff-chip vb-diff-chip-green').text(g.ok.length);
+    $('<span></span>').appendTo(okLine).text(' Artikel gibt es in den APplus-Exporten' + (g.create.length + g.check.length === 0 ? ', nichts anzulegen.' : '.'));
+    if(g.create.length) list('Neu anlegen', g.create, 'Neue Baugruppen dieser Variante, noch ohne APplus-Artikel.', 'blue');
+    if(g.check.length)  list('Im Artikelstamm prüfen', g.check, 'Nicht in den ' + data.exports + ' Stücklisten-Exporten. Ob der Artikel in APplus existiert, zeigt erst der Artikelstamm.', 'yellow');
+    if(g.noArticle.length) list('Ohne eindeutige Artikelnummer', g.noArticle, 'Feld Artikelnummer leer, daher nicht prüfbar. Wo vorhanden, stehen die Nummern aus GEN-TITLE dabei.', 'yellow');
+
+    // Same colours on the BOM rows and in the model (vbMarkDiff), red rows for what only APplus has.
+    let marks = data.lines.filter(l => l.parent !== null && vbCheckWhere[l.status]).map(l => {
+        let group = vbCheckWhere[l.status];
+        return { fmIds : [l.id], tone : vbCheckTone[group], badge : vbCheckBadge[group] };
+    });
+    vbMarkDiff(marks);
+
+    // 2 - what only APplus has
+    $('<div></div>').appendTo(body).css({ fontWeight : 600, fontSize : '15px', marginTop : '20px' }).text('2 · Nur in APplus, fehlt im CAD');
+    if(heads.length === 0) {
+        $('<div></div>').appendTo(body).css({ margin : '6px 0' }).text('Keine passende APplus-Stückliste gefunden.');
+    } else {
+        let select = $('<select></select>').appendTo(body).attr('id', 'vb-head').css({ margin : '6px 0', width : '100%' });
+        for(let h of heads) $('<option></option>').appendTo(select).val(h).text(h + (linked.some(l => l.head === h) ? ' · zugeordnet' : ' · Vorschlag'));
+        let out = $('<div></div>').appendTo(body);
+        let show = async function() {
+            let head = select.val();
+            out.html('').text('…');
+            let r = await $.ajax({ url : '/applus/order-bom', method : 'POST', contentType : 'application/json', data : JSON.stringify({ lines : lines, head : head }) });
+            if(head !== select.val()) return;
+            out.html('');
+            let diff  = r.data.levels.flatMap(level => level.diff.map(d => Object.assign({ under : level.fmLabel }, d)));
+            // Articles kept in mm/m/kg are raw material (Feige: the quantity is the length), not a part the CAD lacks.
+            let isRaw = d => d.tone === 'gray' || (d.tone === 'red' && d.unit && d.unit !== 'Stk');
+            let only  = diff.filter(d => d.tone === 'red' && !isRaw(d));
+            let raw   = diff.filter(isRaw).length;
+            let check = diff.filter(d => d.tone === 'yellow' || d.tone === 'blue');
+            let onlyHead = $('<div></div>').appendTo(out).css({ margin : '6px 0' });
+            $('<span></span>').appendTo(onlyHead).addClass('vb-diff-chip vb-diff-chip-red').text(only.length);
+            $('<span></span>').appendTo(onlyHead).text(only.length ? ' Positionen nur in APplus ' + head : ' – alles aus APplus ' + head + ' ist auch im CAD.');
+            for(let d of only) $('<div></div>').appendTo(out).addClass('vb-check-item vb-check-red')
+                .text([d.article, d.name, d.applusQty + ' ' + (d.unit || 'Stk'), 'unter ' + vbBaseName(d.under)].filter(Boolean).join(' · '));
+            vbMarkDiff(marks.concat(only.map(d => ({ tone : 'red', article : d.article, name : d.name, applusQty : d.applusQty, unit : d.unit }))));
+            let notes = [];
+            if(raw)          notes.push(raw + (raw === 1 ? ' Rohmaterial-Position' : ' Rohmaterial-Positionen') + ' (mm/m/kg oder unter Einzelteilen, erwartet)');
+            if(check.length) notes.push(check.length + (check.length === 1 ? ' Position weicht' : ' Positionen weichen') + ' ab (Datenpflege, siehe Auftragsstückliste)');
+            if(notes.length) $('<div></div>').appendTo(out).addClass('vb-cmp-source').css({ marginTop : '8px' }).text(notes.join(' · '));
+        };
+        select.change(show);
+        show();
+    }
+
+    $('<div></div>').appendTo(body).addClass('vb-cmp-source').css({ marginTop : '16px' })
+        .text('Quelle: ' + data.exports + ' APplus-Stücklisten-Exporte in Fusion.');
+
+    let footer = $('<div></div>').appendTo(body).addClass('vb-cmp-footer');
+    $('<div></div>').appendTo(footer).addClass('button with-icon icon-download').text('Excel exportieren').click(() => vbDownloadOrderBom(lines));
+    $('<div></div>').appendTo(footer).addClass('button').text('Schließen').click(() => { vbClearDiffMarks(); vbShowItemPlaceholder(); });
 }
 
 function vbShowOrderBom(data, lines, linked) {
@@ -1846,6 +1967,7 @@ const vbDiffTones = {
 
 // Short note on a coloured BOM row.
 function vbDiffBadge(d) {
+    if(d.badge !== undefined) return d.badge;   // APplus-Check sets its own short note
     switch(d.status) {
         case 'OTHER_EXECUTION' : return 'APplus: ' + d.article + (d.slot ? ' (Ausführung ' + d.slot + ')' : '');
         case 'QTY_DIFF'        : return 'Menge APplus ' + d.applusQty + ', Fusion ' + d.fmQty;

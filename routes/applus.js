@@ -116,7 +116,7 @@ router.post('/diff', function(req, res) {
 async function orderBom(req) {
     const body = req.body;
     const { boms, index } = await source(req);
-    const result = applus.checkOrderBom(index, (body && body.lines) || []);
+    const result = applus.checkOrderBom(index, (body && body.lines) || [], !!(body && body.genTitle));
     const fm     = applus.orderLevel1(result.lines);
     const root   = result.lines.find(l => l.parent === null) || {};
     result.exports = Object.keys(boms).length;

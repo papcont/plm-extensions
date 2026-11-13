@@ -181,3 +181,10 @@ body.no-details #item.vb-compare { right : 0px; }
 .vb-cmp-counts { display : flex; gap : 4px; flex : none; }
 .vb-cmp-count  { padding : 1px 6px; border-radius : 3px; font-size : 12px; font-weight : 600; }
 .vb-cmp-gray .vb-cmp-stripe { background : var(--color-surface-level-5); }
+
+/* APplus-Check: coloured stripe per listed article, same colours as the comparison */
+.vb-check-item   { margin : 3px 0 3px 8px; padding : 2px 0 2px 8px; border-left : 4px solid transparent; }
+.vb-check-green  { border-left-color : var(--color-status-green-brighter); }
+.vb-check-yellow { border-left-color : var(--color-status-yellow-brighter); }
+.vb-check-blue   { border-left-color : var(--color-blue-100); }
+.vb-check-red    { border-left-color : var(--color-status-red-brighter); }
