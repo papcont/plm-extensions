@@ -809,7 +809,7 @@ function vbAdoptApplusBom(head) {
     if(set === 0) {
         vb.importHead = null;
         showErrorMessage('Nichts zu übernehmen', 'APplus ' + head + ' nutzt keinen anderen Artikel aus den Ausführungen dieser Baugruppe. ' +
-                         'Unterschiede bestehen nur aus anderen Artikeln, die im CAD keine Ausführung sind.');
+                         'Unterschiede bestehen nur aus anderen Artikeln, die in Fusion Manage keine Ausführung sind.');
         return;
     }
     vb.importHead = head;
@@ -1837,7 +1837,7 @@ async function vbShowApplusCheck(data, lines, linked) {
     vbMarkDiff(marks);
 
     // 2 - what only APplus has
-    $('<div></div>').appendTo(body).css({ fontWeight : 600, fontSize : '15px', marginTop : '20px' }).text('2 · Nur in APplus, fehlt im CAD');
+    $('<div></div>').appendTo(body).css({ fontWeight : 600, fontSize : '15px', marginTop : '20px' }).text('2 · Nur in APplus, fehlt in Fusion Manage');
     if(heads.length === 0) {
         $('<div></div>').appendTo(body).css({ margin : '6px 0' }).text('Keine passende APplus-Stückliste gefunden.');
     } else {
@@ -1858,7 +1858,7 @@ async function vbShowApplusCheck(data, lines, linked) {
             let check = diff.filter(d => d.tone === 'yellow' || d.tone === 'blue');
             let onlyHead = $('<div></div>').appendTo(out).css({ margin : '6px 0' });
             $('<span></span>').appendTo(onlyHead).addClass('vb-diff-chip vb-diff-chip-red').text(only.length);
-            $('<span></span>').appendTo(onlyHead).text(only.length ? ' Positionen nur in APplus ' + head : ' – alles aus APplus ' + head + ' ist auch im CAD.');
+            $('<span></span>').appendTo(onlyHead).text(only.length ? ' Positionen nur in APplus ' + head : ' – alles aus APplus ' + head + ' ist auch in Fusion Manage.');
             for(let d of only) $('<div></div>').appendTo(out).addClass('vb-check-item vb-check-red')
                 .text([d.article, d.name, d.applusQty + ' ' + (d.unit || 'Stk'), 'unter ' + vbBaseName(d.under)].filter(Boolean).join(' · '));
             vbMarkDiff(marks.concat(only.map(d => ({ tone : 'red', article : d.article, name : d.name, applusQty : d.applusQty, unit : d.unit }))));
@@ -2093,7 +2093,7 @@ async function vbShowDiff(lines, elem) {
     // Side by side: Fusion | status | APplus | note. Problems first, matches last.
     let table = $('<div></div>').appendTo(elem).addClass('vb-cmp');
     let thead = $('<div></div>').appendTo(table).addClass('vb-cmp-head');
-    for(let label of [ '', 'Fusion (CAD)', '', 'APplus', 'Hinweis' ]) $('<div></div>').appendTo(thead).text(label);
+    for(let label of [ '', 'Fusion Manage', '', 'APplus', 'Hinweis' ]) $('<div></div>').appendTo(thead).text(label);
 
     let order = [ 'red', 'blue', 'yellow', 'gray', 'green' ];
     let icons = { green : 'icon-check', yellow : 'icon-warning', blue : 'icon-arrow-left', red : 'icon-arrow-right', gray : 'icon-arrow-right' };

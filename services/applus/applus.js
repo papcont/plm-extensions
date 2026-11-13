@@ -153,7 +153,7 @@ const DIFF_TEXT = {
     QTY_DIFF        : 'Abweichende Menge',
     UNIT_DIFF       : 'Abweichende Einheit',
     ONLY_FM         : 'Nur in Fusion',
-    CANDIDATE       : 'Nur in APplus: möglicher Kandidat im CAD ohne Artikelnummer (gleiche Menge)',
+    CANDIDATE       : 'Nur in APplus: möglicher Kandidat in Fusion Manage ohne Artikelnummer (gleiche Menge)',
     ARTICLE_DIFF    : 'Nur in APplus: abweichender Artikel',
     NO_MODEL        : 'Nur in APplus: ohne 3D-Modell, zu bestätigen',
     UNDER_PART      : 'Nur in APplus: unter einem Einzelteil (z. B. Rohmaterial)'
