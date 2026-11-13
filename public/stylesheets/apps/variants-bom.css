@@ -195,3 +195,6 @@ body.viewer-off #item   { left : var(--vb-bom-total); width : auto; z-index : 2;
 .vb-check-yellow { border-left-color : var(--color-status-yellow-brighter); }
 .vb-check-blue   { border-left-color : var(--color-blue-100); }
 .vb-check-red    { border-left-color : var(--color-status-red-brighter); }
+
+/* Step text under the spinner during long runs (vbProgress). */
+#overlay .vb-progress { position : absolute; top : calc(50% + 48px); left : 0; right : 0; text-align : center; font-weight : 600; color : var(--color-font, #000); }

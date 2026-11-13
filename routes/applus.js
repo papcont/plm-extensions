@@ -67,6 +67,13 @@ async function source(req) {
         const data = await loadFromPLM(req);
         if (Object.keys(data.boms).length) return data;
     } catch (e) {
+        // An expired Autodesk session is no missing data: falling back to the (usually empty) local import
+        // would report every BOM as "not imported". Tell the browser instead.
+        if (e.response && e.response.status === 401) {
+            const err = new Error('Anmeldung abgelaufen, bitte die Seite neu laden.');
+            err.status = 401;
+            throw err;
+        }
         console.log('  applus: exports from Fusion not available, using the local import', e.message);
     }
     return load();
@@ -90,7 +97,9 @@ router.post('/import', function(req, res) {
 });
 
 router.get('/summary', async function(req, res) {
-    const { boms, index } = await source(req);
+    let data;
+    try { data = await source(req); } catch (e) { return res.status(e.status || 500).json({ success: false, message: e.message }); }
+    const { boms, index } = data;
     res.json({ success: true, data: {
         boms     : Object.entries(boms).map(([head, b]) => ({ head, file: b.file, item: b.item, importedAt: b.importedAt, rows: b.rows.length })),
         articles : Object.keys(index.articles).length
@@ -124,6 +133,10 @@ async function orderBom(req) {
     if (body && body.head) {
         result.levels = applus.diffTree(boms, body.head, result.lines);   // all levels, root first
         result.diff   = result.levels[0].diff;                             // level 1, as before
+        // APplus-Check: articles kept in mm/m/kg are raw material (Feige: the quantity is the length), not missing.
+        if (body.genTitle) for (const level of result.levels) for (const d of level.diff) {
+            if (d.tone === 'red' && d.unit && d.unit !== 'Stk') { d.tone = 'gray'; d.text = 'Nur in APplus: Rohmaterial (' + d.unit + ')'; }
+        }
     }
     return result;
 }
@@ -132,7 +145,7 @@ router.post('/order-bom', async function(req, res) {
     try {
         res.json({ success: true, data: await orderBom(req) });
     } catch (e) {
-        res.status(404).json({ success: false, message: e.message });
+        res.status(e.status || 404).json({ success: false, message: e.message });
     }
 });
 
@@ -149,7 +162,7 @@ const TONE = { green: 'FFD2E9B0', yellow: 'FFF7CC93', blue: 'FFCDEAF7', red: 'FF
 
 router.post('/order-bom/excel', async function(req, res) {
     let result;
-    try { result = await orderBom(req); } catch (e) { return res.status(404).json({ success: false, message: e.message }); }
+    try { result = await orderBom(req); } catch (e) { return res.status(e.status || 404).json({ success: false, message: e.message }); }
     const { lines, toCreate, summary, levels } = result;
     const diff = levels && levels.flatMap(level => level.diff.map(d => Object.assign({ level }, d)));
     const workbook = new ExcelJS.Workbook();
@@ -160,10 +173,19 @@ router.post('/order-bom/excel', async function(req, res) {
         ws.getRow(1).font = { bold: true };
         return ws;
     };
-    sheet('Auftragsstückliste', [['Pos.', 12], ['Artikel', 12], ['Kennung', 24], ['Benennung', 50], ['Menge', 8], ['Gesamtmenge', 13],
+    sheet('Stammstückliste', [['Pos.', 12], ['Artikel', 12], ['Kennung', 24], ['Benennung', 50], ['Menge', 8], ['Gesamtmenge', 13],
                                  ['Werkstoff', 20], ['Prüfung', 30], ['APplus-Stückliste', 18]],
         lines.filter(l => l.status !== 'MERGED').map(l => [l.pos, l.article, l.number, l.title, l.qty, l.totalQty, l.material,
                                                            STATUS[l.status], (l.heads || []).join(', ')]));
+    if (req.body.genTitle) {   // APplus-Check: one row per article and check result, quantities summed
+        const per = {};
+        for (const l of lines.filter(l => l.status !== 'MERGED')) {
+            const key = (l.article || l.number) + '|' + l.status;
+            (per[key] = per[key] || { article: l.article, number: l.number, title: l.title, status: STATUS[l.status], qty: 0 }).qty += l.totalQty;
+        }
+        sheet('Je Artikel', [['Artikel', 12], ['Kennung', 24], ['Benennung', 50], ['Gesamtmenge', 13], ['Prüfung', 30]],
+            Object.values(per).map(p => [p.article, p.number, p.title, p.qty, p.status]));
+    }
     sheet('Anzulegen', [['Artikel', 12], ['Kennung', 24], ['Benennung', 50], ['Werkstoff', 20], ['Basis-Item', 24], ['Grund', 44]],
         toCreate.map(l => [l.article, l.number, l.title, l.material, l.base,
                            l.status === 'TO_CREATE' ? 'Neue Baugruppe, keine passende APplus-Stückliste' : 'Gewählter Artikel, gegen Artikelstamm prüfen']));
@@ -183,7 +205,7 @@ router.post('/order-bom/excel', async function(req, res) {
         [(summary.MERGED || 0) + ' Positionen mit demselben Artikel wie ihre Baugruppe sind nicht als eigene Zeile aufgeführt (Annahme, Klärung in #23488).']
     ]);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="auftragsstueckliste.xlsx"');
+    res.setHeader('Content-Disposition', 'attachment; filename="stammstueckliste.xlsx"');
     res.send(Buffer.from(await workbook.xlsx.writeBuffer()));
 });
 

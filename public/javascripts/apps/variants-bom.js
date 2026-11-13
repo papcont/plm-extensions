@@ -65,6 +65,18 @@ function setUIEvents() {
         $(this).toggleClass('filled', !off);
     });
 
+    // Expired Autodesk session: the /plm routes still answer 200, but with status 401 inside and no data, the
+    // APplus routes answer 401. Code that expects data then fails mid-way and the spinner never stops. One place
+    // for all requests: stop the spinner and say what to do.
+    $(document).ajaxComplete(function(e, xhr) {
+        let r = xhr.responseJSON;
+        if(xhr.status !== 401 && !(r && r.status === 401)) return;
+        vbSessionExpired();
+    });
+
+    // Back from the APplus views to the variant editing (the right panel's start view).
+    $('#button-variants').click(function() { vbClearDiffMarks(); vbShowItemPlaceholder(); });
+
     // The viewer canvas keeps its old size when its column changes (comparison panel, toggles): redraw it.
     new ResizeObserver(() => viewerResize(0)).observe(document.getElementById('viewer'));
 
@@ -83,6 +95,28 @@ function setUIEvents() {
 
 }
 
+
+// A step of a long run, shown under the spinner: a large plant needs a minute and more for its variants,
+// a bare spinner for that long reads as a hang. Empty text removes it.
+function vbProgress(text) {
+    let elem = $('#overlay .vb-progress');
+    if(elem.length === 0) elem = $('<div></div>').addClass('vb-progress').appendTo('#overlay');
+    elem.text(text || '').toggle(!!text);
+}
+
+// The right panel shows one of three views: highlight its header button like a tab.
+function vbSetView(id) {
+    $('#button-variants, #button-order-bom, #button-applus-check').removeClass('filled');
+    $('#' + id).addClass('filled');
+}
+
+function vbSessionExpired() {
+    vbProgress('');
+    $('#overlay').hide();
+    if(vb.sessionExpired) return;   // one message, not one per failed request
+    vb.sessionExpired = true;
+    showErrorMessage('Anmeldung abgelaufen', 'Bitte die Seite neu laden (F5) und neu anmelden. Nicht gespeicherte Auswahlen gehen dabei verloren.');
+}
 
 // Entry search: pick any item in the item workspace to open for editing. Mounted when the app
 // is launched without a dmsId, and re-openable via the header "Open Item" button. Same search
@@ -268,11 +302,20 @@ async function ensureVariantItems() {
 // points stand out in 3D - the analog of the service portal's spare-part highlight. Part numbers
 // are read off the already-tagged .variant-allowed BOM rows (dmsId->row tagging lives in
 // ensureVariantFlags). Turning the filter off clears the tint, un-ghosts and shows all again.
+// The shared viewer functions throw while the model is not there yet (large assemblies load long, some have no
+// viewable at all: viewer.model is null). The editor's own step must not die with them, otherwise a click, a
+// recorded choice or the clean-up stops half-way. So every viewer call of the editor goes through here.
+function vbViewer(action) {
+    try { action(); } catch(e) { console.log('variants-bom: viewer not ready, skipped', e.message); }
+}
+
 function vbHighlightVariantParts(on) {
     if(!on) {
-        let [ viewerInstance, viewer, proceed ] = getViewerInstanceRunning(null, true);
-        if(proceed) viewer.setGhosting(false);
-        viewerResetSelection({ fitToView : false });
+        vbViewer(() => {
+            let [ viewerInstance, viewer, proceed ] = getViewerInstanceRunning(null, true);
+            if(proceed) viewer.setGhosting(false);
+            viewerResetSelection({ fitToView : false });
+        });
         return;
     }
     let numbers = [];
@@ -280,7 +323,7 @@ function vbHighlightVariantParts(on) {
         let n = $(this).attr('data-part-number');
         if(!isBlank(n) && numbers.indexOf(n) < 0) numbers.push(n);
     });
-    if(numbers.length) viewerSetColors(numbers, { color : [0.55, 0.80, 0.95, 0.9], isolate : true, ghosting : true, fitToView : false });
+    if(numbers.length) vbViewer(() => viewerSetColors(numbers, { color : [0.55, 0.80, 0.95, 0.9], isolate : true, ghosting : true, fitToView : false }));
 }
 
 
@@ -342,6 +385,7 @@ function openAssembly(link) {
 // Empty state for the #item panel: shown at start and after a successful create, so the panel
 // is never a blank grey block. Replaced by the material/replace picker once a node is selected.
 function vbShowItemPlaceholder() {
+    vbSetView('button-variants');
     let elem = $('#item').removeClass().addClass('surface-level-3').html('').css({ overflowY : 'auto' });
     vbShowAssemblyChoice($('<div></div>').appendTo(elem).css({ padding : '0 0 12px' }));
     let box  = $('<div></div>').appendTo(elem).addClass('vb-placeholder');
@@ -417,6 +461,8 @@ function selectNodeForSwap(elemClicked) {
     let link = elemClicked.attr('data-link');
     if(isBlank(link)) return;
 
+    vbSetView('button-variants');   // a position's choices belong to the variant editing
+
     // Eligibility: GEN-TITLE1 + GEN-TITLE2 both filled marks the variation-point PARTS - only they may spawn a NEW
     // material variant. Every node, flagged or not, may still be swapped for an EXISTING module
     // (a plain replace, which propagates upward anyway). Fail-open while the flag search is still
@@ -447,7 +493,7 @@ function selectNodeForSwap(elemClicked) {
 
     // Highlight the clicked component in the viewer (colour + zoom, keep the rest for context).
     // Same partNumber->component mapping the stock service portal uses; safe no-op if no model.
-    viewerSelectModel(vb.selected.partNumber, { highlight : true, isolate : false, fitToView : true });
+    vbViewer(() => viewerSelectModel(vb.selected.partNumber, { highlight : true, isolate : false, fitToView : true }));
 
     // Rebuild #item: material selector (flagged parts only), catalogue + replace picker (any node),
     // then the item details panel with an open-in-FM link. Scrollable so the details fit below.
@@ -615,7 +661,7 @@ function vbShowExecutions(executions, elem) {
 function vbMarkPartVaried(partNumber) {
     if(isBlank(partNumber)) return;
     vbClearDiffMarks();   // the difference shows the saved BOM, a new choice makes its colours stale
-    viewerSetColors([partNumber], { color : [0.30, 0.69, 0.31, 1], resetColors : false, isolate : false, fitToView : false });
+    vbViewer(() => viewerSetColors([partNumber], { color : [0.30, 0.69, 0.31, 1], resetColors : false, isolate : false, fitToView : false }));
 }
 
 
@@ -1501,8 +1547,10 @@ function vbShowPlan(tree, changed) {
             .text('⛔ Stopp bei ' + n.number + ': nicht variantentragend (keine zweite Ausführung), bleibt unverändert – darüber entsteht keine Variante.');
     }
 
-    let reuseCount  = changed.filter(n => n._existing).length;
-    let createCount = changed.length - reuseCount + Object.keys(newArticles).length;
+    // Material leaves count too: with a stop above them they are the only thing created.
+    let leaves      = Object.values(vb.swaps).filter(s => s.mode === 'material');
+    let reuseCount  = changed.filter(n => n._existing).length + leaves.filter(s => s._leafExisting).length;
+    let createCount = changed.filter(n => !n._existing).length + Object.keys(newArticles).length + leaves.filter(s => !s._leafExisting).length;
 
     $('<div></div>').appendTo(body).css({ margin : '12px 0', opacity : 0.7 })
         .html(createCount + ' to create, ' + reuseCount + ' to reuse.');
@@ -1531,6 +1579,8 @@ async function vbExecutePlan(tree, changed, kunde) {
 
     let resolved = {};   // original item link -> resolved variant/existing link
     let created  = {};   // article -> link of its new variant item
+    let leaves   = [];   // links of new material variants
+    let reusedLeaves = [];   // links of material variants that existed already
 
     try {
 
@@ -1540,8 +1590,9 @@ async function vbExecutePlan(tree, changed, kunde) {
             let s = vb.swaps[edgeId];
             if(s.mode !== 'material') continue;
 
-            if(s._leafExisting) { s.toLink = s._leafExisting.link; continue; }
+            if(s._leafExisting) { s.toLink = s._leafExisting.link; reusedLeaves.push(s.toLink); continue; }
 
+            vbProgress('Werkstoff-Variante ' + s.material + ' von ' + s.fromNumber);
             let leaf  = await vbCloneAssembly(s.fromLink);   // works for leaves too (shallow clone)
             let extra = [
                 { id : vb.fieldIds.material, value : s.material },
@@ -1553,6 +1604,7 @@ async function vbExecutePlan(tree, changed, kunde) {
             if(config.materialVariantNumbering === 'keep') extra.push({ id : vb.fieldIds.number, value : s.fromNumber });
             await vbStampFingerprint(leaf, s._leafFp, extra);   // fp + IS_VARIANT + material + title + base refs
             s.toLink = leaf;
+            leaves.push(leaf);
         }
 
         // Ausführungen without an item: one variant item per article, however many positions chose it.
@@ -1562,6 +1614,7 @@ async function vbExecutePlan(tree, changed, kunde) {
             if(s.mode !== 'execution' || s.toLink) continue;
 
             if(!created[s.toNumber]) {
+                vbProgress('Ausführung ' + s.toNumber + ' von ' + s.fromNumber);
                 let item = await vbCloneAssembly(s.fromLink);
                 await vbEditFields(item, [
                     { id : vb.fieldIds.artikelNummer, value : s.toNumber },
@@ -1574,10 +1627,13 @@ async function vbExecutePlan(tree, changed, kunde) {
             s.toLink = created[s.toNumber];
         }
 
+        let toBuild = changed.filter(n => !n._existing).length, built = 0;
+
         for(let n of changed) {
 
             if(n._existing) { resolved[n.link] = n._existing.link; continue; }
 
+            vbProgress('Baugruppe ' + (++built) + ' von ' + toBuild + ': ' + n.number);
             let cloneLink = await vbCloneAssembly(n.link);
 
             let prev = [], next = [];
@@ -1598,7 +1654,7 @@ async function vbExecutePlan(tree, changed, kunde) {
         }
 
         // With a stop the opened assembly stays as it is: open the highest new assembly (changed is bottom-up), else the new position.
-        let topLink = resolved[tree.link] || (changed.length ? resolved[changed[changed.length - 1].link] : null) || Object.values(created)[0] || null;
+        let topLink = resolved[tree.link] || (changed.length ? resolved[changed[changed.length - 1].link] : null) || Object.values(created)[0] || leaves[0] || reusedLeaves[0] || null;
 
         // Standard variant: the head (new or reused) is that APplus article.
         let stamped = '';
@@ -1617,11 +1673,16 @@ async function vbExecutePlan(tree, changed, kunde) {
         vb.variants = null;
         vb.executions = null;
 
+        vbProgress('');
         $('#overlay').hide();
 
+        // With a stop the opened assembly stays as it is: say so, otherwise "nothing happened" is all one sees.
+        let stopped = !resolved[tree.link] && changed.length === 0;
         showSuccessMessage('Variant created',
-            'Done. Created ' + (changed.filter(n => !n._existing).length + Object.keys(created).length) + ' new item(s), reused ' +
-            changed.filter(n => n._existing).length + '. New top assembly: ' + (topLink || '(unchanged)') + '.' + stamped);
+            'Done. Created ' + (changed.filter(n => !n._existing).length + Object.keys(created).length + leaves.length) + ' new item(s), reused ' +
+            (changed.filter(n => n._existing).length + reusedLeaves.length) + '.' +
+            (stopped ? ' The opened assembly stays unchanged (stop: not variant-bearing), the variant part opens in Fusion Manage.'
+                     : ' New top assembly: ' + (topLink || '(unchanged)') + '.') + stamped);
 
         vb.swaps = {};
         $('#button-save').addClass('disabled');
@@ -1629,6 +1690,7 @@ async function vbExecutePlan(tree, changed, kunde) {
         if(topLink) openItemByLink(topLink);
 
     } catch(e) {
+        vbProgress('');
         $('#overlay').hide();
         console.log('variants-bom execute error', e);
         showErrorMessage('Creation failed', 'Some items may have been created. Details are in the browser console.');
@@ -1682,7 +1744,7 @@ async function vbOrderBom(show) {
     if(!vb.root) return;
 
     if(Object.keys(vb.swaps).length > 0) {
-        showErrorMessage('Not saved yet', 'Save the variant and open it first: the order BOM shows the saved assembly.');
+        showErrorMessage('Nicht gespeichert', 'Erst die Variante speichern und öffnen: Die Stammstückliste zeigt den gespeicherten Stand.');
         return;
     }
 
@@ -1705,7 +1767,7 @@ async function vbOrderBom(show) {
     } catch(e) {
         $('#overlay').hide();
         console.log('variants-bom order BOM error', e);
-        showErrorMessage('Order BOM failed', 'Could not resolve the order BOM. Details are in the browser console.');
+        showErrorMessage('Stammstückliste fehlgeschlagen', 'Die Stammstückliste konnte nicht aufgelöst werden. Details in der Browser-Konsole.');
     }
 
 }
@@ -1803,6 +1865,7 @@ function vbCheckGroups(checked) {
 
 async function vbShowApplusCheck(data, lines, linked) {
 
+    vbSetView('button-applus-check');
     let elem  = $('#item').removeClass().addClass('surface-level-3').html('');
     let body  = $('<div></div>').appendTo(elem).addClass('panel-content').css({ padding : '16px', overflow : 'auto' });
     let g     = vbCheckGroups(data.lines);
@@ -1847,14 +1910,12 @@ async function vbShowApplusCheck(data, lines, linked) {
         let show = async function() {
             let head = select.val();
             out.html('').text('…');
-            let r = await $.ajax({ url : '/applus/order-bom', method : 'POST', contentType : 'application/json', data : JSON.stringify({ lines : lines, head : head }) });
+            let r = await $.ajax({ url : '/applus/order-bom', method : 'POST', contentType : 'application/json', data : JSON.stringify({ lines : lines, head : head, genTitle : true }) });
             if(head !== select.val()) return;
             out.html('');
             let diff  = r.data.levels.flatMap(level => level.diff.map(d => Object.assign({ under : level.fmLabel }, d)));
-            // Articles kept in mm/m/kg are raw material (Feige: the quantity is the length), not a part the CAD lacks.
-            let isRaw = d => d.tone === 'gray' || (d.tone === 'red' && d.unit && d.unit !== 'Stk');
-            let only  = diff.filter(d => d.tone === 'red' && !isRaw(d));
-            let raw   = diff.filter(isRaw).length;
+            let only  = diff.filter(d => d.tone === 'red');    // raw material (gray) is classified on the server
+            let raw   = diff.filter(d => d.tone === 'gray').length;
             let check = diff.filter(d => d.tone === 'yellow' || d.tone === 'blue');
             let onlyHead = $('<div></div>').appendTo(out).css({ margin : '6px 0' });
             $('<span></span>').appendTo(onlyHead).addClass('vb-diff-chip vb-diff-chip-red').text(only.length);
@@ -1864,7 +1925,7 @@ async function vbShowApplusCheck(data, lines, linked) {
             vbMarkDiff(marks.concat(only.map(d => ({ tone : 'red', article : d.article, name : d.name, applusQty : d.applusQty, unit : d.unit }))));
             let notes = [];
             if(raw)          notes.push(raw + (raw === 1 ? ' Rohmaterial-Position' : ' Rohmaterial-Positionen') + ' (mm/m/kg oder unter Einzelteilen, erwartet)');
-            if(check.length) notes.push(check.length + (check.length === 1 ? ' Position weicht' : ' Positionen weichen') + ' ab (Datenpflege, siehe Auftragsstückliste)');
+            if(check.length) notes.push(check.length + (check.length === 1 ? ' Position weicht' : ' Positionen weichen') + ' ab (Datenpflege, siehe Stammstückliste)');
             if(notes.length) $('<div></div>').appendTo(out).addClass('vb-cmp-source').css({ marginTop : '8px' }).text(notes.join(' · '));
         };
         select.change(show);
@@ -1875,12 +1936,13 @@ async function vbShowApplusCheck(data, lines, linked) {
         .text('Quelle: ' + data.exports + ' APplus-Stücklisten-Exporte in Fusion.');
 
     let footer = $('<div></div>').appendTo(body).addClass('vb-cmp-footer');
-    $('<div></div>').appendTo(footer).addClass('button with-icon icon-download').text('Excel exportieren').click(() => vbDownloadOrderBom(lines));
+    $('<div></div>').appendTo(footer).addClass('button with-icon icon-download').text('Excel exportieren').click(() => vbDownloadOrderBom(lines, true));
     $('<div></div>').appendTo(footer).addClass('button').text('Schließen').click(() => { vbClearDiffMarks(); vbShowItemPlaceholder(); });
 }
 
 function vbShowOrderBom(data, lines, linked) {
 
+    vbSetView('button-order-bom');
     // vb-compare widens the panel over the viewer: Fusion and APplus side by side need the room.
     // Every other view resets #item's classes, so leaving the comparison needs no extra step.
     let elem = $('#item').removeClass().addClass('surface-level-3').addClass('vb-compare').html('');
@@ -1991,7 +2053,7 @@ function vbDiffBadge(d) {
 function vbClearDiffMarks() {
     $('#bom tr').removeClass('vb-diff-green vb-diff-yellow vb-diff-blue');
     $('#bom .vb-diff-badge, #bom .vb-diff-missing').remove();
-    if(vb.diffParts !== null) viewerResetColors();
+    if(vb.diffParts !== null) vbViewer(() => viewerResetColors());
     vb.diffParts = null;
 }
 
@@ -2009,12 +2071,14 @@ function vbViewerDbIds(numbers) {
 function vbPaintDiff() {
     let vi = (typeof viewers === 'undefined') ? null : viewers.find(v => v.startupCompleted);
     if(!vi || !vb.diffParts) return;
-    vi.viewer.clearThemingColors();
-    for(let tone in vb.diffParts) {
-        let c = vbDiffTones[tone].vector;
-        if(!c) continue;
-        for(let id of vbViewerDbIds(vb.diffParts[tone])) vi.viewer.setThemingColor(id, new THREE.Vector4(c[0], c[1], c[2], c[3]), null, true);
-    }
+    vbViewer(() => {
+        vi.viewer.clearThemingColors();
+        for(let tone in vb.diffParts) {
+            let c = vbDiffTones[tone].vector;
+            if(!c) continue;
+            for(let id of vbViewerDbIds(vb.diffParts[tone])) vi.viewer.setThemingColor(id, new THREE.Vector4(c[0], c[1], c[2], c[3]), null, true);
+        }
+    });
 }
 
 // Colour the compared BOM level and the 3D model, add a row for what only APplus has.
@@ -2172,19 +2236,21 @@ function vbFocusBomRow(path) {
     setTimeout(() => row.removeClass('vb-cmp-focus'), 1200);
 }
 
-async function vbDownloadOrderBom(lines) {
+// genTitle: the APplus-Check logic (articles via GEN-TITLE, raw material by unit), so the file shows what the view shows.
+async function vbDownloadOrderBom(lines, genTitle) {
 
     let response = await fetch('/applus/order-bom/excel', {
         method  : 'POST',
         headers : { 'Content-Type' : 'application/json' },
-        body    : JSON.stringify({ title : vb.root.title, lines : lines, head : $('#vb-head').val() })
+        body    : JSON.stringify({ title : vb.root.title, lines : lines, head : $('#vb-head').val(), genTitle : !!genTitle })
     });
 
+    if(response.status === 401) { vbSessionExpired(); return; }
     if(!response.ok) { showErrorMessage('Download failed', 'The Excel file could not be created.'); return; }
 
     let link = document.createElement('a');
     link.href     = URL.createObjectURL(await response.blob());
-    link.download = 'Auftragsstueckliste ' + vb.root.number + '.xlsx';
+    link.download = (genTitle ? 'APplus-Check ' : 'Stammstueckliste ') + vb.root.number + '.xlsx';
     link.click();
     URL.revokeObjectURL(link.href);
 
