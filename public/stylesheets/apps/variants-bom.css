@@ -196,5 +196,6 @@ body.viewer-off #item   { left : var(--vb-bom-total); width : auto; z-index : 2;
 .vb-check-blue   { border-left-color : var(--color-blue-100); }
 .vb-check-red    { border-left-color : var(--color-status-red-brighter); }
 
-/* Step text under the spinner during long runs (vbProgress). */
-#overlay .vb-progress { position : absolute; top : calc(50% + 40px); left : 50%; transform : translateX(-50%); padding : 6px 14px; border-radius : 4px; background : rgba(0, 0, 0, 0.75); color : #fff; font-weight : 600; white-space : nowrap; }
+
+/* Save dialog (vbSaveDialog): framework step bars, but the done part visible against its track. */
+#vb-save-dialog .step-bar { background : var(--color-blue-500); }

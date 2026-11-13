@@ -96,12 +96,61 @@ function setUIEvents() {
 }
 
 
-// A step of a long run, shown under the spinner: a large plant needs a minute and more for its variants,
-// a bare spinner for that long reads as a hang. Empty text removes it.
-function vbProgress(text) {
-    let elem = $('#overlay .vb-progress');
-    if(elem.length === 0) elem = $('<div></div>').addClass('vb-progress').appendTo('#overlay');
-    elem.text(text || '').toggle(!!text);
+// Save progress like the MBOM editor's "Saving Changes" (framework classes .step*): one bar per kind of item.
+// A large plant needs a minute and more for its variants, a bare spinner for that long reads as a hang.
+// The framework's showSaveDialog() counts marked table rows; the editor works with data, so it has its own.
+function vbSaveDialog(steps) {
+    let dialog = $('#vb-save-dialog');
+    if(dialog.length === 0) {
+        dialog = $('<div></div>').appendTo('body').addClass('dialog').attr('id', 'vb-save-dialog')
+            .css({ width : '660px', height : '420px', left : 'calc(50% - 330px)', top : 'calc(50% - 210px)' });
+        $('<div></div>').appendTo(dialog).addClass('dialog-header').text('Variante speichern');
+        $('<div></div>').appendTo(dialog).addClass('dialog-content');
+        let footer = $('<div></div>').appendTo(dialog).addClass('dialog-footer');
+        $('<div></div>').appendTo(footer).addClass('button').attr('id', 'vb-save-close')
+            .css({ float : 'unset', margin : 'auto', width : '50%' }).text('Schließen')
+            .click(function() {
+                if($(this).hasClass('disabled')) return;
+                dialog.hide();
+                $('#overlay-processing').show();
+                $('#overlay').hide();
+            });
+    }
+    let content = dialog.find('.dialog-content').html('');
+    for(let s of steps) {
+        let row = $('<div></div>').appendTo(content).addClass('step').attr('id', 'vb-step-' + s.id).attr('data-count', s.count);
+        $('<div></div>').appendTo(row).addClass('step-label').text(s.label);
+        $('<div></div>').appendTo($('<div></div>').appendTo(row).addClass('step-progress')).addClass('step-bar');
+        $('<div></div>').appendTo(row).addClass('step-counter').text('0 von ' + s.count);
+    }
+    content.children().first().addClass('in-work');
+    $('<div></div>').appendTo(content).addClass('vb-save-result').css({ marginTop : '16px' });
+    dialog.find('#vb-save-close').addClass('disabled').removeClass('default');
+    appendOverlay(false);
+    $('#overlay-processing').hide();   // the dialog shows the progress, not the spinner
+    dialog.show();
+}
+
+// Step id has done of its count; note (e.g. the assembly just built) goes behind the counter.
+function vbSaveStep(id, done, note) {
+    let row   = $('#vb-step-' + id);
+    let count = Number(row.attr('data-count')) || 0;
+    row.addClass('in-work').prevAll().removeClass('in-work');
+    row.find('.step-bar').css('width', (count ? done * 100 / count : 100) + '%');
+    row.find('.step-counter').text(done + ' von ' + count).attr('title', note || '');
+}
+
+function vbSaveStepDone(id) {
+    let row = $('#vb-step-' + id);
+    vbSaveStep(id, Number(row.attr('data-count')) || 0);
+    row.removeClass('in-work').next().addClass('in-work');
+}
+
+function vbSaveDialogDone(text) {
+    let dialog = $('#vb-save-dialog');
+    dialog.find('.step').removeClass('in-work');
+    dialog.find('.vb-save-result').text(text);
+    dialog.find('#vb-save-close').removeClass('disabled').addClass('default');
 }
 
 // The right panel shows one of three views: highlight its header button like a tab.
@@ -111,7 +160,8 @@ function vbSetView(id) {
 }
 
 function vbSessionExpired() {
-    vbProgress('');
+    $('#vb-save-dialog').hide();
+    $('#overlay-processing').show();
     $('#overlay').hide();
     if(vb.sessionExpired) return;   // one message, not one per failed request
     vb.sessionExpired = true;
@@ -1575,12 +1625,18 @@ function vbShowPlan(tree, changed) {
 // Execute the plan bottom-up: clone/replace/stamp for creates, thread resolved links upward.
 async function vbExecutePlan(tree, changed, kunde) {
 
-    appendOverlay(false);
-
     let resolved = {};   // original item link -> resolved variant/existing link
     let created  = {};   // article -> link of its new variant item
     let leaves   = [];   // links of new material variants
     let reusedLeaves = [];   // links of material variants that existed already
+
+    let swaps = Object.values(vb.swaps);
+    vbSaveDialog([
+        { id : 'leaf',  label : 'Werkstoff-Varianten anlegen', count : swaps.filter(s => s.mode === 'material' && !s._leafExisting).length },
+        { id : 'exec',  label : 'Ausführungen anlegen',        count : new Set(swaps.filter(s => s.mode === 'execution' && !s.toLink).map(s => s.toNumber)).size },
+        { id : 'asm',   label : 'Baugruppen anlegen',          count : changed.filter(n => !n._existing).length },
+        { id : 'final', label : 'Abweichungen und Kunde',      count : 1 }
+    ]);
 
     try {
 
@@ -1592,7 +1648,6 @@ async function vbExecutePlan(tree, changed, kunde) {
 
             if(s._leafExisting) { s.toLink = s._leafExisting.link; reusedLeaves.push(s.toLink); continue; }
 
-            vbProgress('Werkstoff-Variante ' + s.material + ' von ' + s.fromNumber);
             let leaf  = await vbCloneAssembly(s.fromLink);   // works for leaves too (shallow clone)
             let extra = [
                 { id : vb.fieldIds.material, value : s.material },
@@ -1605,7 +1660,9 @@ async function vbExecutePlan(tree, changed, kunde) {
             await vbStampFingerprint(leaf, s._leafFp, extra);   // fp + IS_VARIANT + material + title + base refs
             s.toLink = leaf;
             leaves.push(leaf);
+            vbSaveStep('leaf', leaves.length);
         }
+        vbSaveStepDone('leaf');
 
         // Ausführungen without an item: one variant item per article, however many positions chose it.
         // Reuse needs no fingerprint here, the article search in recordExecutionSwap finds the item next time.
@@ -1614,7 +1671,6 @@ async function vbExecutePlan(tree, changed, kunde) {
             if(s.mode !== 'execution' || s.toLink) continue;
 
             if(!created[s.toNumber]) {
-                vbProgress('Ausführung ' + s.toNumber + ' von ' + s.fromNumber);
                 let item = await vbCloneAssembly(s.fromLink);
                 await vbEditFields(item, [
                     { id : vb.fieldIds.artikelNummer, value : s.toNumber },
@@ -1623,17 +1679,18 @@ async function vbExecutePlan(tree, changed, kunde) {
                     { id : 'TITLE',                   value : vbVariantTitle(s.fromTitle, s.fromNumber, [s.toNumber, s.material]) }
                 ].concat(vbBaseRefFields(s.fromNumber, s.fromLink)));
                 created[s.toNumber] = item;
+                vbSaveStep('exec', Object.keys(created).length);
             }
             s.toLink = created[s.toNumber];
         }
+        vbSaveStepDone('exec');
 
-        let toBuild = changed.filter(n => !n._existing).length, built = 0;
+        let built = 0;
 
         for(let n of changed) {
 
             if(n._existing) { resolved[n.link] = n._existing.link; continue; }
 
-            vbProgress('Baugruppe ' + (++built) + ' von ' + toBuild + ': ' + n.number);
             let cloneLink = await vbCloneAssembly(n.link);
 
             let prev = [], next = [];
@@ -1651,7 +1708,9 @@ async function vbExecutePlan(tree, changed, kunde) {
             await vbStampFingerprint(cloneLink, n._fp, extra);   // fp + IS_VARIANT + title + base refs
 
             resolved[n.link] = cloneLink;
+            vbSaveStep('asm', ++built, n.number);
         }
+        vbSaveStepDone('asm');
 
         // With a stop the opened assembly stays as it is: open the highest new assembly (changed is bottom-up), else the new position.
         let topLink = resolved[tree.link] || (changed.length ? resolved[changed[changed.length - 1].link] : null) || Object.values(created)[0] || leaves[0] || reusedLeaves[0] || null;
@@ -1673,16 +1732,15 @@ async function vbExecutePlan(tree, changed, kunde) {
         vb.variants = null;
         vb.executions = null;
 
-        vbProgress('');
-        $('#overlay').hide();
+        vbSaveStepDone('final');
 
         // With a stop the opened assembly stays as it is: say so, otherwise "nothing happened" is all one sees.
         let stopped = !resolved[tree.link] && changed.length === 0;
-        showSuccessMessage('Variant created',
-            'Done. Created ' + (changed.filter(n => !n._existing).length + Object.keys(created).length + leaves.length) + ' new item(s), reused ' +
-            (changed.filter(n => n._existing).length + reusedLeaves.length) + '.' +
-            (stopped ? ' The opened assembly stays unchanged (stop: not variant-bearing), the variant part opens in Fusion Manage.'
-                     : ' New top assembly: ' + (topLink || '(unchanged)') + '.') + stamped);
+        vbSaveDialogDone(
+            (changed.filter(n => !n._existing).length + Object.keys(created).length + leaves.length) + ' neu angelegt, ' +
+            (changed.filter(n => n._existing).length + reusedLeaves.length) + ' wiederverwendet.' +
+            (stopped ? ' Die geöffnete Baugruppe bleibt unverändert (Stopp: nicht variantentragend), das Variantenteil öffnet sich in Fusion Manage.'
+                     : (topLink ? ' Die oberste Variante öffnet sich in Fusion Manage.' : '')) + stamped);
 
         vb.swaps = {};
         $('#button-save').addClass('disabled');
@@ -1690,7 +1748,7 @@ async function vbExecutePlan(tree, changed, kunde) {
         if(topLink) openItemByLink(topLink);
 
     } catch(e) {
-        vbProgress('');
+        $('#vb-save-dialog').hide();
         $('#overlay').hide();
         console.log('variants-bom execute error', e);
         showErrorMessage('Creation failed', 'Some items may have been created. Details are in the browser console.');
