@@ -35,7 +35,7 @@ $(document).ready(function() {
     getFeatureSettings('variants-bom', [], function() {
 
         if(isBlank(dmsId)) {
-            $('#header-subtitle').html('Search for an assembly to start editing variants.');
+            $('#header-subtitle').html('Baugruppe wählen');
             vbOpenSearch();
         } else {
             vb.itemLink = '/api/v3/workspaces/' + wsId + '/items/' + dmsId;
@@ -199,7 +199,7 @@ function vbOpenSearch() {
     vb.root       = null;
     $('#button-save').addClass('disabled');
     vbClearDiffMarks();
-    $('#header-subtitle').html('Search for an assembly to start editing variants.');
+    $('#header-subtitle').html('Baugruppe wählen');
     document.title = documentTitle;
     $('body').addClass('vb-no-assembly');
 
@@ -216,8 +216,9 @@ function vbOpenSearch() {
 }
 
 // Start page: the assemblies a variant can be built in, i.e. the highest assemblies above the variant-bearing
-// parts, with the number of such parts. Most machines have none, opening one at random shows only locked rows.
-// One where-used per variant-bearing part (about 200), so the browser keeps the result for half a day.
+// parts, as tiles with their image and the number of such parts. Most machines have none, opening one at random
+// shows only locked rows. One where-used per variant-bearing part (about 200): tiles appear as they are found,
+// a where-used that does not answer within 20 s is skipped, and the browser keeps the result for half a day.
 async function vbStartList(elem, refresh) {
 
     let key = 'vb-start-list-' + vb.ws.id;
@@ -225,56 +226,73 @@ async function vbStartList(elem, refresh) {
 
     elem.html('').css({ padding : '0 12px 12px' });
     $('<div></div>').appendTo(elem).css({ margin : '16px 0 6px', fontWeight : 'bold' }).text('Baugruppen mit variantenfähigen Positionen');
-    let list = $('<div></div>').appendTo(elem).text('Wird ermittelt …');
+    let status = $('<div></div>').appendTo(elem).addClass('vb-cmp-source');
+    let tiles  = $('<div></div>').appendTo(elem).addClass('tiles grid m vb-start-tiles');
+    let shown  = {};   // link -> { tile, count }
+
+    let show = function(row) {
+        let s = shown[row.link];
+        if(!s) {
+            let tile = genSingleTile({ link : row.link, title : row.title, tileIcon : 'icon-product' }).appendTo(tiles)
+                .click(function() { appendOverlay(false); openAssembly(row.link); });
+            appendImageFromCache(tile.find('.tile-image'), {}, { link : row.link, icon : 'icon-product', replace : true });
+            $.get('/plm/details', { link : row.link }, function(d) {   // the item's image, once per tile
+                let imageLink = d.data ? getFirstImageFieldValue(d.data.sections) : '';
+                if(imageLink) appendImageFromCache(tile.find('.tile-image'), {}, { link : row.link, imageLink : imageLink, icon : 'icon-product', replace : true });
+            });
+            s = shown[row.link] = { tile : tile, count : 0 };
+        }
+        s.count = row.count;
+        s.tile.find('.tile-subtitle').remove();
+        $('<div></div>').appendTo(s.tile.find('.tile-details')).addClass('tile-subtitle')
+            .text(row.count + (row.count === 1 ? ' variantenfähiges Teil' : ' variantenfähige Teile'));
+    };
+    let sort = () => Object.values(shown).sort((a, b) => b.count - a.count).forEach(s => s.tile.appendTo(tiles));
 
     let cached = null;
     try { cached = JSON.parse(localStorage.getItem(key)); } catch(e) { cached = null; }
-    let rows = (!refresh && cached && Date.now() - cached.at < ttl) ? cached.rows : null;
-
-    if(!rows) {
+    if(!refresh && cached && Date.now() - cached.at < ttl) {
+        cached.rows.forEach(show);
+        status.text(cached.rows.length ? '' : 'Keine Baugruppe mit variantenfähigen Positionen gefunden.');
+    } else {
         try {
             if(vb.flagged === null) await new Promise(res => ensureVariantFlags(res));
             let parts     = Object.keys(vb.flagged || {});
             // generated variants carry the base reference (a fingerprint is no marker: originals get one too)
             let generated = new Set((await vbSearchNotBlank(config.fieldIds.baseItemNumber || 'BASE_ITEM_NUMBER', [ vb.fieldIds.number ])).map(r => String(r.dmsId)));
-            let roots     = {};   // dmsId -> { title, parts : { dmsId : true } }
-            let done      = 0;
-            let next      = 0;
-            let worker    = async () => {
+            let roots     = {};   // dmsId -> { link, title, parts : { dmsId : true } }
+            let done = 0, skipped = 0, next = 0;
+            let worker = async () => {
                 while(next < parts.length) {
                     let id = parts[next++];
-                    let w  = await $.get('/plm/where-used', { link : '/api/v3/workspaces/' + vb.ws.id + '/items/' + id, depth : 10 });
-                    let d  = w.data || {};
-                    let used = new Set((d.edges || []).map(e => e.parent));   // where-used: parent = the item used, child = its user
-                    for(let n of d.nodes || []) {
+                    let d  = null;
+                    try {
+                        d = (await $.ajax({ url : '/plm/where-used', data : { link : '/api/v3/workspaces/' + vb.ws.id + '/items/' + id, depth : 10 }, timeout : 20000 })).data || {};
+                    } catch(e) { skipped++; }
+                    let used = new Set(((d && d.edges) || []).map(e => e.parent));   // where-used: parent = the item used, child = its user
+                    for(let n of (d && d.nodes) || []) {
                         let dms = n.item.link.split('/').pop();
                         // the part itself, not a top, a generated variant, or in the recycle bin (where-used still lists those)
                         if(dms === id || used.has(n.item.urn) || generated.has(dms) || n.item.deleted) continue;
                         let r = roots[dms] || (roots[dms] = { link : n.item.link, title : n.item.title.replace(/\s*\[REV:[^\]]*\]\s*$/, ''), parts : {} });
-                        r.parts[id] = true;
+                        if(!r.parts[id]) { r.parts[id] = true; show({ link : r.link, title : r.title, count : Object.keys(r.parts).length }); }
                     }
-                    list.text('Wird ermittelt … ' + (++done) + ' von ' + parts.length);
+                    sort();
+                    status.text('Wird ermittelt … ' + (++done) + ' von ' + parts.length);
                 }
             };
             await Promise.all([1, 2, 3, 4, 5, 6].map(worker));
-            rows = Object.values(roots).map(r => ({ link : r.link, title : r.title, count : Object.keys(r.parts).length }))
-                                       .sort((a, b) => b.count - a.count || a.title.localeCompare(b.title));
-            try { localStorage.setItem(key, JSON.stringify({ at : Date.now(), rows : rows })); } catch(e) { /* storage off: just not cached */ }
+            let rows = Object.values(roots).map(r => ({ link : r.link, title : r.title, count : Object.keys(r.parts).length }))
+                                           .sort((a, b) => b.count - a.count || a.title.localeCompare(b.title));
+            if(skipped === 0) try { localStorage.setItem(key, JSON.stringify({ at : Date.now(), rows : rows })); } catch(e) { /* storage off: just not cached */ }
+            status.text(rows.length === 0 ? 'Keine Baugruppe mit variantenfähigen Positionen gefunden.'
+                      : skipped ? skipped + ' Teile ohne Antwort übersprungen, die Liste kann unvollständig sein.' : '');
         } catch(e) {
             console.log('variants-bom start list failed', e);
-            list.text('Liste konnte nicht ermittelt werden. Die Suche oben funktioniert weiter.');
-            return;
+            status.text('Liste konnte nicht ermittelt werden. Die Suche oben funktioniert weiter.');
         }
     }
 
-    list.html('');
-    if(rows.length === 0) list.text('Keine Baugruppe mit variantenfähigen Positionen gefunden.');
-    for(let row of rows) {
-        $('<div></div>').appendTo(list).addClass('button')
-            .css({ marginTop : '4px', width : '100%', boxSizing : 'border-box', height : 'auto', whiteSpace : 'normal', textAlign : 'left' })
-            .text(row.title + '  · ' + row.count + (row.count === 1 ? ' variantenfähiges Teil' : ' variantenfähige Teile'))
-            .click(function() { appendOverlay(false); openAssembly(row.link); });
-    }
     $('<div></div>').appendTo(elem).addClass('vb-cmp-source').css({ marginTop : '8px', cursor : 'pointer', textDecoration : 'underline' })
         .text('Neu ermitteln').click(() => vbStartList(elem, true));
 }
