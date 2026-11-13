@@ -199,3 +199,7 @@ body.viewer-off #item   { left : var(--vb-bom-total); width : auto; z-index : 2;
 
 /* Save dialog (vbSaveDialog): framework step bars, but the done part visible against its track. */
 #vb-save-dialog .step-bar { background : var(--color-blue-500); }
+
+/* No assembly open (start and Open Item): no viewer of a former machine, the search takes the room. */
+body.vb-no-assembly .viewer { visibility : hidden; }
+body.vb-no-assembly #item   { left : var(--vb-bom-total); width : auto; }

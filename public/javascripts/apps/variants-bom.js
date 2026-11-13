@@ -191,6 +191,18 @@ function vbSessionExpired() {
 // panel as the replace picker - click a result -> openAssembly(link).
 function vbOpenSearch() {
 
+    // Leaving the opened assembly: its unsaved choices would be lost, so ask first. Then nothing of it stays
+    // behind - no choices, no title, no colours and no model of the old machine in the viewer.
+    if(Object.keys(vb.swaps).length && !confirm('Nicht gespeicherte Auswahlen verwerfen und eine andere Baugruppe öffnen?')) return;
+    vb.swaps      = {};
+    vb.importHead = null;
+    vb.root       = null;
+    $('#button-save').addClass('disabled');
+    vbClearDiffMarks();
+    $('#header-subtitle').html('Search for an assembly to start editing variants.');
+    document.title = documentTitle;
+    $('body').addClass('vb-no-assembly');
+
     $('#bom').removeClass().addClass('surface-level-1').html('');
     let elem = $('#item').removeClass().addClass('surface-level-3').html('');
 
@@ -403,6 +415,7 @@ function openAssembly(link) {
     vb.swaps      = {};
     vb.importHead = null;
     $('#button-save').addClass('disabled');
+    $('body').removeClass('vb-no-assembly');
 
     $.get('/plm/details', { link : link }, function(response) {
 
