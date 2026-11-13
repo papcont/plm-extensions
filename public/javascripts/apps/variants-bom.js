@@ -212,6 +212,71 @@ function vbOpenSearch() {
         appendOverlay(false);
         openAssembly(link);
     });
+    vbStartList($('<div></div>').appendTo(elem));
+}
+
+// Start page: the assemblies a variant can be built in, i.e. the highest assemblies above the variant-bearing
+// parts, with the number of such parts. Most machines have none, opening one at random shows only locked rows.
+// One where-used per variant-bearing part (about 200), so the browser keeps the result for half a day.
+async function vbStartList(elem, refresh) {
+
+    let key = 'vb-start-list-' + vb.ws.id;
+    let ttl = 12 * 3600 * 1000;
+
+    elem.html('').css({ padding : '0 12px 12px' });
+    $('<div></div>').appendTo(elem).css({ margin : '16px 0 6px', fontWeight : 'bold' }).text('Baugruppen mit variantenfähigen Positionen');
+    let list = $('<div></div>').appendTo(elem).text('Wird ermittelt …');
+
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(key)); } catch(e) { cached = null; }
+    let rows = (!refresh && cached && Date.now() - cached.at < ttl) ? cached.rows : null;
+
+    if(!rows) {
+        try {
+            if(vb.flagged === null) await new Promise(res => ensureVariantFlags(res));
+            let parts     = Object.keys(vb.flagged || {});
+            // generated variants carry the base reference (a fingerprint is no marker: originals get one too)
+            let generated = new Set((await vbSearchNotBlank(config.fieldIds.baseItemNumber || 'BASE_ITEM_NUMBER', [ vb.fieldIds.number ])).map(r => String(r.dmsId)));
+            let roots     = {};   // dmsId -> { title, parts : { dmsId : true } }
+            let done      = 0;
+            let next      = 0;
+            let worker    = async () => {
+                while(next < parts.length) {
+                    let id = parts[next++];
+                    let w  = await $.get('/plm/where-used', { link : '/api/v3/workspaces/' + vb.ws.id + '/items/' + id, depth : 10 });
+                    let d  = w.data || {};
+                    let used = new Set((d.edges || []).map(e => e.parent));   // where-used: parent = the item used, child = its user
+                    for(let n of d.nodes || []) {
+                        let dms = n.item.link.split('/').pop();
+                        // the part itself, not a top, a generated variant, or in the recycle bin (where-used still lists those)
+                        if(dms === id || used.has(n.item.urn) || generated.has(dms) || n.item.deleted) continue;
+                        let r = roots[dms] || (roots[dms] = { link : n.item.link, title : n.item.title.replace(/\s*\[REV:[^\]]*\]\s*$/, ''), parts : {} });
+                        r.parts[id] = true;
+                    }
+                    list.text('Wird ermittelt … ' + (++done) + ' von ' + parts.length);
+                }
+            };
+            await Promise.all([1, 2, 3, 4, 5, 6].map(worker));
+            rows = Object.values(roots).map(r => ({ link : r.link, title : r.title, count : Object.keys(r.parts).length }))
+                                       .sort((a, b) => b.count - a.count || a.title.localeCompare(b.title));
+            try { localStorage.setItem(key, JSON.stringify({ at : Date.now(), rows : rows })); } catch(e) { /* storage off: just not cached */ }
+        } catch(e) {
+            console.log('variants-bom start list failed', e);
+            list.text('Liste konnte nicht ermittelt werden. Die Suche oben funktioniert weiter.');
+            return;
+        }
+    }
+
+    list.html('');
+    if(rows.length === 0) list.text('Keine Baugruppe mit variantenfähigen Positionen gefunden.');
+    for(let row of rows) {
+        $('<div></div>').appendTo(list).addClass('button')
+            .css({ marginTop : '4px', width : '100%', boxSizing : 'border-box', height : 'auto', whiteSpace : 'normal', textAlign : 'left' })
+            .text(row.title + '  · ' + row.count + (row.count === 1 ? ' variantenfähiges Teil' : ' variantenfähige Teile'))
+            .click(function() { appendOverlay(false); openAssembly(row.link); });
+    }
+    $('<div></div>').appendTo(elem).addClass('vb-cmp-source').css({ marginTop : '8px', cursor : 'pointer', textDecoration : 'underline' })
+        .text('Neu ermitteln').click(() => vbStartList(elem, true));
 }
 
 
@@ -285,12 +350,24 @@ function ensureVariantFlags(callback) {
         });
 
         $('#bom').addClass('vb-flags-resolved');   // enables dimming of non-eligible rows (CSS)
+        vbNoVariantsHint();
 
         if(callback) callback();
     }).fail(function() { if(callback) callback(); });
 
 }
 
+
+// Most assemblies hold no variant-bearing position (GEN-TITLE2 empty everywhere below the head): then every row
+// is a locked common part and nothing can be chosen. Say so on the start view instead of letting one search.
+function vbNoVariantsHint() {
+    $('#vb-no-variants').remove();
+    if(!vb.root || $('#bom tr[data-link]').length === 0 || $('#bom tr.variant-allowed').length > 0) return;
+    $('<div></div>').prependTo('#item.surface-level-3:not(.vb-compare)').attr('id', 'vb-no-variants').addClass('vb-locked').css({ margin : '12px' })
+        .append($('<div></div>').addClass('vb-locked-title').text('Keine variantenfähigen Positionen'))
+        .append($('<div></div>').text('In dieser Baugruppe trägt keine Position eine zweite Ausführung (GEN-TITLE2 leer). ' +
+                                      'Hier lässt sich keine Variante bilden. Die Startseite („Open Item“) listet die Baugruppen, in denen das geht.'));
+}
 
 // Load dmsId -> ARTIKELNUMMER once: the BOM view only carries NUMBER, and the fingerprint needs the
 // article of every row. One workspace search instead of one /plm/details per row. Paged, because a
@@ -476,6 +553,7 @@ function vbShowItemPlaceholder() {
     $('<div></div>').appendTo(box).addClass('vb-placeholder-text')
         .html('Select a part in the BOM to swap it for an existing module, or change its material (variant-eligible parts).');
     vbListRootVariants(elem);
+    if($('#bom').hasClass('vb-flags-resolved')) vbNoVariantsHint();
 }
 
 
