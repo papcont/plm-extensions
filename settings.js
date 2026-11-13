@@ -2096,7 +2096,14 @@ exports.applications = {
             applusBoms     : 'APPLUS_STUECKLISTE',  // multi-select of those items: the APplus BOM(s) of an assembly, one per Ausführung
             title          : 'TITLE',             // derived speaking title "<base> - <labels>" (FM system field)
             baseItemNumber : 'BASE_ITEM_NUMBER',  // WS-241 convention: NUMBER of the original this variant came from
-            dmsIdBaseItem  : 'DMS_ID_BASE_ITEM'   // WS-241 convention: dmsId of the original (text back-reference)
+            dmsIdBaseItem  : 'DMS_ID_BASE_ITEM',  // WS-241 convention: dmsId of the original (text back-reference)
+            baseItem       : 'BASE_ITEM',         // WS-241 convention: link to the original (single selection, clickable)
+            kundeAuftrag   : 'KUNDE_AUFTRAG'      // customer / order the variant was made or reused for (comma-separated)
+        },
+        gridFieldIds : {                          // Grid tab of the top variant: one row per deviation from the base (WS-241 "Parts List")
+            original : 'ORIGINALTEIL',            // link to the base position
+            variant  : 'VARIANTENTEIL',           // link to the part used instead
+            change   : 'AENDERUNG'                // text, e.g. "Ausführung 2 · Säureschutz"
         },
         materialPicklistId       : 'CUSTOM_LOOKUP_MATERIAL',   // live picklist for the material selector
         materialVariantNumbering : 'new',   // 'new' = clone gets an auto-number (primary); 'keep' = reuse fromNumber (deferred, see code)

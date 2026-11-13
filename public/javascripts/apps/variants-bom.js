@@ -278,6 +278,11 @@ function vbHighlightVariantParts(on) {
 // Node swapping + upward propagation + fingerprint dedup land in phases 2b-4.
 function openAssembly(link) {
 
+    // Choices belong to the assembly they were made in: saving them under another one would create foreign items.
+    vb.swaps      = {};
+    vb.importHead = null;
+    $('#button-save').addClass('disabled');
+
     $.get('/plm/details', { link : link }, function(response) {
 
         $('#header-subtitle').html(response.data.title);
@@ -352,7 +357,7 @@ function vbListRootVariants(elem) {
 
     $.post('/plm/search', {
         wsId   : vb.ws.id,
-        fields : [ vb.fieldIds.number, 'DESCRIPTOR' ],
+        fields : [ vb.fieldIds.number, 'DESCRIPTOR' ].concat(vb.fieldIds.kundeAuftrag ? [ vb.fieldIds.kundeAuftrag ] : []),
         filter : [{ field : baseField, type : 0, comparator : 15, value : baseNumber }]
     }).done(function(r) {
 
@@ -368,8 +373,9 @@ function vbListRootVariants(elem) {
             let desc      = getSearchResultFieldValue(row, 'DESCRIPTOR', '') ||
                             getSearchResultFieldValue(row, vb.fieldIds.number, String(row.dmsId));
             let isCurrent = (link === vb.root.link);
+            let kunde     = vb.fieldIds.kundeAuftrag ? getSearchResultFieldValue(row, vb.fieldIds.kundeAuftrag, '') : '';
             let line = $('<div></div>').appendTo(box).addClass('button').css({ marginTop : '4px', width : '100%' })
-                .html((isCurrent ? '● ' : '→ ') + desc + (isCurrent ? '  (current)' : ''));
+                .text((isCurrent ? '● ' : '→ ') + desc + (kunde ? '  · ' + kunde : '') + (isCurrent ? '  (current)' : ''));
             if(isCurrent) line.addClass('disabled');
             else          line.click(function() { appendOverlay(false); openAssembly(link); });
         }
@@ -1083,6 +1089,11 @@ function variantsBomSelfTest() {
     console.assert(vbPresetChoice(stVa, '2000001', { werkstoff : 'Edelstahl' }, feats).slot.slot === 2, 'FAIL: Edelstahl must pick slot 2');
     console.assert(vbPresetChoice(stVa, '2000001', { werkstoff : 'Stahl' }, feats).status === 'KEEP', 'FAIL: current slot fits');
     console.assert(vbPresetChoice(stVa, '2000001', { werkstoff : 'Säureschutz' }, feats).status === 'NONE', 'FAIL: no slot fits');
+
+    // Deviation text of the Grid rows
+    console.assert(vbChangeText({ mode : 'execution', slot : 2, material : 'VA' }) === 'Ausführung 2 · VA', 'FAIL: execution change text');
+    console.assert(vbChangeText({ mode : 'material', material : 'Edelstahl' }) === 'Werkstoff Edelstahl', 'FAIL: material change text');
+    console.assert(vbChangeText({ mode : 'replace' }) === 'Tausch', 'FAIL: replace change text');
     console.assert(vbPresetChoice(stVa, '2000001', { ex : 'ATEX' }, feats).status === 'SKIP', 'FAIL: unmentioned characteristic must leave the position alone');
     let elnEx = vbExecutions([ { title : '3000001', material : 'Eln' }, { title : '3000002', material : 'EExde' } ]);
     console.assert(vbPresetChoice(elnEx, '3000001', { werkstoff : 'Edelstahl', ex : 'ATEX' }, feats).slot.slot === 2, 'FAIL: only the mentioned characteristic counts');
@@ -1192,9 +1203,23 @@ function vbCloneAssembly(link) {
 }
 
 // Write a set of fields on an item in one /plm/edit. fields: [{ id, value }].
+// Replace children prev[i] -> next[i] in the BOM of link, keeping quantity and item number of each edge.
+// Own version instead of the shared replaceBOMItems(): the customer framework calls GET /plm/bom-remove there,
+// which its server only offers as POST (404), and it maps quantities by response order instead of by edge.
+async function vbReplaceBOMItems(link, prev, next) {
+    let bom = await $.get('/plm/bom', { link : link, depth : 1 });
+    for(let edge of bom.data.edges) {
+        let i = prev.findIndex(p => p.split('/').pop() === edge.child.split('.').pop());
+        if(i < 0) continue;
+        let e = await $.get('/plm/bom-edge', { edgeLink : edge.edgeLink });
+        await $.post('/plm/bom-remove', { edgeLink : edge.edgeLink });
+        await $.post('/plm/bom-add', { linkParent : link, linkChild : next[i], quantity : e.data.quantity, number : e.data.itemNumber });
+    }
+}
+
 function vbEditFields(link, fields) {
     let payload = { link : link, sections : [] };
-    for(let f of fields) addFieldToPayload(payload.sections, vb.wsSections, null, f.id, f.value);
+    for(let f of fields) addFieldToPayload(payload.sections, vb.wsSections, null, f.id, f.value, null, f.type);
     return $.post('/plm/edit', payload);
 }
 
@@ -1258,8 +1283,44 @@ function vbBaseRefFields(baseNumber, baseLink) {
     let dmsId = baseLink ? (baseLink.split('/items/')[1] || '') : '';
     return [
         { id : (config.fieldIds.baseItemNumber || 'BASE_ITEM_NUMBER'), value : baseNumber },
-        { id : (config.fieldIds.dmsIdBaseItem  || 'DMS_ID_BASE_ITEM'), value : dmsId }
+        { id : (config.fieldIds.dmsIdBaseItem  || 'DMS_ID_BASE_ITEM'), value : dmsId },
+        { id : (config.fieldIds.baseItem       || 'BASE_ITEM'),        value : baseLink, type : 'single-select' }
     ];
+}
+
+// Text of one deviation row in the top variant's Grid tab (WS-241 "Parts List" convention).
+function vbChangeText(s) {
+    if(s.mode === 'material')  return 'Werkstoff ' + s.material;
+    if(s.mode === 'execution') return 'Ausführung ' + s.slot + (s.material ? ' · ' + s.material : '');
+    return 'Tausch';
+}
+
+// One Grid row per swap on the new top variant: original position, part used instead, what changed.
+// So the item shows its deviations from the base in standard Fusion Manage, without the editor.
+// ponytail: writes every swap of this save; with stops in two separate branches the top only holds one of
+// them, the other branch's rows would land there too. Filter swaps by the top's subtree if that ever occurs.
+async function vbWriteDeviations(link) {
+    let g = config.gridFieldIds;
+    if(!g) return;
+    for(let edgeId in vb.swaps) {
+        let s = vb.swaps[edgeId];
+        await $.post('/plm/add-grid-row', { link : link, data : [
+            { fieldId : g.original, value : s.fromLink, type : 'single-select' },
+            { fieldId : g.variant,  value : s.toLink,   type : 'single-select' },
+            { fieldId : g.change,   value : vbChangeText(s) }
+        ]});
+    }
+}
+
+// Add the customer / order to the variant, keeping earlier ones: a reused variant lists everyone who uses it.
+async function vbAddKundeAuftrag(link, kunde) {
+    let id = vb.fieldIds.kundeAuftrag;
+    if(!id || isBlank(kunde)) return;
+    let d    = await $.get('/plm/details', { link : link });
+    let list = getSectionFieldValue(d.data.sections, id, '').split(',').map(v => v.trim()).filter(Boolean);
+    if(list.includes(kunde)) return;
+    list.push(kunde);
+    await vbEditFields(link, [{ id : id, value : list.join(', ') }]);
 }
 
 
@@ -1424,10 +1485,14 @@ function vbShowPlan(tree, changed) {
     $('<div></div>').appendTo(body).css({ margin : '12px 0', opacity : 0.7 })
         .html(createCount + ' to create, ' + reuseCount + ' to reuse.');
 
+    let kunde = $('<input>').attr({ type : 'text', placeholder : 'Kunde / Auftrag (optional)' })
+        .css({ width : '100%', boxSizing : 'border-box', marginBottom : '12px' });
+    if(vb.fieldIds.kundeAuftrag) kunde.appendTo(body);
+
     $('<div></div>').appendTo(body)
         .addClass('button').addClass('default').addClass('with-icon').addClass('icon-create')
         .html('Confirm & Create')
-        .click(function() { vbExecutePlan(tree, changed); });
+        .click(function() { vbExecutePlan(tree, changed, kunde.val().trim()); });
 
     // Escape route: close the plan preview without committing. Swaps are kept (rows stay marked,
     // Save stays enabled) so the user can review the BOM and re-open the plan.
@@ -1438,7 +1503,7 @@ function vbShowPlan(tree, changed) {
 }
 
 // Execute the plan bottom-up: clone/replace/stamp for creates, thread resolved links upward.
-async function vbExecutePlan(tree, changed) {
+async function vbExecutePlan(tree, changed, kunde) {
 
     appendOverlay(false);
 
@@ -1501,7 +1566,7 @@ async function vbExecutePlan(tree, changed) {
                 if(newLink && newLink !== c.link) { prev.push(c.link); next.push(newLink); }
             }
 
-            if(prev.length) await new Promise(res => replaceBOMItems(cloneLink, prev, next, res));
+            if(prev.length) await vbReplaceBOMItems(cloneLink, prev, next);
 
             let extra = [{ id : 'TITLE', value : vbVariantTitle(n.title, n.number, vbSwapLabels()) }]
                             .concat(vbBaseRefFields(n.number, n.link));
@@ -1520,6 +1585,11 @@ async function vbExecutePlan(tree, changed) {
             stamped = ' Standardvariante: Artikel ' + vb.importHead + ' zugeordnet.';
         }
         vb.importHead = null;
+
+        // Deviations only on a newly created top assembly: a reused one has the same BOM, so it has its rows already.
+        let topIsNew = changed.length > 0 && topLink && !changed.some(n => n._existing && n._existing.link === topLink);
+        if(topIsNew) await vbWriteDeviations(topLink);
+        if(topLink && changed.length > 0) await vbAddKundeAuftrag(topLink, kunde);
 
         vb.articles = null;   // the new variant items carry articles too
         vb.variants = null;
