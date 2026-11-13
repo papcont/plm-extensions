@@ -103,7 +103,7 @@ function vbSaveDialog(steps) {
     let dialog = $('#vb-save-dialog');
     if(dialog.length === 0) {
         dialog = $('<div></div>').appendTo('body').addClass('dialog').attr('id', 'vb-save-dialog')
-            .css({ width : '660px', height : '420px', left : 'calc(50% - 330px)', top : 'calc(50% - 210px)' });
+            .css({ width : '660px', height : '470px', left : 'calc(50% - 330px)', top : 'calc(50% - 235px)' });
         $('<div></div>').appendTo(dialog).addClass('dialog-header').text('Variante speichern');
         $('<div></div>').appendTo(dialog).addClass('dialog-content');
         let footer = $('<div></div>').appendTo(dialog).addClass('dialog-footer');
@@ -136,7 +136,7 @@ function vbSaveStep(id, done, note) {
     let row   = $('#vb-step-' + id);
     let count = Number(row.attr('data-count')) || 0;
     row.addClass('in-work').prevAll().removeClass('in-work');
-    row.find('.step-bar').css('width', (count ? done * 100 / count : 100) + '%');
+    row.find('.step-bar').css('width', (count ? done * 100 / count : 0) + '%');   // nothing to do: empty bar, as in the MBOM editor
     row.find('.step-counter').text(done + ' von ' + count).attr('title', note || '');
 }
 
