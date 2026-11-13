@@ -374,9 +374,11 @@ function vbListRootVariants(elem) {
                             getSearchResultFieldValue(row, vb.fieldIds.number, String(row.dmsId));
             let isCurrent = (link === vb.root.link);
             let kunde     = vb.fieldIds.kundeAuftrag ? getSearchResultFieldValue(row, vb.fieldIds.kundeAuftrag, '') : '';
-            let line = $('<div></div>').appendTo(box).addClass('button').css({ marginTop : '4px', width : '100%' })
+            let line = $('<div></div>').appendTo(box).addClass('button')
+                .css({ marginTop : '4px', width : '100%', boxSizing : 'border-box', height : 'auto', whiteSpace : 'normal', textAlign : 'left' })
                 .text((isCurrent ? '● ' : '→ ') + desc + (kunde ? '  · ' + kunde : '') + (isCurrent ? '  (current)' : ''));
-            if(isCurrent) line.addClass('disabled');
+            // The open one stays readable (its customers matter), it is only not clickable.
+            if(isCurrent) line.css({ fontWeight : 'bold', cursor : 'default' });
             else          line.click(function() { appendOverlay(false); openAssembly(link); });
         }
 
