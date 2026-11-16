@@ -61,6 +61,11 @@ body.no-details #item   { right : calc(0px - var(--vb-item-total)); }
    ponytail: flat row hide; tree parents of a hidden node also vanish — acceptable per spec
    ("nur die [Items] in der BOM anzeigen"). Revisit if parent context needs to stay. */
 body.variant-filter #bom tr[data-link]:not(.variant-allowed) { display : none; }
+/* Same filter on the comparison lists on the right (Stammstückliste, APplus-Check); !important beats the
+   inline display of their own fold/tone filter. Entries only in APplus have no BOM row and stay, as on the left. */
+body.variant-filter #item .vb-fixed-part { display : none !important; }
+.vb-filter-note { display : none; }
+body.variant-filter .vb-filter-note { display : block; }
 
 /* Once flags are resolved, dim rows that are NOT variant-eligible so the eligible parts stand
    out and it mirrors the selection gate (dimmed rows can't be selected). The filter above still

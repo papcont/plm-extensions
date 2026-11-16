@@ -84,8 +84,8 @@ function setUIEvents() {
         let on = !$('body').hasClass('variant-filter');
         $('body').toggleClass('variant-filter', on);
         $(this).toggleClass('filled', on);
-        if(on) ensureVariantFlags(function() { vbHighlightVariantParts(true); });
-        else   vbHighlightVariantParts(false);
+        if(on) ensureVariantFlags(function() { vbHighlightVariantParts(true); vbPaintDiff(); });
+        else { vbHighlightVariantParts(false); vbPaintDiff(); }   // comparison colours again, filtered or not
     });
 
     $('#button-open').click(function() { vbOpenSearch(); });
@@ -2141,8 +2141,8 @@ function vbCheckGroups(checked) {
         let group = where[l.status];
         if(!group) continue;   // MERGED: no line of its own
         let key = group + '|' + (l.article || l.number);
-        if(seen[key]) { seen[key].qty += l.totalQty; continue; }
-        seen[key] = { article : l.article || '', number : l.number, title : l.title, material : l.material || '', qty : l.totalQty, assembly : l.assembly,
+        if(seen[key]) { seen[key].qty += l.totalQty; seen[key].ids.push(l.id); continue; }
+        seen[key] = { article : l.article || '', number : l.number, title : l.title, material : l.material || '', qty : l.totalQty, assembly : l.assembly, ids : [ l.id ],
                       options : Object.keys(l.executions || {}) };   // GEN-TITLE numbers, shown where no single article is set
         groups[group].push(seen[key]);
     }
@@ -2158,6 +2158,8 @@ async function vbShowApplusCheck(data, lines, linked) {
     let heads = linked.map(l => l.head).concat(data.heads.map(h => h.head).filter(h => !linked.some(l => l.head === h)));
 
     $('<div></div>').prependTo(elem).addClass('panel-header').text('APplus-Check · ' + vb.root.title);
+    vbFilterNote(body);
+    let fixed = vbFixedPaths();
 
     let list = function(title, items, hint, tone) {
         let head = $('<div></div>').appendTo(body).addClass('vb-cmp-heading');
@@ -2165,6 +2167,7 @@ async function vbShowApplusCheck(data, lines, linked) {
         $('<span></span>').appendTo(head).text(' ' + title);
         if(hint) $('<div></div>').appendTo(body).addClass('vb-cmp-source').text(hint);
         for(let i of items) $('<div></div>').appendTo(body).addClass('vb-check-item vb-check-' + tone)
+            .toggleClass('vb-fixed-part', i.ids.every(id => fixed.has(id)))
             .text([i.article || (i.options.length ? '' : i.number), i.title, i.material, i.qty + ' Stk',
                    !i.article && i.options.length ? 'GEN-TITLE: ' + i.options.join(', ') : ''].filter(Boolean).join(' · '));
     };
@@ -2336,6 +2339,19 @@ function vbDiffBadge(d) {
     }
 }
 
+// BOM paths of the common parts (rows without the variant flag); empty while the flags are not resolved yet.
+// "Nur variantenfähige" hides the list entries of these paths as it hides their BOM rows (CSS .vb-fixed-part).
+function vbFixedPaths() {
+    let paths = new Set();
+    if($('#bom').hasClass('vb-flags-resolved')) $('#bom tr[data-link]:not(.variant-allowed)').each(function() { paths.add(this.getAttribute('data-number-path')); });
+    return paths;
+}
+
+// Shown only while the filter is on: the counts above still cover every position.
+function vbFilterNote(elem) {
+    $('<div></div>').appendTo(elem).addClass('vb-cmp-source vb-filter-note').text('Nur variantenfähige: Gleichteile ausgeblendet, die Zahlen zählen alle Positionen.');
+}
+
 function vbClearDiffMarks() {
     $('#bom tr').removeClass('vb-diff-green vb-diff-yellow vb-diff-blue');
     $('#bom .vb-diff-badge, #bom .vb-diff-missing').remove();
@@ -2359,10 +2375,11 @@ function vbPaintDiff() {
     if(!vi || !vb.diffParts) return;
     vbViewer(() => {
         vi.viewer.clearThemingColors();
+        let allowed = $('body').hasClass('variant-filter') ? new Set($('#bom tr.variant-allowed').map((i, e) => e.getAttribute('data-part-number')).get()) : null;
         for(let tone in vb.diffParts) {
             let c = vbDiffTones[tone].vector;
             if(!c) continue;
-            for(let id of vbViewerDbIds(vb.diffParts[tone])) vi.viewer.setThemingColor(id, new THREE.Vector4(c[0], c[1], c[2], c[3]), null, true);
+            for(let id of vbViewerDbIds(vb.diffParts[tone].filter(n => !allowed || allowed.has(n)))) vi.viewer.setThemingColor(id, new THREE.Vector4(c[0], c[1], c[2], c[3]), null, true);
         }
     });
 }
@@ -2439,6 +2456,8 @@ async function vbShowDiff(lines, elem) {
             .text(all.filter(d => d.tone === t).length + ' ' + vbDiffTones[t].label).click(() => filter(t));
     }
     $('<div></div>').appendTo(elem).addClass('vb-cmp-source').text(levels.length + ' Stücklisten verglichen · Abschnitt anklicken zum Auf- und Zuklappen');
+    vbFilterNote(elem);
+    let fixed = vbFixedPaths();
 
     // Side by side: Fusion | status | APplus | note. Problems first, matches last.
     let table = $('<div></div>').appendTo(elem).addClass('vb-cmp');
@@ -2460,6 +2479,7 @@ async function vbShowDiff(lines, elem) {
         $('<span></span>').appendTo(header).addClass('vb-cmp-caret icon icon-chevron-right');
         $('<span></span>').appendTo(header).addClass('vb-cmp-level-title')
             .text(level.fmLabel + '  ↔  APplus ' + level.head + (level.name ? ' ' + level.name : ''));
+        header.toggleClass('vb-fixed-part', !!level.underPart && fixed.has(level.id));   // raw material section of a common part
         let counts = $('<span></span>').appendTo(header).addClass('vb-cmp-counts');
         let size   = level.diff.filter(d => d.article).length;
         if(!level.underPart) $('<span></span>').appendTo(counts).addClass('vb-cmp-count vb-diff-chip-green').text((level.own.green || 0) + ' / ' + size);
@@ -2482,7 +2502,9 @@ async function vbShowDiff(lines, elem) {
             cell(row, [d.article, d.name].filter(Boolean).join(' '),
                  [d.pos ? 'Pos. ' + d.pos : '', d.applusQty !== undefined ? d.applusQty + ' ' + (d.unit || 'Stk') : ''].filter(Boolean).join(' · '));
             $('<div></div>').appendTo(row).addClass('vb-cmp-note').text(d.tone === 'green' ? '' : d.text);
-            if(d.fmIds && d.fmIds.length) row.addClass('vb-cmp-link').click(() => vbFocusBomRow(d.fmIds[0]));
+            if(d.fmIds && d.fmIds.length) row.addClass('vb-cmp-link').click(() => vbFocusBomRow(d.fmIds[0]))
+                .toggleClass('vb-fixed-part', d.fmIds.every(id => fixed.has(id)));
+            if(d.tone === 'gray' && fixed.has(level.id)) row.addClass('vb-fixed-part');   // raw material below a common part
         }
     }
 
