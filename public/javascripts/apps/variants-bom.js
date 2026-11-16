@@ -1626,6 +1626,26 @@ async function vbWriteDeviations(link) {
     }
 }
 
+// The original of the opened assembly lists its variants in its own Variante tab: one row per new variant,
+// Originalteil = the original itself. Only the top assembly, not every changed part, so the tab stays readable.
+// A locked or read-only original must not break the save: the caller gets false and says so.
+async function vbListOnOriginal(original, variant) {
+    let g = config.gridFieldIds;
+    if(!g || !original || !variant) return true;
+    let change = Object.values(vb.swaps).map(vbChangeText).filter((v, i, a) => a.indexOf(v) === i).join('; ').slice(0, 200);
+    try {
+        let r = await $.post('/plm/add-grid-row', { link : original, data : [
+            { fieldId : g.original, value : original, type : 'single-select' },
+            { fieldId : g.variant,  value : variant,  type : 'single-select' },
+            { fieldId : g.change,   value : change }
+        ]});
+        return !(r && r.error);   // the route answers 200 with error:true when Fusion refuses
+    } catch(e) {
+        console.log('variants-bom: variant not listed on its original', original, e);
+        return false;
+    }
+}
+
 // Add the customer / order to the variant, keeping earlier ones: a reused variant lists everyone who uses it.
 async function vbAddKundeAuftrag(link, kunde) {
     let id = vb.fieldIds.kundeAuftrag;
@@ -1950,6 +1970,13 @@ async function vbExecutePlan(tree, changed, kunde) {
             await vbAddKundeAuftrag(link, kunde);
         }
 
+        // New top variants also go into their original's Variante tab (a reused one is listed there already).
+        let notListed = 0;
+        for(let n of tops) {
+            let link = resolved[n.link];
+            if(link && !reusedTops.has(link) && !(await vbListOnOriginal(n.link, link))) notListed++;
+        }
+
         vb.articles = null;   // the new variant items carry articles too
         vb.variants = null;
         vb.executions = null;
@@ -1969,6 +1996,7 @@ async function vbExecutePlan(tree, changed, kunde) {
                                                                 (topLinks.length > entries.length ? ', die ersten ' + entries.length : '') + ':'
                                                               : 'Neue Baugruppen-Variante:');
         else                      text = counts + (topLink ? ' Die geöffnete Baugruppe bleibt unverändert (Stopp: nicht variantentragend). Variantenteil:' : '');
+        if(notListed) text += ' Hinweis: Am Original konnte die Variante nicht im Reiter Variante eingetragen werden (Schreibrecht?).';
         vbSaveDialogDone(text + stamped, entries);
 
         vb.swaps = {};
