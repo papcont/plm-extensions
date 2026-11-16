@@ -153,6 +153,7 @@ function vbSaveDialogDone(text, entries) {
     dialog.find('.step').removeClass('in-work');
     dialog.find('#vb-save-close').removeClass('disabled').addClass('default');
     for(let e of entries || []) {
+        vbRecentAdd('saved', e.link, e.title);
         let row = $('<div></div>').appendTo(result).css({ display : 'flex', gap : '8px', alignItems : 'center', marginTop : '8px' });
         $('<div></div>').appendTo(row).css({ flex : 1, minWidth : 0, overflow : 'hidden', textOverflow : 'ellipsis', whiteSpace : 'nowrap' }).text(e.title);
         $('<div></div>').appendTo(row).addClass('button').text('In Fusion Manage öffnen').click(() => openItemByLink(e.link));
@@ -162,6 +163,37 @@ function vbSaveDialogDone(text, entries) {
             openAssembly(e.link);
         });
     }
+}
+
+// Recently used in this browser, like Recently Viewed in Fusion Manage but only for this editor: the opened
+// assemblies and the saved variants, newest first, at most 8 each.
+function vbRecentRead(kind) {
+    try { return JSON.parse(localStorage.getItem('vb-recent-' + kind + '-' + vb.ws.id)) || []; } catch(e) { return []; }
+}
+function vbRecentAdd(kind, link, title) {
+    let list = [ { link : link, title : title, at : Date.now() } ].concat(vbRecentRead(kind).filter(r => r.link !== link)).slice(0, 8);
+    try { localStorage.setItem('vb-recent-' + kind + '-' + vb.ws.id, JSON.stringify(list)); } catch(e) { /* storage off: no list */ }
+}
+function vbRecentList(elem, kind, label, empty) {
+    let list = vbRecentRead(kind);
+    $('<div></div>').appendTo(elem).addClass('vb-start-heading').text(label);
+    if(!list.length) { $('<div></div>').appendTo(elem).addClass('vb-cmp-source').text(empty); return; }
+    let tiles = $('<div></div>').appendTo(elem).addClass('tiles list xs');
+    for(let r of list) {
+        let when = new Date(r.at).toLocaleString('de-DE', { dateStyle : 'short', timeStyle : 'short' });
+        let tile = genSingleTile({ link : r.link, title : r.title, subtitle : when, tileIcon : 'icon-product' }).appendTo(tiles)
+            .click(function() { appendOverlay(false); openAssembly(r.link); });
+        vbTileImage(tile, r.link);
+    }
+}
+
+// A tile's picture: the product icon at once, the item's image (first image field) once its details are there.
+function vbTileImage(tile, link) {
+    appendImageFromCache(tile.find('.tile-image'), {}, { link : link, icon : 'icon-product', replace : true });
+    $.get('/plm/details', { link : link }, function(d) {
+        let imageLink = d.data ? getFirstImageFieldValue(d.data.sections) : '';
+        if(imageLink) appendImageFromCache(tile.find('.tile-image'), {}, { link : link, imageLink : imageLink, icon : 'icon-product', replace : true });
+    });
 }
 
 // Highest changed assembly of every branch below a stopped node: where the variants of a save end.
@@ -204,9 +236,13 @@ function vbOpenSearch() {
     $('body').addClass('vb-no-assembly');
 
     $('#bom').removeClass().addClass('surface-level-1').html('');
-    let elem = $('#item').removeClass().addClass('surface-level-3').html('');
+    let page = $('<div></div>').appendTo($('#item').removeClass().addClass('surface-level-3').html('')).addClass('vb-start');
+    let elem = $('<div></div>').appendTo(page);
+    let side = $('<div></div>').appendTo(page).addClass('vb-start-side');
+    vbRecentList(side, 'opened', 'Zuletzt geöffnet', 'Noch keine Baugruppe im Editor geöffnet.');
+    vbRecentList(side, 'saved',  'Zuletzt gespeicherte Varianten', 'Noch keine Variante gespeichert.');
 
-    vbItemSearch($('<div></div>').appendTo(elem).attr('id', 'vb-open'), 'Open an item to edit', function(picked) {
+    vbItemSearch($('<div></div>').appendTo(elem).attr('id', 'vb-open'), 'Baugruppe suchen', function(picked) {
         let link = picked.attr('data-link');
         if(isBlank(link)) return;
         appendOverlay(false);
@@ -225,7 +261,7 @@ async function vbStartList(elem, refresh) {
     let ttl = 12 * 3600 * 1000;
 
     elem.html('').css({ padding : '0 12px 12px' });
-    $('<div></div>').appendTo(elem).css({ margin : '16px 0 6px', fontWeight : 'bold' }).text('Baugruppen mit variantenfähigen Positionen');
+    $('<div></div>').appendTo(elem).addClass('vb-start-heading').text('Baugruppen mit variantenfähigen Positionen');
     let status = $('<div></div>').appendTo(elem).addClass('vb-cmp-source');
     let tiles  = $('<div></div>').appendTo(elem).addClass('tiles grid m vb-start-tiles');
     let shown  = {};   // link -> { tile, count }
@@ -235,11 +271,7 @@ async function vbStartList(elem, refresh) {
         if(!s) {
             let tile = genSingleTile({ link : row.link, title : row.title, tileIcon : 'icon-product' }).appendTo(tiles)
                 .click(function() { appendOverlay(false); openAssembly(row.link); });
-            appendImageFromCache(tile.find('.tile-image'), {}, { link : row.link, icon : 'icon-product', replace : true });
-            $.get('/plm/details', { link : row.link }, function(d) {   // the item's image, once per tile
-                let imageLink = d.data ? getFirstImageFieldValue(d.data.sections) : '';
-                if(imageLink) appendImageFromCache(tile.find('.tile-image'), {}, { link : row.link, imageLink : imageLink, icon : 'icon-product', replace : true });
-            });
+            vbTileImage(tile, row.link);
             s = shown[row.link] = { tile : tile, count : 0 };
         }
         s.count = row.count;
@@ -306,13 +338,13 @@ function vbItemSearch(elem, headerLabel, onClickItem) {
     $('<div></div>').appendTo(elem).css({ margin : '12px 12px 6px', fontWeight : 'bold' }).html(headerLabel);
 
     let bar     = $('<div></div>').appendTo(elem).css({ display : 'flex', gap : '6px', margin : '0 12px' });
-    let input   = $('<input></input>').appendTo(bar).attr('placeholder', 'Enter search criteria').css({ flex : 1 });
+    let input   = $('<input></input>').appendTo(bar).attr('placeholder', 'Nummer oder Bezeichnung').css({ flex : 1 });
     let results = $('<div></div>').appendTo(elem).css({ padding : '0 12px 12px' });
 
     let search = function() {
         let query = input.val().trim();
         if(query === '') return;
-        results.html('Searching ...');
+        results.html('Suche läuft …');
         $.post('/plm/search', {
             wsId     : vb.ws.id,
             fields   : [ vb.fieldIds.number, 'DESCRIPTOR', vb.fieldIds.isApplusBom ],
@@ -321,10 +353,10 @@ function vbItemSearch(elem, headerLabel, onClickItem) {
         }).done(function(r) {
             if(input.val().trim() !== query) return;   // the query changed meanwhile
             let rows = vbNoApplusBoms((r.data && r.data.row) ? r.data.row : []);
-            results.html(rows.length ? '' : 'No items found');
+            results.html(rows.length ? '' : 'Nichts gefunden');
             for(let row of rows) {
                 let desc = getSearchResultFieldValue(row, 'DESCRIPTOR', String(row.dmsId));
-                $('<div></div>').appendTo(results).addClass('button').css({ marginTop : '4px', width : '100%' })
+                $('<div></div>').appendTo(results).addClass('button vb-wide').css({ marginTop : '4px' })
                     .attr('data-link', '/api/v3/workspaces/' + vb.ws.id + '/items/' + row.dmsId)
                     .attr('data-descriptor', desc).html(desc)
                     .click(function() { onClickItem($(this)); });
@@ -332,7 +364,7 @@ function vbItemSearch(elem, headerLabel, onClickItem) {
         });
     };
 
-    $('<div></div>').appendTo(bar).addClass('button').addClass('default').html('Search').click(search);
+    $('<div></div>').appendTo(bar).addClass('button').addClass('default').html('Suchen').click(search);
     input.keypress(function(e) { if(e.which === 13) search(); });
 }
 
@@ -384,7 +416,7 @@ function vbNoVariantsHint() {
     $('<div></div>').prependTo('#item.surface-level-3:not(.vb-compare)').attr('id', 'vb-no-variants').addClass('vb-locked').css({ margin : '12px' })
         .append($('<div></div>').addClass('vb-locked-title').text('Keine variantenfähigen Positionen'))
         .append($('<div></div>').text('In dieser Baugruppe trägt keine Position eine zweite Ausführung (GEN-TITLE2 leer). ' +
-                                      'Hier lässt sich keine Variante bilden. Die Startseite („Open Item“) listet die Baugruppen, in denen das geht.'));
+                                      'Hier lässt sich keine Variante bilden. Die Startseite listet die Baugruppen, in denen das geht.'));
 }
 
 // Load dmsId -> ARTIKELNUMMER once: the BOM view only carries NUMBER, and the fingerprint needs the
@@ -516,6 +548,7 @@ function openAssembly(link) {
 
         $('#header-subtitle').html(response.data.title);
         document.title = documentTitle + ': ' + response.data.title;
+        vbRecentAdd('opened', link, response.data.title);
 
         let rootAllowed = getSectionFieldValue(response.data.sections, vb.fieldIds.variantAllowed);
         vb.root = {
@@ -531,7 +564,7 @@ function openAssembly(link) {
 
         insertBOM(link, {
             id               : 'bom',
-            headerLabel      : 'BOM',
+            headerLabel      : 'Stückliste',
             bomViewName      : vb.ws.bomView,
             depth            : config.maxBOMLevels,
             quantity         : true,
@@ -567,9 +600,9 @@ function vbShowItemPlaceholder() {
     let elem = $('#item').removeClass().addClass('surface-level-3').html('').css({ overflowY : 'auto' });
     vbShowAssemblyChoice($('<div></div>').appendTo(elem).css({ padding : '0 0 12px' }));
     let box  = $('<div></div>').appendTo(elem).addClass('vb-placeholder');
-    $('<div></div>').appendTo(box).addClass('vb-placeholder-title').html('No part selected');
+    $('<div></div>').appendTo(box).addClass('vb-placeholder-title').html('Kein Teil ausgewählt');
     $('<div></div>').appendTo(box).addClass('vb-placeholder-text')
-        .html('Select a part in the BOM to swap it for an existing module, or change its material (variant-eligible parts).');
+        .html('Teil in der Stückliste wählen, um es gegen ein vorhandenes Modul zu tauschen oder seinen Werkstoff zu ändern (variantenfähige Teile).');
     vbListRootVariants(elem);
     if($('#bom').hasClass('vb-flags-resolved')) vbNoVariantsHint();
 }
@@ -606,7 +639,7 @@ function vbListRootVariants(elem) {
 
         let box = $('<div></div>').appendTo(elem).addClass('vb-root-variants').css({ padding : '12px' });
         $('<div></div>').appendTo(box).css({ marginBottom : '6px', fontWeight : 'bold' })
-            .html('Existing variants of this machine (' + baseNumber + ')');
+            .html('Vorhandene Varianten dieser Maschine (' + baseNumber + ')');
 
         for(let row of rows) {
             let link      = '/api/v3/workspaces/' + vb.ws.id + '/items/' + row.dmsId;
@@ -616,7 +649,7 @@ function vbListRootVariants(elem) {
             let kunde     = vb.fieldIds.kundeAuftrag ? getSearchResultFieldValue(row, vb.fieldIds.kundeAuftrag, '') : '';
             let line = $('<div></div>').appendTo(box).addClass('button')
                 .css({ marginTop : '4px', width : '100%', boxSizing : 'border-box', height : 'auto', whiteSpace : 'normal', textAlign : 'left' })
-                .text((isCurrent ? '● ' : '→ ') + desc + (kunde ? '  · ' + kunde : '') + (isCurrent ? '  (current)' : ''));
+                .text((isCurrent ? '● ' : '→ ') + desc + (kunde ? '  · ' + kunde : '') + (isCurrent ? '  (aktuell)' : ''));
             // The open one stays readable (its customers matter), it is only not clickable.
             if(isCurrent) line.css({ fontWeight : 'bold', cursor : 'default' });
             else          line.click(function() { appendOverlay(false); openAssembly(link); });
@@ -691,8 +724,15 @@ function selectNodeForSwap(elemClicked) {
         $('<div></div>').appendTo(box).addClass('vb-locked-title').text('Gleichteil – nicht änderbar');
         $('<div></div>').appendTo(box).text('"' + vb.selected.partNumber + '" hat keine zweite Ausführung (GEN-TITLE2 leer) und bleibt in jeder Variante gleich.');
         $('<div></div>').appendTo(elem).attr('id', 'vb-details').css({ position : 'relative', height : '420px', marginTop : '8px' });
-        insertDetails(link, { id : 'vb-details', headerLabel : 'Item Details', openInPLM : true, toggles : true, useCache : true });
+        insertDetails(link, { id : 'vb-details', headerLabel : 'Details', openInPLM : true, toggles : true, useCache : true });
         return;
+    }
+
+    // A change is recorded on this position: offer to drop it (back to the master BOM part), then redraw the panel.
+    if(vb.swaps[vb.selected.edgeId]) {
+        $('<div></div>').appendTo($('<div></div>').appendTo(elem).css({ padding : '12px' }))
+            .addClass('button vb-wide').html('✕ Änderung verwerfen')
+            .click(function() { clearSwap(elemClicked.attr('data-edgeid')); selectNodeForSwap(elemClicked); });
     }
 
     // Ausführungen 1-4 (GEN-TITLEn / GEN-WERKn), filled once the details below are loaded.
@@ -701,17 +741,17 @@ function selectNodeForSwap(elemClicked) {
     if(eligible) {
         let box = $('<div></div>').appendTo(elem).addClass('vb-material-box').css({ padding : '12px' });
         $('<div></div>').appendTo(box).css({ marginBottom : '6px', fontWeight : 'bold' })
-            .html('Change material of "' + vb.selected.partNumber + '"');
+            .html('Werkstoff von „' + vb.selected.partNumber + '“ ändern');
         let select = $('<select></select>').appendTo(box).attr('id', 'vb-material').css({ width : '100%' });
-        $('<option></option>').appendTo(select).val('').html('- select material -');
+        $('<option></option>').appendTo(select).val('').html('- Werkstoff wählen -');
         for(let label of (vb.materials || [])) $('<option></option>').appendTo(select).val(label).html(label);
         $('<div></div>').appendTo(box).addClass('button').addClass('default').css({ marginTop : '8px' })
-            .html('Apply material')
+            .html('Werkstoff übernehmen')
             .click(function() { recordMaterialSwap($('#vb-material').val()); });
     } else {
         $('<div></div>').appendTo(elem).css({ padding : '12px', opacity : 0.75 })
-            .html('"' + vb.selected.partNumber + '" is not variant-eligible - pick an existing module below, ' +
-                  'or fill GEN-TITLE1 and GEN-TITLE2 on the item to change its material.');
+            .html('„' + vb.selected.partNumber + '“ ist nicht variantenfähig. Unten ein vorhandenes Modul wählen, ' +
+                  'oder am Item GEN-TITLE1 und GEN-TITLE2 füllen, um den Werkstoff zu ändern.');
     }
 
     // Existing variants already derived from this part (BASE_ITEM_NUMBER back-reference).
@@ -721,7 +761,7 @@ function selectNodeForSwap(elemClicked) {
 
     // Component picker of the item workspace; click a result to record a replace swap.
     vbItemSearch($('<div></div>').appendTo(elem).attr('id', 'vb-replace').css({ marginTop : '8px' }),
-                 'or replace "' + vb.selected.partNumber + '" with', recordSwap);
+                 'oder „' + vb.selected.partNumber + '“ ersetzen durch', recordSwap);
 
     // Prefill the current material and grab MATERIALART (identity component). Best-effort.
     let selected = vb.selected;
@@ -746,7 +786,7 @@ function selectNodeForSwap(elemClicked) {
     // Placed at the very bottom - below the material change and replace picker, not between them.
     // Its content is absolutely positioned, so the container needs a definite height to fill/scroll.
     $('<div></div>').appendTo(elem).attr('id', 'vb-details').css({ position : 'relative', height : '420px', marginTop : '8px' });
-    insertDetails(link, { id : 'vb-details', headerLabel : 'Item Details', openInPLM : true, toggles : true, useCache : true });
+    insertDetails(link, { id : 'vb-details', headerLabel : 'Details', openInPLM : true, toggles : true, useCache : true });
 
 }
 
@@ -773,13 +813,13 @@ function vbListExistingVariants(partNumber, elem) {
 
         let box = $('<div></div>').appendTo(elem).addClass('vb-variants-box').css({ padding : '12px' });
         $('<div></div>').appendTo(box).css({ marginBottom : '6px', fontWeight : 'bold' })
-            .html('Existing variants of "' + partNumber + '"');
+            .html('Vorhandene Varianten von „' + partNumber + '“');
 
         for(let row of rows) {
             let link = '/api/v3/workspaces/' + vb.ws.id + '/items/' + row.dmsId;
             let desc = getSearchResultFieldValue(row, 'DESCRIPTOR', '') ||
                        getSearchResultFieldValue(row, vb.fieldIds.number, String(row.dmsId));
-            $('<div></div>').appendTo(box).addClass('button').css({ marginTop : '4px', width : '100%' })
+            $('<div></div>').appendTo(box).addClass('button vb-wide').css({ marginTop : '4px' })
                 .html('→ ' + desc)
                 .click(function() {
                     recordSwap($('<div></div>').attr('data-link', link).attr('data-descriptor', desc));
@@ -824,15 +864,15 @@ function vbShowExecutions(executions, elem) {
     let box    = $('<div></div>').appendTo(elem).addClass('vb-executions-box').css({ padding : '12px' });
 
     $('<div></div>').appendTo(box).css({ marginBottom : '6px', fontWeight : 'bold' })
-        .html('Ausführungen of "' + sel.partNumber + '"');
+        .html('Ausführungen von „' + sel.partNumber + '“');
 
     for(let e of executions) {
         $('<div></div>').appendTo(box).css({ marginTop : '8px', opacity : 0.75 })
             .html(['Ausführung ' + e.slot, e.label, e.material, e.surface, e.sap ? 'SAP ' + e.sap : ''].filter(Boolean).join(' · '));
         for(let article of e.articles) {
             let mark = (article === chosen) ? '✓ ' : (article === sel.article) ? '● ' : '→ ';
-            $('<div></div>').appendTo(box).addClass('button').css({ marginTop : '4px', width : '100%' })
-                .html(mark + article + (article === sel.article ? '  (current)' : ''))
+            $('<div></div>').appendTo(box).addClass('button vb-wide').css({ marginTop : '4px' })
+                .html(mark + article + (article === sel.article ? '  (aktuell)' : ''))
                 .click(function() { recordExecutionSwap(e.slot, article, e.material); });
         }
     }
@@ -870,7 +910,7 @@ function recordMaterialSwap(material) {
     let row = vb.selected.row;
     row.addClass('swapped');
     row.find('.swap-badge').remove();
-    $('<span></span>').addClass('swap-badge').html('→ Material: ' + material).appendTo(row.find('.tree-descriptor').closest('td'));
+    $('<span></span>').addClass('swap-badge').html('→ Werkstoff: ' + material).appendTo(row.find('.tree-descriptor').closest('td'));
 
     vbMarkPartVaried(vb.selected.partNumber);   // varied part turns green in the viewer
 
@@ -1045,7 +1085,7 @@ function vbAdoptApplusBom(head) {
         return;
     }
     vb.importHead = head;
-    showSuccessMessage('Standardvariante vorbereitet', set + ' Positionen stehen auf der Ausführung von APplus ' + head + '. Mit Save Variant anlegen.');
+    showSuccessMessage('Standardvariante vorbereitet', set + ' Positionen stehen auf der Ausführung von APplus ' + head + '. Mit „Variante speichern“ anlegen.');
 }
 
 // The created (or reused) head of a standard variant carries its APplus article and BOM.
@@ -1120,7 +1160,7 @@ function recordExecutionSwap(slot, article, material, sel) {
         let row = sel.row;
         row.addClass('swapped');
         row.find('.swap-badge').remove();
-        let hint = !found ? ' (new)' : pick.ambiguous ? ' (' + pick.ambiguous + ' items)' : '';
+        let hint = !found ? ' (neu)' : pick.ambiguous ? ' (' + pick.ambiguous + ' Items)' : '';
         $('<span></span>').addClass('swap-badge').html('→ Ausführung ' + slot + ': ' + article + hint)
             .appendTo(row.find('.tree-descriptor').closest('td'));
 
@@ -1392,6 +1432,9 @@ function variantsBomSelfTest() {
     config.propagation = 'root';
     vb.flagged = {};
     console.assert(vbPlan(stopTree()).map(n => n.number).join() === 'A,ROOT', 'FAIL: root mode takes every ancestor');
+    // A choice below a swapped assembly has no effect (A brings its own BOM), one beside it stays.
+    console.assert(vbShadowedSwaps(stopTree(), { 4 : {}, 5 : {}, 6 : {} }, false).join() === '5', 'FAIL: choice below a swapped assembly must be dropped');
+    console.assert(vbShadowedSwaps(stopTree(), { 5 : {}, 6 : {} }, false).length === 0, 'FAIL: choice without swapped parent must stay');
     Object.assign(vb, { flagged : keep.flagged, swaps : keep.swaps });
     config.propagation = keep.propagation;
 
@@ -1640,6 +1683,19 @@ function vbPlan(tree) {
     return vbCollectChanged(tree, []).filter((n, i, all) => all.findIndex(m => m.link === n.link) === i);
 }
 
+// Choices below a swapped position: the swap brings its own item with its own BOM, so they change nothing.
+// Left in, they were still created, put into the title and listed in the Variante tab (Knotenblech of a
+// Standrohr that was itself swapped for another Ausführung).
+function vbShadowedSwaps(node, swaps, below) {
+    let out = [];
+    for(let c of node.children || []) {
+        let swapped = !!swaps[c.edgeId];
+        if(below && swapped) out.push(String(c.edgeId));
+        out = out.concat(vbShadowedSwaps(c, swaps, below || swapped));
+    }
+    return out;
+}
+
 function vbCollectStopped(node, acc) {
     if(node._stopped) acc.push(node);
     for(let c of (node.children || [])) vbCollectStopped(c, acc);
@@ -1668,6 +1724,7 @@ async function saveVariant() {
         await ensureArticles();
 
         let tree = buildTreeFromDOM();
+        for(let edgeId of vbShadowedSwaps(tree, vb.swaps, false)) clearSwap(edgeId);
 
         // Resolve each swap so its parent fingerprint can be computed.
         //   replace  -> read the replacement's identity
@@ -1700,7 +1757,7 @@ async function saveVariant() {
     } catch(e) {
         $('#overlay').hide();
         console.log('variants-bom saveVariant error', e);
-        showErrorMessage('Save failed', 'Could not prepare the variant. Details are in the browser console.');
+        showErrorMessage('Speichern fehlgeschlagen', 'Die Variante konnte nicht vorbereitet werden. Details stehen in der Browser-Konsole.');
     }
 }
 
@@ -1709,7 +1766,7 @@ function vbShowPlan(tree, changed) {
 
     let elem = $('#item').removeClass().addClass('surface-level-3').html('');
 
-    $('<div></div>').appendTo(elem).addClass('panel-header').html('Variant Plan');
+    $('<div></div>').appendTo(elem).addClass('panel-header').html('Variantenplan');
 
     let body = $('<div></div>').appendTo(elem).addClass('panel-content').css({ padding : '16px', overflow : 'auto' });
 
@@ -1718,8 +1775,8 @@ function vbShowPlan(tree, changed) {
         let s = vb.swaps[edgeId];
         if(s.mode !== 'material') continue;
         let line = $('<div></div>').appendTo(body).css({ margin : '6px 0' });
-        if(s._leafExisting) line.html('↻ Reuse <b>' + s._leafExisting.number + '</b> as ' + s.material + ' variant of "' + s.fromNumber + '"');
-        else                line.html('＋ Create ' + s.material + ' variant of <b>' + s.fromNumber + '</b>');
+        if(s._leafExisting) line.html('↻ <b>' + s._leafExisting.number + '</b> wiederverwenden als ' + s.material + '-Variante von „' + s.fromNumber + '“');
+        else                line.html('＋ ' + s.material + '-Variante von <b>' + s.fromNumber + '</b> anlegen');
     }
 
     // Ausführung choices: existing articles are reused, missing ones become one new variant item each.
@@ -1728,17 +1785,17 @@ function vbShowPlan(tree, changed) {
         let s = vb.swaps[edgeId];
         if(s.mode !== 'execution') continue;
         let line = $('<div></div>').appendTo(body).css({ margin : '6px 0' });
-        if(s.toLink) line.html('↻ Use <b>' + s.toNumber + '</b> (Ausführung ' + s.slot + ') for "' + s.fromNumber + '"' +
-                               (s.ambiguous ? ' - ' + s.ambiguous + ' items carry this article, using ' + s.toTitle + '. Check the choice.' : ''));
-        else { newArticles[s.toNumber] = true; line.html('＋ Create <b>' + s.toNumber + '</b> (Ausführung ' + s.slot + ') as variant of "' + s.fromNumber + '"'); }
+        if(s.toLink) line.html('↻ <b>' + s.toNumber + '</b> (Ausführung ' + s.slot + ') für „' + s.fromNumber + '“ verwenden' +
+                               (s.ambiguous ? ' – ' + s.ambiguous + ' Items tragen diesen Artikel, verwendet wird ' + s.toTitle + '. Bitte prüfen.' : ''));
+        else { newArticles[s.toNumber] = true; line.html('＋ <b>' + s.toNumber + '</b> (Ausführung ' + s.slot + ') als Variante von „' + s.fromNumber + '“ anlegen'); }
     }
 
     for(let n of changed) {
         let line = $('<div></div>').appendTo(body).css({ margin : '6px 0' });
         if(n._existing) {
-            line.html('↻ Reuse existing <b>' + n._existing.number + '</b> for "' + n.number + '" (identical BOM)');
+            line.html('↻ Vorhandene <b>' + n._existing.number + '</b> für „' + n.number + '“ wiederverwenden (gleiche Stückliste)');
         } else {
-            line.html('＋ Create new variant of <b>' + n.number + '</b>');
+            line.html('＋ Neue Variante von <b>' + n.number + '</b> anlegen');
         }
     }
 
@@ -1759,7 +1816,7 @@ function vbShowPlan(tree, changed) {
     let createCount = changed.filter(n => !n._existing).length + Object.keys(newArticles).length + leaves.filter(s => !s._leafExisting).length;
 
     $('<div></div>').appendTo(body).css({ margin : '12px 0', opacity : 0.7 })
-        .html(createCount + ' to create, ' + reuseCount + ' to reuse.');
+        .html(createCount + ' neu anlegen, ' + reuseCount + ' wiederverwenden.');
 
     let kunde = $('<input>').attr({ type : 'text', placeholder : 'Kunde / Auftrag (optional)' })
         .css({ width : '100%', boxSizing : 'border-box', marginBottom : '12px' });
@@ -1767,14 +1824,14 @@ function vbShowPlan(tree, changed) {
 
     $('<div></div>').appendTo(body)
         .addClass('button').addClass('default').addClass('with-icon').addClass('icon-create')
-        .html('Confirm & Create')
+        .html('Bestätigen und anlegen')
         .click(function() { vbExecutePlan(tree, changed, kunde.val().trim()); });
 
     // Escape route: close the plan preview without committing. Swaps are kept (rows stay marked,
     // Save stays enabled) so the user can review the BOM and re-open the plan.
     $('<div></div>').appendTo(body)
         .addClass('button').css({ marginTop : '8px' })
-        .html('Cancel')
+        .html('Abbrechen')
         .click(function() { vbShowItemPlaceholder(); });
 }
 
@@ -1791,7 +1848,7 @@ async function vbExecutePlan(tree, changed, kunde) {
         { id : 'leaf',  label : 'Werkstoff-Varianten anlegen', count : swaps.filter(s => s.mode === 'material' && !s._leafExisting).length },
         { id : 'exec',  label : 'Ausführungen anlegen',        count : new Set(swaps.filter(s => s.mode === 'execution' && !s.toLink).map(s => s.toNumber)).size },
         { id : 'asm',   label : 'Baugruppen anlegen',          count : changed.filter(n => !n._existing).length },
-        { id : 'final', label : 'Reiter Varianten und Kunde',  count : 1 }
+        { id : 'final', label : 'Reiter Variante und Kunde',   count : 1 }
     ]);
 
     try {
@@ -1922,7 +1979,7 @@ async function vbExecutePlan(tree, changed, kunde) {
         $('#vb-save-dialog').hide();
         $('#overlay').hide();
         console.log('variants-bom execute error', e);
-        showErrorMessage('Creation failed', 'Some items may have been created. Details are in the browser console.');
+        showErrorMessage('Anlegen fehlgeschlagen', 'Einige Items können schon angelegt sein. Details stehen in der Browser-Konsole.');
     }
 }
 
@@ -2055,7 +2112,7 @@ async function vbLinkApplusBom(head, linked) {
         filter : [{ field : vb.fieldIds.artikelNummer, type : 0, comparator : 15, value : head }]
     });
     let item = ((r.data && r.data.row) || []).find(row => /^t/i.test(getSearchResultFieldValue(row, vb.fieldIds.isApplusBom, '')));
-    if(!item) { showErrorMessage('Not in Fusion', 'APplus BOM ' + head + ' has no item in Fusion yet.'); return null; }
+    if(!item) { showErrorMessage('Nicht in Fusion Manage', 'Zur APplus-Stückliste ' + head + ' gibt es in Fusion Manage noch kein Item.'); return null; }
 
     let entry = { head : head, link : '/api/v3/workspaces/' + vb.ws.id + '/items/' + item.dmsId };
     await vbWriteApplusBoms(linked.concat(entry));
@@ -2220,7 +2277,7 @@ function vbShowOrderBom(data, lines, linked) {
 
         let assign  = $('<div></div>').appendTo(bar).addClass('button')
             .html('Zuordnen')
-            .attr('title', 'Assign the selected APplus BOM to this assembly (field APplus Stueckliste)')
+            .attr('title', 'Gewählte APplus-Stückliste dieser Baugruppe zuordnen (Feld APplus Stueckliste)')
             .click(async function() {
                 let entry = await vbLinkApplusBom(select.val(), linked);
                 if(entry === null) return;
@@ -2230,7 +2287,7 @@ function vbShowOrderBom(data, lines, linked) {
             });
         $('<div></div>').appendTo(bar).addClass('button')
             .text('Als Standardvariante übernehmen')
-            .attr('title', 'Set every position to the Ausführung this APplus BOM uses, then create it with Save Variant')
+            .attr('title', 'Jede Position auf die Ausführung dieser APplus-Stückliste setzen, dann mit „Variante speichern“ anlegen')
             .click(() => vbAdoptApplusBom(select.val()));
         let diffBox = $('<div></div>').appendTo(body).attr('id', 'vb-diff');
 
@@ -2475,7 +2532,7 @@ async function vbDownloadOrderBom(lines, genTitle) {
     });
 
     if(response.status === 401) { vbSessionExpired(); return; }
-    if(!response.ok) { showErrorMessage('Download failed', 'The Excel file could not be created.'); return; }
+    if(!response.ok) { showErrorMessage('Download fehlgeschlagen', 'Die Excel-Datei konnte nicht erstellt werden.'); return; }
 
     let link = document.createElement('a');
     link.href     = URL.createObjectURL(await response.blob());
@@ -2490,6 +2547,10 @@ async function vbDownloadOrderBom(lines, genTitle) {
 // flags (one indexed search) so the selection gate knows which nodes are variation points -
 // not just when the filter is on.
 function onBOMLoaded(id, data) {
+    // the framework's own labels of the BOM panel, in German
+    $('#bom th.tree-first-col').text('Position');
+    $('#bom th').each(function() { let de = { Quantity : 'Menge', Number : 'Nummer' }[$(this).text().trim()]; if(de) $(this).text(de); });
+    $('#bom .panel-header input').attr('placeholder', 'Suchen');
     ensureVariantFlags();
     lazyStampOriginal();
 }

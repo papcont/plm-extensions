@@ -203,3 +203,24 @@ body.viewer-off #item   { left : var(--vb-bom-total); width : auto; z-index : 2;
 /* No assembly open (start and Open Item): no viewer of a former machine, the search takes the room. */
 body.vb-no-assembly .viewer { visibility : hidden; }
 body.vb-no-assembly #item   { left : 0px; width : auto; z-index : 2; }
+
+/* Start page: no assembly, so none of its functions in the header; search and tiles left, recently used right. */
+body.vb-no-assembly #header-toolbar > .button { display : none; }
+.vb-start         { display : grid; grid-template-columns : minmax(0, 1fr) 360px; gap : 24px; }
+.vb-start-side    { padding-top : 4px; }
+.vb-start-heading { margin : 16px 0 6px; font-weight : bold; }
+.vb-start-side .tiles.list { gap : 2px; }
+@media (max-width : 900px) { .vb-start { grid-template-columns : minmax(0, 1fr); } }
+
+/* Full-width buttons in the panel (Ausführungen, existing variants, search results): padding and border inside the
+   column width, a long title is cut with an ellipsis instead of running past the edge. */
+.button.vb-wide { display : block; width : 100%; height : auto; box-sizing : border-box; overflow : hidden; text-overflow : ellipsis; white-space : nowrap; }
+
+/* Start page: full titles (two lines, wider tiles) and the date of the recently used entries visible.
+   The framework fixes size and hides subtitles per tile size, so these selectors repeat its classes. */
+.tiles.grid.m.vb-start-tiles > .tile     { width : 420px; min-width : 420px; max-width : 420px; height : auto; min-height : 64px; }
+.tiles.grid.m.vb-start-tiles .tile-title { line-height : 18px; white-space : normal; display : -webkit-box; -webkit-line-clamp : 2; -webkit-box-orient : vertical; }
+.vb-start-side .tiles.list.xs > .tile         { height : auto; min-height : 44px; }
+.vb-start-side .tiles.list.xs .tile-details   { justify-content : center; }
+.vb-start-side .tiles.list.xs .tile-title     { line-height : 18px; }
+.vb-start-side .tiles.list.xs .tile-subtitle  { display : block; font-size : 12px; line-height : 16px; opacity : 0.7; }

@@ -1,0 +1,4 @@
+/* A customer theme may recolour the framework's blue accent (Feige: orange, custom.css).
+   Blue in the APplus comparison is a status, not the accent: it stays blue. */
+#bom, #item { --color-blue-100 : #CDEAF7; }
+.vb-cmp-blue .vb-cmp-stripe { background : #0696D7; }
